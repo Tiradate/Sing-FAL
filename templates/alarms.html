@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Active Alarms</h5>
+      </div>
+      <div class="card-body">
+        {% if active_alarms %}
+        <div class="list-group">
+          {% for alarm in active_alarms %}
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <div>
+                <div class="fw-semibold">{{ alarm.metric | upper }} - {{ alarm.message }}</div>
+                <small class="text-muted">{{ alarm.device_id }} | {{ alarm.floor_id }}</small>
+              </div>
+              <span class="badge" style="background: {{ (settings.severity_levels|selectattr('label','equalto',alarm.severity)|list|first).color if settings.severity_levels else '#dc3545' }}">
+                {{ alarm.severity }}
+              </span>
+            </div>
+            <small class="text-muted">{{ alarm.ts }}</small>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-muted">No active alarms.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Alarm History</h5>
+      </div>
+      <div class="card-body">
+        {% if history %}
+        <div class="list-group">
+          {% for alarm in history %}
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between">
+              <div>
+                <div class="fw-semibold">{{ alarm.metric | upper }} - {{ alarm.message }}</div>
+                <small class="text-muted">{{ alarm.device_id }} | {{ alarm.floor_id }}</small>
+              </div>
+              <span class="badge" style="background: {{ (settings.severity_levels|selectattr('label','equalto',alarm.severity)|list|first).color if settings.severity_levels else '#dc3545' }}">
+                {{ alarm.severity }}
+              </span>
+            </div>
+            <small class="text-muted">{{ alarm.ts }}</small>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-muted">No history yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

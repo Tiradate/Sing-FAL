@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header bg-white">
+    <h5 class="mb-0">Settings</h5>
+  </div>
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label">Project Name</label>
+          <input class="form-control" type="text" name="project_name" value="{{ settings.project_name }}">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Location Label</label>
+          <input class="form-control" type="text" name="location_label" value="{{ settings.location_label }}">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Floor Auto-Rotate Interval (seconds)</label>
+          <input class="form-control" type="number" name="floor_auto_rotate_seconds" value="{{ settings.floor_auto_rotate_seconds }}">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Sensor Icon Size (px)</label>
+          <input class="form-control" type="number" name="sensor_icon_size" value="{{ settings.sensor_icon_size }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Show Icons</label>
+          <div class="d-flex gap-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="show_bell" {% if settings.show_icons.bell %}checked{% endif %}>
+              <label class="form-check-label">Bell</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="show_calendar" {% if settings.show_icons.calendar %}checked{% endif %}>
+              <label class="form-check-label">Calendar</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="show_download" {% if settings.show_icons.download %}checked{% endif %}>
+              <label class="form-check-label">Download</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="my-4">
+
+      <h6>AQI Severity Mapping</h6>
+      <div id="severityRows">
+        {% for level in settings.severity_levels %}
+        <div class="row g-2 align-items-center mb-2 severity-row">
+          <div class="col-12 col-md-3">
+            <input class="form-control" type="text" name="severity_label" value="{{ level.label }}" placeholder="Label">
+          </div>
+          <div class="col-12 col-md-3">
+            <input class="form-control" type="color" name="severity_color" value="{{ level.color }}">
+          </div>
+          <div class="col-12 col-md-3">
+            <input class="form-control" type="text" name="severity_icon" value="{{ level.icon }}" placeholder="Bootstrap icon">
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="critical_levels" value="{{ level.label }}" {% if level.label in settings.critical_levels %}checked{% endif %}>
+              <label class="form-check-label">Critical</label>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="addSeverity">Add Severity</button>
+
+      <hr class="my-4">
+
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label">Floor Plan Upload</label>
+          <input class="form-control" type="file" name="floor_plan">
+          <input class="form-control mt-2" type="text" name="floor_id" placeholder="Floor ID (e.g., F1)">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Sensor Icon Upload</label>
+          <input class="form-control" type="file" name="sensor_icon">
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button class="btn btn-primary" type="submit">Save Settings</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('addSeverity').addEventListener('click', () => {
+    const container = document.getElementById('severityRows');
+    const row = document.createElement('div');
+    row.className = 'row g-2 align-items-center mb-2 severity-row';
+    row.innerHTML = `
+      <div class="col-12 col-md-3">
+        <input class="form-control" type="text" name="severity_label" placeholder="Label">
+      </div>
+      <div class="col-12 col-md-3">
+        <input class="form-control" type="color" name="severity_color" value="#28a745">
+      </div>
+      <div class="col-12 col-md-3">
+        <input class="form-control" type="text" name="severity_icon" placeholder="Bootstrap icon">
+      </div>
+      <div class="col-12 col-md-3">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="critical_levels" value="">
+          <label class="form-check-label">Critical</label>
+        </div>
+      </div>
+    `;
+    row.querySelector('input[name="severity_label"]').addEventListener('input', (event) => {
+      row.querySelector('input[name="critical_levels"]').value = event.target.value;
+    });
+    container.appendChild(row);
+  });
+</script>
+{% endblock %}
