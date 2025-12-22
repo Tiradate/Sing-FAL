@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Weekly Overview - {{ metric|upper }}</h5>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('index') }}">Back</a>
+  </div>
+  <div class="card-body">
+    <canvas id="weeklyChart"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.dashboardData = {
+    weeklyLabels: {{ labels|tojson }},
+    weeklyValues: {{ values|tojson }},
+  };
+</script>
+{% endblock %}

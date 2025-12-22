@@ -1,0 +1,82 @@
+body {
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+.header-icon {
+  position: relative;
+  color: #212529;
+  font-size: 1.2rem;
+  text-decoration: none;
+}
+
+.header-icon .badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 0.65rem;
+}
+
+.legend-dot,
+.severity-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.map-container {
+  position: relative;
+  min-height: 320px;
+  background: #f1f3f5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.map-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.map-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #6c757d;
+}
+
+.sensor-icon {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.sensor-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+canvas {
+  width: 100% !important;
+  height: 180px !important;
+}
+
+@media (max-width: 991px) {
+  .map-container {
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 767px) {
+  .header-icon {
+    font-size: 1rem;
+  }
+  .map-container {
+    min-height: 220px;
+  }
+}

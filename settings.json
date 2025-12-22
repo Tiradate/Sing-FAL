@@ -1,0 +1,25 @@
+{
+  "project_name": "ICONSIAM",
+  "location_label": "Bangkok, Thailand",
+  "floor_auto_rotate_seconds": 12,
+  "show_icons": {
+    "bell": true,
+    "calendar": true,
+    "download": true,
+    "settings": true
+  },
+  "severity_levels": [
+    {"label": "Good", "color": "#28a745", "icon": "bi-emoji-smile"},
+    {"label": "Moderate", "color": "#fd7e14", "icon": "bi-exclamation-circle"},
+    {"label": "Unhealthy", "color": "#dc3545", "icon": "bi-exclamation-triangle"}
+  ],
+  "critical_levels": ["Unhealthy"],
+  "floor_plans": {
+    "F1": "static/uploads/floor_f1.svg",
+    "F2": "static/uploads/floor_f2.svg"
+  },
+  "sensor_icon": "static/uploads/sensor_icon.svg",
+  "sensor_icon_size": 28,
+  "admin_username": "admin",
+  "admin_password": "admin123"
+}
