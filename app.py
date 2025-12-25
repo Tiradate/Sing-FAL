@@ -117,7 +117,18 @@ def graphs_weekly():
 def alarms():
     active_alarms = data_service.get_active_alarms()
     history = data_service.get_alarm_history()
-    return render_template("alarms.html", active_alarms=active_alarms, history=history)
+    today = datetime.utcnow().date().isoformat()
+    action_start = request.args.get("action_start") or today
+    action_end = request.args.get("action_end") or today
+    action_history = data_service.get_action_history(action_start, action_end)
+    return render_template(
+        "alarms.html",
+        active_alarms=active_alarms,
+        history=history,
+        action_history=action_history,
+        action_start=action_start,
+        action_end=action_end,
+    )
 
 
 @app.post("/alarms/response")
@@ -128,6 +139,47 @@ def save_alarm_response():
     if alarm_id:
         data_service.save_alarm_response(alarm_id, action_owner=action_owner, action_note=action_note)
     return redirect(url_for("alarms"))
+
+
+@app.route("/alarms/actions.csv")
+def export_action_history():
+    today = datetime.utcnow().date().isoformat()
+    action_start = request.args.get("action_start") or today
+    action_end = request.args.get("action_end") or today
+    rows = data_service.get_action_history(action_start, action_end)
+    csv_path = os.path.join(BASE_DIR, "action_history_export.csv")
+    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "action_ts",
+                "alarm_ts",
+                "device_id",
+                "floor_id",
+                "metric",
+                "value",
+                "severity",
+                "message",
+                "action_owner",
+                "action_note",
+            ]
+        )
+        for row in rows:
+            writer.writerow(
+                [
+                    row["action_ts"],
+                    row["alarm_ts"],
+                    row["device_id"],
+                    row["floor_id"],
+                    row["metric"],
+                    row["value"],
+                    row["severity"],
+                    row["message"],
+                    row["action_owner"],
+                    row["action_note"],
+                ]
+            )
+    return send_file(csv_path, as_attachment=True, download_name="action_history.csv")
 
 
 @app.route("/settings", methods=["GET", "POST"])

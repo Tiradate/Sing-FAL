@@ -85,6 +85,20 @@ def init_alarm_db():
                 action_owner TEXT,
                 action_note TEXT
             );
+            CREATE TABLE IF NOT EXISTS action_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                alarm_event_id INTEGER,
+                action_ts DATETIME,
+                alarm_ts DATETIME,
+                device_id TEXT,
+                floor_id TEXT,
+                metric TEXT,
+                value REAL,
+                severity TEXT,
+                message TEXT,
+                action_owner TEXT,
+                action_note TEXT
+            );
             """
         )
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(alarm_history)").fetchall()}
@@ -94,6 +108,29 @@ def init_alarm_db():
             conn.execute("ALTER TABLE alarm_history ADD COLUMN action_owner TEXT")
         if "action_note" not in columns:
             conn.execute("ALTER TABLE alarm_history ADD COLUMN action_note TEXT")
+        action_columns = {row["name"] for row in conn.execute("PRAGMA table_info(action_history)").fetchall()}
+        if "alarm_event_id" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN alarm_event_id INTEGER")
+        if "action_ts" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN action_ts DATETIME")
+        if "alarm_ts" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN alarm_ts DATETIME")
+        if "device_id" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN device_id TEXT")
+        if "floor_id" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN floor_id TEXT")
+        if "metric" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN metric TEXT")
+        if "value" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN value REAL")
+        if "severity" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN severity TEXT")
+        if "message" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN message TEXT")
+        if "action_owner" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN action_owner TEXT")
+        if "action_note" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN action_note TEXT")
 
 
 def init_all():
