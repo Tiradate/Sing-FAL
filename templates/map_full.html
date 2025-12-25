@@ -31,6 +31,7 @@
     activeFloor: {{ active_floor|tojson }},
     autoRotateSeconds: {{ settings.floor_auto_rotate_seconds|tojson }},
     floorRoute: {{ url_for('map_full')|tojson }},
+    homeRoute: {{ url_for('index')|tojson }},
   };
 </script>
 {% endblock %}
