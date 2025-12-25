@@ -58,13 +58,18 @@ def index():
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
     active_alarms = data_service.get_active_alarms()
+    metric_options = data_service.get_metric_options()
+    metric_option_map = {option["key"]: {"label": option["label"], "unit": option["unit"]} for option in metric_options}
+    daily_metric = request.args.get("daily_metric", "pm25")
+    weekly_metric = request.args.get("weekly_metric", "pm25")
 
-    daily_labels, daily_values = data_service.get_daily_series("pm25", floor_id=floor_id)
-    weekly_labels, weekly_values = data_service.get_weekly_series("pm25", floor_id=floor_id)
+    daily_labels, daily_values = data_service.get_daily_series(daily_metric, floor_id=floor_id)
+    weekly_labels, weekly_values = data_service.get_weekly_series(weekly_metric, floor_id=floor_id)
 
     sensor_cards = data_service.get_latest_avg_metrics(floor_id=floor_id)
     indoor_outdoor = data_service.get_latest_indoor_outdoor(floor_id=floor_id)
     indoor_outdoor_aqi = data_service.get_indoor_outdoor_aqi(floor_id=floor_id)
+    device_metrics = data_service.get_latest_device_metrics(floor_id=floor_id)
 
     return render_template(
         "index.html",
@@ -77,9 +82,14 @@ def index():
         daily_values=daily_values,
         weekly_labels=weekly_labels,
         weekly_values=weekly_values,
+        daily_metric=daily_metric,
+        weekly_metric=weekly_metric,
         sensor_cards=sensor_cards,
         indoor_outdoor=indoor_outdoor,
         indoor_outdoor_aqi=indoor_outdoor_aqi,
+        device_metrics=device_metrics,
+        metric_options=metric_options,
+        metric_option_map=metric_option_map,
         now=datetime.now(),
         status_label=data_service.aggregate_status_label(settings),
     )
@@ -91,12 +101,16 @@ def map_full():
     floor_id = request.args.get("floor") or (floors[0] if floors else None)
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
+    metric_options = data_service.get_metric_options()
+    device_metrics = data_service.get_latest_device_metrics(floor_id=floor_id)
     return render_template(
         "map_full.html",
         floors=floors,
         active_floor=floor_id,
         devices=devices,
         alarm_severity=alarm_severity,
+        metric_options=metric_options,
+        device_metrics=device_metrics,
     )
 
 
@@ -159,7 +173,17 @@ def graphs_daily():
     labels, values = data_service.get_daily_series(metric, floor_id)
     if request.args.get("format") == "json":
         return jsonify({"labels": labels, "values": values})
-    return render_template("graphs_daily.html", labels=labels, values=values, metric=metric)
+    metric_options = data_service.get_metric_options()
+    metric_option_map = {option["key"]: {"label": option["label"], "unit": option["unit"]} for option in metric_options}
+    return render_template(
+        "graphs_daily.html",
+        labels=labels,
+        values=values,
+        metric=metric,
+        metric_label=data_service.get_metric_label(metric),
+        metric_options=metric_options,
+        metric_option_map=metric_option_map,
+    )
 
 
 @app.route("/graphs/weekly")
@@ -169,7 +193,17 @@ def graphs_weekly():
     labels, values = data_service.get_weekly_series(metric, floor_id)
     if request.args.get("format") == "json":
         return jsonify({"labels": labels, "values": values})
-    return render_template("graphs_weekly.html", labels=labels, values=values, metric=metric)
+    metric_options = data_service.get_metric_options()
+    metric_option_map = {option["key"]: {"label": option["label"], "unit": option["unit"]} for option in metric_options}
+    return render_template(
+        "graphs_weekly.html",
+        labels=labels,
+        values=values,
+        metric=metric,
+        metric_label=data_service.get_metric_label(metric),
+        metric_options=metric_options,
+        metric_option_map=metric_option_map,
+    )
 
 
 @app.route("/alarms")

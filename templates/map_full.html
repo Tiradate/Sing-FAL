@@ -18,6 +18,30 @@
     {% if severity %}
     <span class="sensor-badge" style="background: {{ (settings.severity_levels|selectattr('label','equalto',severity)|list|first).color if settings.severity_levels else '#dc3545' }}"></span>
     {% endif %}
+    {% set device_readings = device_metrics.get(device.device_id, {}) %}
+    <div class="sensor-tooltip">
+      <div class="fw-semibold">{{ device.device_id }}</div>
+      <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ device.floor_id }}</div>
+      <ul class="list-unstyled mb-0 mt-2">
+        {% for metric in metric_options %}
+        {% set reading = device_readings.get(metric.key) %}
+        <li class="d-flex justify-content-between gap-3">
+          <span class="text-muted">{{ metric.label }}</span>
+          <span class="fw-semibold">
+            {% if reading %}
+              {% if metric.key == 'motion' %}
+                {{ 'Occupied' if reading.value else 'Vacant' }}
+              {% else %}
+                {{ '%.1f'|format(reading.value or 0) }} {{ reading.unit or metric.unit }}
+              {% endif %}
+            {% else %}
+              --
+            {% endif %}
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
   </div>
   {% endif %}
   {% endfor %}

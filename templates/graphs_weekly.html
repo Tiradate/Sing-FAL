@@ -3,8 +3,20 @@
 {% block content %}
 <div class="card shadow-sm">
   <div class="card-header bg-white d-flex justify-content-between align-items-center">
-    <h5 class="mb-0">Weekly Overview - {{ metric|upper }}</h5>
-    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('index') }}">Back</a>
+    <div>
+      <h5 class="mb-0">Weekly Overview - {{ metric_label }}</h5>
+      <small class="text-muted">Average per day</small>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <select id="weeklyMetricSelect" class="form-select form-select-sm">
+        {% for metric_option in metric_options %}
+        <option value="{{ metric_option.key }}" {% if metric_option.key == metric %}selected{% endif %}>
+          {{ metric_option.label }}{% if metric_option.unit %} ({{ metric_option.unit }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('index') }}">Back</a>
+    </div>
   </div>
   <div class="card-body">
     <canvas id="weeklyChart"></canvas>
@@ -17,6 +29,9 @@
   window.dashboardData = {
     weeklyLabels: {{ labels|tojson }},
     weeklyValues: {{ values|tojson }},
+    weeklyMetric: {{ metric|tojson }},
+    weeklyRoute: {{ url_for('graphs_weekly')|tojson }},
+    metricOptions: {{ metric_option_map|tojson }},
   };
 </script>
 {% endblock %}
