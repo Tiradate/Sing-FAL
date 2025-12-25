@@ -1,6 +1,99 @@
 {% extends 'base.html' %}
 
 {% block content %}
+{% set guidance = {
+  "temperature": {
+    "standard": "LEED/ASHRAE 55 thermal comfort: 20–24°C (winter), 23–26°C (summer). Target 22–24°C for comfort.",
+    "actions": [
+      "Verify HVAC setpoints and schedules align with occupied hours.",
+      "Balance diffusers and VAV boxes to address hot/cold complaints.",
+      "Inspect equipment faults (stuck dampers, valve issues, failed sensors).",
+      "Use zoning or local fans to improve occupant comfort."
+    ]
+  },
+  "humidity": {
+    "standard": "LEED/ASHRAE 55 comfort band: 30–60% RH.",
+    "actions": [
+      "Check humidification/dehumidification equipment and condensate drainage.",
+      "Inspect envelope leaks or wet areas contributing to high RH.",
+      "Adjust outdoor air or reheat strategies to stabilize RH.",
+      "Communicate comfort guidance to occupants if RH fluctuates."
+    ]
+  },
+  "co2": {
+    "standard": "LEED EQ: indoor CO₂ ≤ 700 ppm above outdoor; keep ≤ 1000 ppm for comfort.",
+    "actions": [
+      "Increase outdoor air to meet occupancy demand (DCV settings).",
+      "Verify outdoor air dampers and CO₂ sensors are calibrated.",
+      "Confirm occupancy schedules and room utilization.",
+      "Open transfer paths or doors to improve air distribution."
+    ]
+  },
+  "pm25": {
+    "standard": "WHO guideline: 24-hour average ≤ 15 µg/m³ · Annual average ≤ 5 µg/m³.",
+    "actions": [
+      "Trace sources (outdoor infiltration, loading docks, kitchens).",
+      "Upgrade filters to MERV 13–15+ and confirm replacement schedule.",
+      "Reduce outdoor intake during high AQI; switch to recirculation.",
+      "Seal entry points; enable air curtains/vestibules.",
+      "Deploy HEPA purifiers in high-traffic zones."
+    ]
+  },
+  "pm10": {
+    "standard": "WHO guideline: 24-hour average ≤ 45 µg/m³ · Annual average ≤ 15 µg/m³.",
+    "actions": [
+      "Identify dust sources (construction, housekeeping, storage areas).",
+      "Upgrade filters and clean supply/return grilles.",
+      "Increase cleaning frequency for high-traffic zones.",
+      "Limit outdoor intake during dust events and monitor AQI."
+    ]
+  },
+  "tvoc": {
+    "standard": "LEED/comfort target: keep TVOC ≤ 0.5 mg/m³ (500 µg/m³) where feasible.",
+    "actions": [
+      "Identify sources (cleaning products, furnishings, maintenance work).",
+      "Increase ventilation during high-emitting activities.",
+      "Switch to low-VOC materials and cleaning agents.",
+      "Isolate or schedule work after hours to protect occupants."
+    ]
+  },
+  "light": {
+    "standard": "LEED/IES guidance: 300–500 lux for offices; 100–300 lux for circulation.",
+    "actions": [
+      "Check fixture failures, dimming settings, and daylight controls.",
+      "Balance lighting levels to reduce glare and shadows.",
+      "Adjust task lighting for occupant comfort and productivity.",
+      "Confirm sensors align with occupied zones."
+    ]
+  },
+  "pressure": {
+    "standard": "Maintain differential pressure (≈ +5 to +12 Pa) to control infiltration between zones.",
+    "actions": [
+      "Verify supply/return balance and door closer operation.",
+      "Inspect filters and fan performance for airflow restrictions.",
+      "Seal leaks at doors, shafts, and penetrations.",
+      "Coordinate with HVAC control sequences to stabilize pressure."
+    ]
+  },
+  "motion": {
+    "standard": "Occupancy verification: ensure sensors cover intended zones and support comfort.",
+    "actions": [
+      "Confirm sensor placement and coverage for occupied areas.",
+      "Adjust timeouts to avoid premature HVAC/lighting shutoff.",
+      "Check for obstructions or misalignment.",
+      "Coordinate with occupant schedules for reliable comfort."
+    ]
+  },
+  "signal_quality": {
+    "standard": "Target sensor signal quality ≥ 80% for reliable monitoring.",
+    "actions": [
+      "Relocate gateways or sensors to improve coverage.",
+      "Inspect antenna placement and obstructions.",
+      "Check battery levels and device health.",
+      "Reduce interference sources or adjust channel settings."
+    ]
+  }
+} %}
 <div class="row g-3">
   <div class="col-12 col-lg-6">
     <div class="card shadow-sm h-100">
@@ -49,31 +142,19 @@
                   </div>
                   <div class="modal-body">
                     <input type="hidden" name="alarm_id" value="{{ alarm.id }}">
-                    {% if alarm.metric == "pm25" %}
+                    {% set metric_guidance = guidance.get(alarm.metric) %}
+                    {% set alarm_index = loop.index %}
+                    {% if metric_guidance %}
                     <div class="mb-3 small text-muted">
-                      Standard (WHO): 24-hour average ≤15 µg/m³ · Annual average ≤5 µg/m³
+                      Standard (LEED/comfort): {{ metric_guidance.standard }}
                     </div>
                     <div class="fw-semibold mb-2">Checklist</div>
+                    {% for item in metric_guidance.actions %}
                     <div class="form-check">
-                      <input class="form-check-input" type="checkbox" id="check-{{ loop.index }}-1" name="checklist" value="1">
-                      <label class="form-check-label" for="check-{{ loop.index }}-1">Trace sources (outdoor infiltration, loading docks, kitchens).</label>
+                      <input class="form-check-input" type="checkbox" id="check-{{ alarm_index }}-{{ loop.index }}" name="checklist" value="{{ loop.index }}">
+                      <label class="form-check-label" for="check-{{ alarm_index }}-{{ loop.index }}">{{ item }}</label>
                     </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" id="check-{{ loop.index }}-2" name="checklist" value="2">
-                      <label class="form-check-label" for="check-{{ loop.index }}-2">Upgrade filters to MERV 13–15+ and confirm replacement schedule.</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" id="check-{{ loop.index }}-3" name="checklist" value="3">
-                      <label class="form-check-label" for="check-{{ loop.index }}-3">Reduce outdoor intake during high AQI; switch to recirculation.</label>
-                    </div>
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" id="check-{{ loop.index }}-4" name="checklist" value="4">
-                      <label class="form-check-label" for="check-{{ loop.index }}-4">Seal entry points; enable air curtains/vestibules.</label>
-                    </div>
-                    <div class="form-check mb-3">
-                      <input class="form-check-input" type="checkbox" id="check-{{ loop.index }}-5" name="checklist" value="5">
-                      <label class="form-check-label" for="check-{{ loop.index }}-5">Deploy HEPA purifiers in high-traffic zones.</label>
-                    </div>
+                    {% endfor %}
                     {% else %}
                     <div class="text-muted small mb-3">Review the alarm source, confirm sensor readings, and follow site SOP.</div>
                     {% endif %}
@@ -160,29 +241,17 @@
                   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                  {% if alarm.metric == "pm25" %}
+                  {% set metric_guidance = guidance.get(alarm.metric) %}
+                  {% set alarm_index = loop.index %}
+                  {% if metric_guidance %}
                   {% set selected_checks = (alarm.checklist or "").split(",") %}
                   <div class="fw-semibold mb-2">Checklist (view only)</div>
+                  {% for item in metric_guidance.actions %}
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="history-check-{{ loop.index }}-1" disabled {% if "1" in selected_checks %}checked{% endif %}>
-                    <label class="form-check-label" for="history-check-{{ loop.index }}-1">Trace sources (outdoor infiltration, loading docks, kitchens).</label>
+                    <input class="form-check-input" type="checkbox" id="history-check-{{ alarm_index }}-{{ loop.index }}" disabled {% if loop.index|string in selected_checks %}checked{% endif %}>
+                    <label class="form-check-label" for="history-check-{{ alarm_index }}-{{ loop.index }}">{{ item }}</label>
                   </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="history-check-{{ loop.index }}-2" disabled {% if "2" in selected_checks %}checked{% endif %}>
-                    <label class="form-check-label" for="history-check-{{ loop.index }}-2">Upgrade filters to MERV 13–15+ and confirm replacement schedule.</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="history-check-{{ loop.index }}-3" disabled {% if "3" in selected_checks %}checked{% endif %}>
-                    <label class="form-check-label" for="history-check-{{ loop.index }}-3">Reduce outdoor intake during high AQI; switch to recirculation.</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="history-check-{{ loop.index }}-4" disabled {% if "4" in selected_checks %}checked{% endif %}>
-                    <label class="form-check-label" for="history-check-{{ loop.index }}-4">Seal entry points; enable air curtains/vestibules.</label>
-                  </div>
-                  <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" id="history-check-{{ loop.index }}-5" disabled {% if "5" in selected_checks %}checked{% endif %}>
-                    <label class="form-check-label" for="history-check-{{ loop.index }}-5">Deploy HEPA purifiers in high-traffic zones.</label>
-                  </div>
+                  {% endfor %}
                   {% endif %}
                   <div class="fw-semibold mb-1">Action Owner</div>
                   <div class="text-muted mb-3">{{ alarm.action_owner or "Not provided" }}</div>
