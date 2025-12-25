@@ -74,16 +74,26 @@ def init_alarm_db():
             """
             CREATE TABLE IF NOT EXISTS alarm_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                alarm_event_id INTEGER,
                 ts DATETIME,
                 device_id TEXT,
                 floor_id TEXT,
                 metric TEXT,
                 value REAL,
                 severity TEXT,
-                message TEXT
+                message TEXT,
+                action_owner TEXT,
+                action_note TEXT
             );
             """
         )
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(alarm_history)").fetchall()}
+        if "alarm_event_id" not in columns:
+            conn.execute("ALTER TABLE alarm_history ADD COLUMN alarm_event_id INTEGER")
+        if "action_owner" not in columns:
+            conn.execute("ALTER TABLE alarm_history ADD COLUMN action_owner TEXT")
+        if "action_note" not in columns:
+            conn.execute("ALTER TABLE alarm_history ADD COLUMN action_note TEXT")
 
 
 def init_all():
