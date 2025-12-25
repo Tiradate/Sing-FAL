@@ -71,4 +71,12 @@
       window.location = `${floorRoute}?floor=${floor}`;
     });
   }
+
+  if (data.homeRoute) {
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        window.location = data.homeRoute;
+      }
+    });
+  }
 })();
