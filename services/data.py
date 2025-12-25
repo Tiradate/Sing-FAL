@@ -159,6 +159,19 @@ def get_alarm_history():
         return conn.execute("SELECT * FROM alarm_history ORDER BY ts DESC LIMIT 50").fetchall()
 
 
+def get_action_history(start_date, end_date):
+    from services.db import connect, ALARM_DB
+
+    query = """
+        SELECT *
+        FROM action_history
+        WHERE date(action_ts) BETWEEN date(?) AND date(?)
+        ORDER BY action_ts DESC
+    """
+    with connect(ALARM_DB) as conn:
+        return conn.execute(query, (start_date, end_date)).fetchall()
+
+
 def save_alarm_response(alarm_id, action_owner=None, action_note=None):
     from services.db import connect, ALARM_DB, SENSOR_DB
 
@@ -184,13 +197,42 @@ def save_alarm_response(alarm_id, action_owner=None, action_note=None):
             "SELECT 1 FROM alarm_history WHERE alarm_event_id = ?",
             (alarm_id,),
         ).fetchone()
-        if existing:
-            return False
+        if not existing:
+            conn.execute(
+                """
+                INSERT INTO alarm_history (
+                    alarm_event_id,
+                    ts,
+                    device_id,
+                    floor_id,
+                    metric,
+                    value,
+                    severity,
+                    message,
+                    action_owner,
+                    action_note
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    alarm_id,
+                    alarm["ts"],
+                    alarm["device_id"],
+                    alarm["floor_id"],
+                    alarm["metric"],
+                    alarm["value"],
+                    alarm["severity"],
+                    alarm["message"],
+                    action_owner,
+                    action_note,
+                ),
+            )
         conn.execute(
             """
-            INSERT INTO alarm_history (
+            INSERT INTO action_history (
                 alarm_event_id,
-                ts,
+                action_ts,
+                alarm_ts,
                 device_id,
                 floor_id,
                 metric,
@@ -200,10 +242,11 @@ def save_alarm_response(alarm_id, action_owner=None, action_note=None):
                 action_owner,
                 action_note
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 alarm_id,
+                datetime.utcnow().isoformat(),
                 alarm["ts"],
                 alarm["device_id"],
                 alarm["floor_id"],
