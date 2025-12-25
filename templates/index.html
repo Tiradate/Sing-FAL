@@ -232,6 +232,8 @@
     activeFloor: {{ active_floor|tojson }},
     autoRotateSeconds: {{ settings.floor_auto_rotate_seconds|tojson }},
     floorRoute: {{ url_for('index')|tojson }},
+    mapFullRoute: {{ url_for('map_full')|tojson }},
+    isFullMap: false,
     dailyRoute: {{ url_for('graphs_daily')|tojson }},
     weeklyRoute: {{ url_for('graphs_weekly')|tojson }},
     metricOptions: {{ metric_option_map|tojson }},
