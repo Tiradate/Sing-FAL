@@ -105,55 +105,84 @@
 
   const floorSelect = document.getElementById('floorSelect');
   const rotateBtn = document.getElementById('floorRotate');
-  if (floorSelect && rotateBtn && data.floors) {
+  if (data.floors) {
     const floorRoute = data.floorRoute || '/';
+    const mapFullRoute = data.mapFullRoute || '/map';
     const rotateStorageKey = 'dashboardAutoRotate';
+    const isFullMap = Boolean(data.isFullMap);
     let rotateTimer = null;
+    let activeIndex = data.floors.indexOf(data.activeFloor);
 
-    const startAutoRotate = () => {
+    const updateRotateButton = (isActive) => {
+      if (!rotateBtn) {
+        return;
+      }
+      rotateBtn.classList.toggle('btn-secondary', isActive);
+      rotateBtn.classList.toggle('btn-outline-secondary', !isActive);
+      rotateBtn.textContent = 'Auto';
+    };
+
+    const startRotateTimer = () => {
       if (rotateTimer) {
         return;
       }
-      rotateBtn.classList.remove('btn-outline-secondary');
-      rotateBtn.classList.add('btn-success');
-      rotateBtn.textContent = 'Stop';
       rotateTimer = setInterval(() => {
-        const index = data.floors.indexOf(floorSelect.value);
-        const nextIndex = (index + 1) % data.floors.length;
-        floorSelect.value = data.floors[nextIndex];
-        window.location = `${floorRoute}?floor=${data.floors[nextIndex]}`;
+        if (floorSelect) {
+          activeIndex = data.floors.indexOf(floorSelect.value);
+        }
+        if (activeIndex === -1) {
+          activeIndex = 0;
+        }
+        const nextIndex = (activeIndex + 1) % data.floors.length;
+        const nextFloor = data.floors[nextIndex];
+        activeIndex = nextIndex;
+        window.location = `${floorRoute}?floor=${nextFloor}`;
       }, (data.autoRotateSeconds || 10) * 1000);
+    };
+
+    const startAutoRotate = () => {
+      updateRotateButton(true);
       localStorage.setItem(rotateStorageKey, 'true');
+      if (isFullMap) {
+        startRotateTimer();
+        return;
+      }
+      if (rotateBtn) {
+        const currentFloor = floorSelect ? floorSelect.value : data.activeFloor;
+        window.open(`${mapFullRoute}?floor=${currentFloor}`, '_blank');
+      }
     };
 
     const stopAutoRotate = () => {
-      if (!rotateTimer) {
-        return;
+      if (rotateTimer) {
+        clearInterval(rotateTimer);
+        rotateTimer = null;
       }
-      clearInterval(rotateTimer);
-      rotateTimer = null;
-      rotateBtn.classList.remove('btn-success');
-      rotateBtn.classList.add('btn-outline-secondary');
-      rotateBtn.textContent = 'Auto';
+      updateRotateButton(false);
       localStorage.setItem(rotateStorageKey, 'false');
     };
 
-    rotateBtn.addEventListener('click', () => {
-      if (rotateTimer) {
-        stopAutoRotate();
-      } else {
-        startAutoRotate();
-      }
-    });
-
-    if (localStorage.getItem(rotateStorageKey) === 'true') {
-      startAutoRotate();
+    if (rotateBtn) {
+      rotateBtn.addEventListener('click', () => {
+        if (localStorage.getItem(rotateStorageKey) === 'true') {
+          stopAutoRotate();
+        } else {
+          startAutoRotate();
+        }
+      });
+      updateRotateButton(localStorage.getItem(rotateStorageKey) === 'true');
     }
 
-    floorSelect.addEventListener('change', (event) => {
-      const floor = event.target.value;
-      window.location = `${floorRoute}?floor=${floor}`;
-    });
+    if (isFullMap && localStorage.getItem(rotateStorageKey) === 'true') {
+      startRotateTimer();
+    }
+
+    if (floorSelect) {
+      floorSelect.addEventListener('change', (event) => {
+        const floor = event.target.value;
+        window.location = `${floorRoute}?floor=${floor}`;
+      });
+    }
   }
 
   if (data.homeRoute) {
