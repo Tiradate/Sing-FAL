@@ -45,6 +45,7 @@
   const floorSelect = document.getElementById('floorSelect');
   const rotateBtn = document.getElementById('floorRotate');
   if (floorSelect && rotateBtn && data.floors) {
+    const floorRoute = data.floorRoute || '/';
     let rotateTimer = null;
     rotateBtn.addEventListener('click', () => {
       if (rotateTimer) {
@@ -62,12 +63,12 @@
         const index = data.floors.indexOf(floorSelect.value);
         const nextIndex = (index + 1) % data.floors.length;
         floorSelect.value = data.floors[nextIndex];
-        window.location = `/?floor=${data.floors[nextIndex]}`;
+        window.location = `${floorRoute}?floor=${data.floors[nextIndex]}`;
       }, (data.autoRotateSeconds || 10) * 1000);
     });
     floorSelect.addEventListener('change', (event) => {
       const floor = event.target.value;
-      window.location = `/?floor=${floor}`;
+      window.location = `${floorRoute}?floor=${floor}`;
     });
   }
 })();
