@@ -1,193 +1,225 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row align-items-center g-3 mb-3">
-  <div class="col-12 col-lg-6 d-flex align-items-center">
-    <h4 class="fw-bold mb-0">{{ settings.project_name or 'Air Quality Index (IAQ)' }}</h4>
+<div class="card shadow-sm settings-card">
+  <div class="card-header settings-card-header">
+    <h5 class="mb-0">Settings</h5>
   </div>
-  <div class="col-12 col-lg-6 mt-2 mt-lg-0 d-flex justify-content-lg-end">
-    <ul class="nav nav-pills gap-2 mt-3">
-      <li class="nav-item">
-        <a class="nav-link active" href="#"><i class="bi bi-bar-chart"></i> AQI</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link disabled" href="#"><i class="bi bi-lightning"></i> Energy &amp; Carbon</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link disabled" href="#"><i class="bi bi-trash"></i> Waste</a>
-      </li>
-    </ul>
-  </div>
-  <div class="col-12 col-lg-6 w-100">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <h6 class="text-muted">Average Indoor/Outdoor AQI</h6>
-            <div class="d-flex flex-wrap gap-4 mt-2">
-              <div>
-                <div class="small text-uppercase text-muted">Indoor</div>
-                <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.indoor or 0) }} AQI</div>
-              </div>
-              <div>
-                <div class="small text-uppercase text-muted">Outdoor</div>
-                <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.outdoor or 0) }} AQI</div>
-              </div>
-            </div>
-          </div>
+  <div class="card-body settings-card-body">
+    <form method="post" enctype="multipart/form-data">
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label">Project Name</label>
+          <input class="form-control" type="text" name="project_name" value="{{ settings.project_name }}">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Location Label</label>
+          <input class="form-control" type="text" name="location_label" value="{{ settings.location_label }}">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Floor Auto-Rotate Interval (seconds)</label>
+          <input class="form-control" type="number" name="floor_auto_rotate_seconds" value="{{ settings.floor_auto_rotate_seconds }}">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Sensor Icon Size (px)</label>
+          <input class="form-control" type="number" name="sensor_icon_size" value="{{ settings.sensor_icon_size }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Show Icons</label>
           <div class="d-flex gap-3">
-            {% for level in settings.severity_levels %}
-            <div class="d-flex align-items-center gap-2">
-              <span class="legend-dot" style="background: {{ level.color }}"></span>
-              <small>{{ level.label }}</small>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="show_bell" {% if settings.show_icons.bell %}checked{% endif %}>
+              <label class="form-check-label">Bell</label>
             </div>
-            {% endfor %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="show_calendar" {% if settings.show_icons.calendar %}checked{% endif %}>
+              <label class="form-check-label">Calendar</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="show_download" {% if settings.show_icons.download %}checked{% endif %}>
+              <label class="form-check-label">Download</label>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
 
-<div class="row g-3">
-  <div class="col-12 col-lg-5">
-    <div class="card shadow-sm h-100">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <div>
-          <h6 class="mb-0">Map</h6>
-          <small class="text-muted">Floor plan &amp; sensors</small>
+      <hr class="my-4">
+
+      <h6>AQI Severity Mapping</h6>
+      <div id="severityRows">
+        {% for level in settings.severity_levels %}
+        <div class="row g-2 align-items-center mb-2 severity-row">
+          <div class="col-12 col-md-3">
+            <input class="form-control" type="text" name="severity_label" value="{{ level.label }}" placeholder="Label">
+          </div>
+          <div class="col-12 col-md-3">
+            <input class="form-control" type="color" name="severity_color" value="{{ level.color }}">
+          </div>
+          <div class="col-12 col-md-3">
+            <input class="form-control" type="text" name="severity_icon" value="{{ level.icon }}" placeholder="Bootstrap icon">
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="critical_levels" value="{{ level.label }}" {% if level.label in settings.critical_levels %}checked{% endif %}>
+              <label class="form-check-label">Critical</label>
+            </div>
+          </div>
         </div>
-        <div class="d-flex align-items-center gap-2">
-          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('map_full', floor=active_floor) }}" target="_blank">Expand</a>
-          <select id="floorSelect" class="form-select form-select-sm">
-            {% for floor in floors %}
-            <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ floor }}</option>
-            {% endfor %}
-          </select>
-          <button id="floorRotate" class="btn btn-sm btn-outline-secondary">Auto</button>
-        </div>
+        {% endfor %}
       </div>
-      <div class="card-body">
-        <div class="map-container" data-floor="{{ active_floor }}">
-          {% set floor_image = settings.floor_plans.get(active_floor, '') %}
-          {% if floor_image %}
-          <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ active_floor }}">
-          {% else %}
-          <div class="map-placeholder">Upload a floor plan in settings</div>
-          {% endif %}
-          {% for device in devices %}
-          {% if device.floor_id == active_floor %}
-          {% set severity = alarm_severity.get(device.device_id, '') %}
-          <div class="sensor-icon" data-device="{{ device.device_id }}" style="left: {{ device.location_x }}%; top: {{ device.location_y }}%;">
-            <img src="/{{ settings.sensor_icon }}" alt="sensor" style="width: {{ settings.sensor_icon_size }}px; height: {{ settings.sensor_icon_size }}px;">
-            {% if severity %}
-            <span class="sensor-badge" style="background: {{ (settings.severity_levels|selectattr('label','equalto',severity)|list|first).color if settings.severity_levels else '#dc3545' }}"></span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="addSeverity">Add Severity</button>
+
+      <hr class="my-4">
+
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label">Floor Plan Upload</label>
+          <div id="floorPlanRows">
+            {% if settings.floor_plans %}
+            {% for floor_id, floor_path in settings.floor_plans.items() %}
+            <div class="row g-2 align-items-end mb-2 floor-plan-row">
+              <div class="col-12 col-md-3">
+                <label class="form-label">Floor ID</label>
+                <input class="form-control" type="text" name="floor_id" value="{{ floor_id }}" placeholder="Floor ID (e.g., F1)">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Upload new file</label>
+                <input class="form-control" type="file" name="floor_plan">
+              </div>
+              <div class="col-12 col-md-5">
+                <label class="form-label">Use saved file</label>
+                <select class="form-select" name="floor_plan_existing">
+                  <option value="">Select saved file</option>
+                  {% for upload in available_uploads %}
+                  <option value="{{ upload }}" {% if upload == floor_path %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="row g-2 align-items-end mb-2 floor-plan-row">
+              <div class="col-12 col-md-3">
+                <label class="form-label">Floor ID</label>
+                <input class="form-control" type="text" name="floor_id" placeholder="Floor ID (e.g., F1)">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Upload new file</label>
+                <input class="form-control" type="file" name="floor_plan">
+              </div>
+              <div class="col-12 col-md-5">
+                <label class="form-label">Use saved file</label>
+                <select class="form-select" name="floor_plan_existing">
+                  <option value="">Select saved file</option>
+                  {% for upload in available_uploads %}
+                  <option value="{{ upload }}">{{ upload.split('/')[-1] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
             {% endif %}
           </div>
-          {% endif %}
-          {% endfor %}
+          <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="addFloorPlan">+ Add Floor Plan</button>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-12 col-lg-3">
-    <div class="card shadow-sm mb-3">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <div>
-          <h6 class="mb-0">Daily Graph</h6>
-          <small class="text-muted">24-hour timeline</small>
-        </div>
-        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('graphs_daily') }}" target="_blank">Expand</a>
-      </div>
-      <div class="card-body">
-        <canvas id="dailyChart"></canvas>
-        <div class="d-flex justify-content-between mt-2">
-          <button class="btn btn-sm btn-outline-secondary">&lt;</button>
-          <span class="small text-muted">Today</span>
-          <button class="btn btn-sm btn-outline-secondary">&gt;</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card shadow-sm">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <div>
-          <h6 class="mb-0">Weekly Overview</h6>
-          <small class="text-muted">Average per day</small>
-        </div>
-        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('graphs_weekly') }}" target="_blank">Expand</a>
-      </div>
-      <div class="card-body">
-        <canvas id="weeklyChart"></canvas>
-        <div class="mt-2">
-          <input type="date" class="form-control form-control-sm" />
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-12 col-lg-4">
-    <div class="row g-3">
-      {% for label, display in {
-        'temperature':'Temperature',
-        'pm25':'PM2.5',
-        'pm10':'PM10',
-        'humidity':'Humidity',
-        'tvoc':'TVOC',
-        'co2':'CO2'
-      }.items() %}
-      {% set data = sensor_cards.get(label, {}) %}
-      <div class="col-12 col-md-6">
-        <div class="card shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small">{{ display }}</div>
-            <div class="fs-5 fw-semibold">{{ '%.1f'|format(data.value or 0) }} {{ data.unit }}</div>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-
-    <div class="card shadow-sm mt-3">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">Alerts &amp; Notifications</h6>
-        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('alarms') }}">See all alarm</a>
-      </div>
-      <div class="card-body">
-        {% if active_alarms %}
-          <ul class="list-unstyled mb-0">
-            {% for alarm in active_alarms[:5] %}
-            <li class="d-flex align-items-start gap-2 mb-2">
-              {% set level = (settings.severity_levels|selectattr('label','equalto',alarm.severity)|list|first) %}
-              <span class="severity-dot" style="background: {{ level.color if level else '#dc3545' }}"></span>
-              <div>
-                <div class="fw-semibold">{{ alarm.metric | upper }} - {{ alarm.message }}</div>
-                <small class="text-muted">{{ alarm.device_id }} | {{ alarm.floor_id }}</small>
-              </div>
-            </li>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Sensor Icon Upload</label>
+          <input class="form-control" type="file" name="sensor_icon">
+          <label class="form-label mt-2">Use saved file</label>
+          <select class="form-select" name="sensor_icon_existing">
+            <option value="">Select saved file</option>
+            {% for upload in available_uploads %}
+            <option value="{{ upload }}" {% if upload == settings.sensor_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
             {% endfor %}
-          </ul>
-        {% else %}
-          <div class="text-muted">No active alarms.</div>
-        {% endif %}
+          </select>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Project Logo Upload</label>
+          <input class="form-control" type="file" name="project_logo">
+          <label class="form-label mt-2">Use saved file</label>
+          <select class="form-select" name="project_logo_existing">
+            <option value="" {% if not settings.project_logo %}selected{% endif %}>No logo</option>
+            {% for upload in available_uploads %}
+            <option value="{{ upload }}" {% if upload == settings.project_logo %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </div>
-    </div>
+
+      <div class="mt-4">
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-primary" type="submit">Save Settings</button>
+          <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_csv') }}">Export Settings CSV</a>
+        </div>
+      </div>
+    </form>
+    <form class="mt-3" method="post" action="{{ url_for('import_settings_csv') }}" enctype="multipart/form-data" id="importSettingsForm">
+      <label class="form-label">Import Settings CSV</label>
+      <div class="d-flex flex-wrap gap-2">
+        <input class="form-control" type="file" name="settings_csv" accept=".csv">
+        <button class="btn btn-outline-primary" type="submit">Import CSV</button>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  window.dashboardData = {
-    dailyLabels: {{ daily_labels|tojson }},
-    dailyValues: {{ daily_values|tojson }},
-    weeklyLabels: {{ weekly_labels|tojson }},
-    weeklyValues: {{ weekly_values|tojson }},
-    floors: {{ floors|tojson }},
-    activeFloor: {{ active_floor|tojson }},
-    autoRotateSeconds: {{ settings.floor_auto_rotate_seconds|tojson }},
-    floorRoute: {{ url_for('index')|tojson }},
-  };
+  document.getElementById('addSeverity').addEventListener('click', () => {
+    const container = document.getElementById('severityRows');
+    const row = document.createElement('div');
+    row.className = 'row g-2 align-items-center mb-2 severity-row';
+    row.innerHTML = `
+      <div class="col-12 col-md-3">
+        <input class="form-control" type="text" name="severity_label" placeholder="Label">
+      </div>
+      <div class="col-12 col-md-3">
+        <input class="form-control" type="color" name="severity_color" value="#28a745">
+      </div>
+      <div class="col-12 col-md-3">
+        <input class="form-control" type="text" name="severity_icon" placeholder="Bootstrap icon">
+      </div>
+      <div class="col-12 col-md-3">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="critical_levels" value="">
+          <label class="form-check-label">Critical</label>
+        </div>
+      </div>
+    `;
+    row.querySelector('input[name="severity_label"]').addEventListener('input', (event) => {
+      row.querySelector('input[name="critical_levels"]').value = event.target.value;
+    });
+    container.appendChild(row);
+  });
+
+  const floorPlanButton = document.getElementById('addFloorPlan');
+  const floorPlanContainer = document.getElementById('floorPlanRows');
+  const availableUploads = {{ available_uploads | tojson }};
+
+  floorPlanButton.addEventListener('click', () => {
+    const row = document.createElement('div');
+    const options = availableUploads
+      .map((upload) => `<option value="${upload}">${upload.split('/').pop()}</option>`)
+      .join('');
+    row.className = 'row g-2 align-items-end mb-2 floor-plan-row';
+    row.innerHTML = `
+      <div class="col-12 col-md-3">
+        <label class="form-label">Floor ID</label>
+        <input class="form-control" type="text" name="floor_id" placeholder="Floor ID (e.g., F1)">
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">Upload new file</label>
+        <input class="form-control" type="file" name="floor_plan">
+      </div>
+      <div class="col-12 col-md-5">
+        <label class="form-label">Use saved file</label>
+        <select class="form-select" name="floor_plan_existing">
+          <option value="">Select saved file</option>
+          ${options}
+        </select>
+      </div>
+    `;
+    floorPlanContainer.appendChild(row);
+  });
 </script>
 {% endblock %}
