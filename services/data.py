@@ -78,21 +78,63 @@ def get_latest_avg_metrics(floor_id=None):
 
 def get_latest_indoor_outdoor(floor_id=None):
     metrics = ["temperature", "humidity", "co2", "pm25", "pm10", "tvoc"]
+    indoor_rows = _get_metric_avg_by_zone(metrics, floor_id=floor_id, is_outdoor=False)
+    outdoor_rows = _get_metric_avg_by_zone(metrics, floor_id=floor_id, is_outdoor=True)
+    rows = []
+    for metric in metrics:
+        indoor = indoor_rows.get(metric)
+        outdoor = outdoor_rows.get(metric)
+        unit = None
+        if indoor and indoor.get("unit"):
+            unit = indoor["unit"]
+        elif outdoor and outdoor.get("unit"):
+            unit = outdoor["unit"]
+        else:
+            unit = SUPPORTED_METRICS.get(metric, "")
+        rows.append(
+            {
+                "metric": metric,
+                "unit": unit,
+                "indoor_value": indoor["avg_value"] if indoor else None,
+                "outdoor_value": outdoor["avg_value"] if outdoor else None,
+            }
+        )
+    return rows
+
+
+def get_indoor_outdoor_aqi(floor_id=None):
+    indoor_rows = _get_metric_avg_by_zone(["pm25"], floor_id=floor_id, is_outdoor=False)
+    outdoor_rows = _get_metric_avg_by_zone(["pm25"], floor_id=floor_id, is_outdoor=True)
+    return {
+        "indoor": indoor_rows.get("pm25", {}).get("avg_value"),
+        "outdoor": outdoor_rows.get("pm25", {}).get("avg_value"),
+    }
+
+
+def _get_metric_avg_by_zone(metrics, floor_id=None, is_outdoor=False):
     placeholders = ",".join(["?"] * len(metrics))
-    params = metrics
+    params = list(metrics)
     floor_clause = ""
     if floor_id:
-        floor_clause = "AND floor_id = ?"
-        params = metrics + [floor_id]
+        floor_clause = "AND sensor_readings.floor_id = ?"
+        params.append(floor_id)
+    outdoor_clause = (
+        "(lower(devices.zone) LIKE '%outdoor%' OR lower(devices.zone) LIKE '%outside%')"
+    )
+    if is_outdoor:
+        zone_clause = f"AND {outdoor_clause}"
+    else:
+        zone_clause = f"AND (devices.zone IS NULL OR NOT {outdoor_clause})"
     query = f"""
-        SELECT metric, AVG(value) AS avg_value, unit
+        SELECT sensor_readings.metric, AVG(sensor_readings.value) AS avg_value, sensor_readings.unit
         FROM sensor_readings
-        WHERE metric IN ({placeholders}) {floor_clause}
-        GROUP BY metric
+        JOIN devices ON devices.device_id = sensor_readings.device_id
+        WHERE sensor_readings.metric IN ({placeholders}) {floor_clause} {zone_clause}
+        GROUP BY sensor_readings.metric
     """
     with connect(SENSOR_DB) as conn:
         rows = conn.execute(query, params).fetchall()
-        return rows
+        return {row["metric"]: {"avg_value": row["avg_value"], "unit": row["unit"]} for row in rows}
 
 
 def get_daily_series(metric="pm25", floor_id=None):
