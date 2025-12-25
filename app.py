@@ -29,6 +29,18 @@ UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
+def resolve_floor_id(requested_floor, floors):
+    if not floors:
+        return None
+    if requested_floor is None:
+        return floors[0]
+    requested_floor = str(requested_floor).strip()
+    for floor in floors:
+        if str(floor).strip() == requested_floor:
+            return floor
+    return floors[0]
+
+
 @app.before_request
 def ensure_init():
     init_all()
@@ -54,7 +66,7 @@ def inject_globals():
 def index():
     settings = settings_service.load_settings()
     floors = data_service.get_floor_list()
-    floor_id = request.args.get("floor") or (floors[0] if floors else None)
+    floor_id = resolve_floor_id(request.args.get("floor"), floors)
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
     active_alarms = data_service.get_active_alarms()
@@ -88,7 +100,7 @@ def index():
 @app.route("/map")
 def map_full():
     floors = data_service.get_floor_list()
-    floor_id = request.args.get("floor") or (floors[0] if floors else None)
+    floor_id = resolve_floor_id(request.args.get("floor"), floors)
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
     return render_template(
