@@ -62,6 +62,7 @@ def index():
 
     sensor_cards = data_service.get_latest_avg_metrics(floor_id=floor_id)
     indoor_outdoor = data_service.get_latest_indoor_outdoor(floor_id=floor_id)
+    indoor_outdoor_aqi = data_service.get_indoor_outdoor_aqi(floor_id=floor_id)
 
     return render_template(
         "index.html",
@@ -76,6 +77,7 @@ def index():
         weekly_values=weekly_values,
         sensor_cards=sensor_cards,
         indoor_outdoor=indoor_outdoor,
+        indoor_outdoor_aqi=indoor_outdoor_aqi,
         now=datetime.now(),
         status_label=data_service.aggregate_status_label(settings),
     )
