@@ -156,7 +156,9 @@ def get_alarm_history():
     from services.db import connect, ALARM_DB
 
     with connect(ALARM_DB) as conn:
-        return conn.execute("SELECT * FROM alarm_history ORDER BY ts DESC LIMIT 50").fetchall()
+        return conn.execute(
+            "SELECT * FROM action_history ORDER BY action_ts DESC LIMIT 50"
+        ).fetchall()
 
 
 def get_action_history(start_date, end_date):
@@ -172,7 +174,7 @@ def get_action_history(start_date, end_date):
         return conn.execute(query, (start_date, end_date)).fetchall()
 
 
-def save_alarm_response(alarm_id, action_owner=None, action_note=None):
+def save_alarm_response(alarm_id, action_owner=None, action_note=None, checklist=None):
     from services.db import connect, ALARM_DB, SENSOR_DB
 
     with connect(SENSOR_DB) as conn:
@@ -193,40 +195,6 @@ def save_alarm_response(alarm_id, action_owner=None, action_note=None):
             return False
 
     with connect(ALARM_DB) as conn:
-        existing = conn.execute(
-            "SELECT 1 FROM alarm_history WHERE alarm_event_id = ?",
-            (alarm_id,),
-        ).fetchone()
-        if not existing:
-            conn.execute(
-                """
-                INSERT INTO alarm_history (
-                    alarm_event_id,
-                    ts,
-                    device_id,
-                    floor_id,
-                    metric,
-                    value,
-                    severity,
-                    message,
-                    action_owner,
-                    action_note
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    alarm_id,
-                    alarm["ts"],
-                    alarm["device_id"],
-                    alarm["floor_id"],
-                    alarm["metric"],
-                    alarm["value"],
-                    alarm["severity"],
-                    alarm["message"],
-                    action_owner,
-                    action_note,
-                ),
-            )
         conn.execute(
             """
             INSERT INTO action_history (
@@ -240,9 +208,10 @@ def save_alarm_response(alarm_id, action_owner=None, action_note=None):
                 severity,
                 message,
                 action_owner,
-                action_note
+                action_note,
+                checklist
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 alarm_id,
@@ -256,6 +225,7 @@ def save_alarm_response(alarm_id, action_owner=None, action_note=None):
                 alarm["message"],
                 action_owner,
                 action_note,
+                checklist,
             ),
         )
     return True

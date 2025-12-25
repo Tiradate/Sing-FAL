@@ -97,7 +97,8 @@ def init_alarm_db():
                 severity TEXT,
                 message TEXT,
                 action_owner TEXT,
-                action_note TEXT
+                action_note TEXT,
+                checklist TEXT
             );
             """
         )
@@ -131,6 +132,8 @@ def init_alarm_db():
             conn.execute("ALTER TABLE action_history ADD COLUMN action_owner TEXT")
         if "action_note" not in action_columns:
             conn.execute("ALTER TABLE action_history ADD COLUMN action_note TEXT")
+        if "checklist" not in action_columns:
+            conn.execute("ALTER TABLE action_history ADD COLUMN checklist TEXT")
 
 
 def init_all():

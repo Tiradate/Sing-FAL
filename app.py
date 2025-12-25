@@ -136,8 +136,15 @@ def save_alarm_response():
     alarm_id = request.form.get("alarm_id", type=int)
     action_owner = request.form.get("action_owner", "").strip() or None
     action_note = request.form.get("action_note", "").strip() or None
+    checklist = request.form.getlist("checklist")
+    checklist_value = ",".join(checklist) if checklist else None
     if alarm_id:
-        data_service.save_alarm_response(alarm_id, action_owner=action_owner, action_note=action_note)
+        data_service.save_alarm_response(
+            alarm_id,
+            action_owner=action_owner,
+            action_note=action_note,
+            checklist=checklist_value,
+        )
     return redirect(url_for("alarms"))
 
 
