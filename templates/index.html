@@ -50,39 +50,6 @@
       </div>
     </div>
   </div>
-  <div class="col-12 col-lg-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
-          <div>
-            <h6 class="text-muted">Average Indoor/Outdoor Values</h6>
-            <div class="row">
-              {% for row in indoor_outdoor %}
-              <div class="col-12 col-md-6 mb-2">
-                <div class="small text-uppercase text-muted">{{ row.metric }}</div>
-                <div class="d-flex flex-wrap gap-3">
-                  <div>
-                    <div class="small text-muted">Indoor</div>
-                    <div class="fw-semibold">{{ '%.1f'|format(row.indoor_value or 0) }} {{ row.unit }}</div>
-                  </div>
-                  <div>
-                    <div class="small text-muted">Outdoor</div>
-                    <div class="fw-semibold">{{ '%.1f'|format(row.outdoor_value or 0) }} {{ row.unit }}</div>
-                  </div>
-                </div>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-          <div class="text-end">
-            <div class="text-muted">{{ settings.location_label }}</div>
-            <div class="fw-semibold">{{ now.strftime('%Y-%m-%d') }}</div>
-            <div class="fw-semibold">{{ now.strftime('%H:%M') }}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <div class="row g-3">
