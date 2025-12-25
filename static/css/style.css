@@ -30,6 +30,12 @@ body {
   font-size: 0.65rem;
 }
 
+.project-logo {
+  max-height: 36px;
+  width: auto;
+  display: inline-block;
+}
+
 .legend-dot,
 .severity-dot {
   width: 10px;

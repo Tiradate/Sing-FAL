@@ -17,7 +17,9 @@
           <strong>{{ avg_signal }}%</strong>
         </div>
         <div class="text-center flex-grow-1">
-          <h5 class="mb-0 fw-bold text-uppercase">{{ settings.project_name }}</h5>
+          {% if settings.project_logo %}
+          <img class="project-logo" src="/{{ settings.project_logo }}" alt="{{ settings.project_name }} logo">
+          {% endif %}
         </div>
         <div class="d-flex align-items-center gap-3">
           <a class="header-icon" href="{{ url_for('index') }}" aria-label="Home">
