@@ -231,6 +231,14 @@ def settings():
                 file.save(path)
                 settings["sensor_icon"] = f"static/uploads/{filename}"
 
+        if "project_logo" in request.files:
+            file = request.files["project_logo"]
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                path = os.path.join(UPLOAD_DIR, filename)
+                file.save(path)
+                settings["project_logo"] = f"static/uploads/{filename}"
+
         if "floor_plan" in request.files:
             file = request.files["floor_plan"]
             floor_id = request.form.get("floor_id")

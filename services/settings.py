@@ -26,6 +26,7 @@ DEFAULT_SETTINGS = {
     },
     "sensor_icon": "static/uploads/sensor_icon.svg",
     "sensor_icon_size": 28,
+    "project_logo": "",
     "admin_username": "admin",
     "admin_password": "admin123",
 }
