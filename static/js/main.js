@@ -1,14 +1,43 @@
 (function () {
   const data = window.dashboardData || {};
+  const metricOptions = data.metricOptions || {};
+
+  const formatMetricLabel = (metricKey) => {
+    const meta = metricOptions[metricKey];
+    if (!meta) {
+      return metricKey;
+    }
+    if (meta.unit) {
+      return `${meta.label} (${meta.unit})`;
+    }
+    return meta.label;
+  };
+
+  const fetchSeries = async (route, metricKey) => {
+    if (!route) {
+      return null;
+    }
+    const params = new URLSearchParams({ format: 'json', metric: metricKey });
+    if (data.activeFloor) {
+      params.set('floor', data.activeFloor);
+    }
+    const response = await fetch(`${route}?${params.toString()}`);
+    if (!response.ok) {
+      return null;
+    }
+    return response.json();
+  };
 
   const dailyCtx = document.getElementById('dailyChart');
+  const dailyMetricSelect = document.getElementById('dailyMetricSelect');
+  let dailyChart = null;
   if (dailyCtx && data.dailyLabels) {
-    new Chart(dailyCtx, {
+    dailyChart = new Chart(dailyCtx, {
       type: 'line',
       data: {
         labels: data.dailyLabels,
         datasets: [{
-          label: 'PM2.5',
+          label: formatMetricLabel(data.dailyMetric || 'pm25'),
           data: data.dailyValues,
           borderColor: '#0d6efd',
           backgroundColor: 'rgba(13, 110, 253, 0.1)',
@@ -24,13 +53,15 @@
   }
 
   const weeklyCtx = document.getElementById('weeklyChart');
+  const weeklyMetricSelect = document.getElementById('weeklyMetricSelect');
+  let weeklyChart = null;
   if (weeklyCtx && data.weeklyLabels) {
-    new Chart(weeklyCtx, {
+    weeklyChart = new Chart(weeklyCtx, {
       type: 'bar',
       data: {
         labels: data.weeklyLabels,
         datasets: [{
-          label: 'PM2.5',
+          label: formatMetricLabel(data.weeklyMetric || 'pm25'),
           data: data.weeklyValues,
           backgroundColor: '#198754',
         }]
@@ -39,6 +70,36 @@
         responsive: true,
         maintainAspectRatio: false,
       }
+    });
+  }
+
+  if (dailyMetricSelect) {
+    dailyMetricSelect.value = data.dailyMetric || dailyMetricSelect.value;
+    dailyMetricSelect.addEventListener('change', async (event) => {
+      const metricKey = event.target.value;
+      const series = await fetchSeries(data.dailyRoute, metricKey);
+      if (!series || !dailyChart) {
+        return;
+      }
+      dailyChart.data.labels = series.labels;
+      dailyChart.data.datasets[0].data = series.values;
+      dailyChart.data.datasets[0].label = formatMetricLabel(metricKey);
+      dailyChart.update();
+    });
+  }
+
+  if (weeklyMetricSelect) {
+    weeklyMetricSelect.value = data.weeklyMetric || weeklyMetricSelect.value;
+    weeklyMetricSelect.addEventListener('change', async (event) => {
+      const metricKey = event.target.value;
+      const series = await fetchSeries(data.weeklyRoute, metricKey);
+      if (!series || !weeklyChart) {
+        return;
+      }
+      weeklyChart.data.labels = series.labels;
+      weeklyChart.data.datasets[0].data = series.values;
+      weeklyChart.data.datasets[0].label = formatMetricLabel(metricKey);
+      weeklyChart.update();
     });
   }
 

@@ -17,6 +17,47 @@ SUPPORTED_METRICS = {
     "signal_quality": "%",
 }
 
+METRIC_DISPLAY = {
+    "temperature": "Temperature",
+    "humidity": "Humidity",
+    "co2": "CO₂",
+    "pm25": "PM2.5",
+    "pm10": "PM10",
+    "tvoc": "TVOC",
+    "light": "Light",
+    "pressure": "Barometric Pressure",
+    "motion": "Motion",
+}
+
+METRIC_ORDER = [
+    "temperature",
+    "humidity",
+    "co2",
+    "pm25",
+    "pm10",
+    "tvoc",
+    "light",
+    "pressure",
+    "motion",
+]
+
+
+def get_metric_label(metric):
+    return METRIC_DISPLAY.get(metric, metric.upper())
+
+
+def get_metric_options():
+    options = []
+    for metric in METRIC_ORDER:
+        options.append(
+            {
+                "key": metric,
+                "label": METRIC_DISPLAY.get(metric, metric.upper()),
+                "unit": SUPPORTED_METRICS.get(metric, ""),
+            }
+        )
+    return options
+
 
 def get_devices():
     with connect(SENSOR_DB) as conn:
@@ -74,6 +115,41 @@ def get_latest_avg_metrics(floor_id=None):
     with connect(SENSOR_DB) as conn:
         rows = conn.execute(query, params).fetchall()
         return {row["metric"]: {"value": row["avg_value"], "unit": row["unit"]} for row in rows}
+
+
+def get_latest_device_metrics(floor_id=None):
+    metrics = METRIC_ORDER
+    placeholders = ",".join(["?"] * len(metrics))
+    params = list(metrics)
+    floor_clause = ""
+    if floor_id:
+        floor_clause = "AND floor_id = ?"
+        params.append(floor_id)
+    query = f"""
+        SELECT sensor_readings.device_id,
+               sensor_readings.metric,
+               sensor_readings.value,
+               sensor_readings.unit
+        FROM sensor_readings
+        JOIN (
+            SELECT device_id, metric, MAX(ts) AS max_ts
+            FROM sensor_readings
+            WHERE metric IN ({placeholders}) {floor_clause}
+            GROUP BY device_id, metric
+        ) latest
+        ON sensor_readings.device_id = latest.device_id
+        AND sensor_readings.metric = latest.metric
+        AND sensor_readings.ts = latest.max_ts
+    """
+    with connect(SENSOR_DB) as conn:
+        rows = conn.execute(query, params).fetchall()
+    metrics_by_device = defaultdict(dict)
+    for row in rows:
+        metrics_by_device[row["device_id"]][row["metric"]] = {
+            "value": row["value"],
+            "unit": row["unit"],
+        }
+    return metrics_by_device
 
 
 def get_latest_indoor_outdoor(floor_id=None):

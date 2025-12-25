@@ -75,6 +75,27 @@ body {
   transform: translate(-50%, -50%);
 }
 
+.sensor-tooltip {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  min-width: 220px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  border: 1px solid #dee2e6;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 5;
+}
+
+.sensor-icon:hover .sensor-tooltip {
+  opacity: 1;
+}
+
 .sensor-badge {
   position: absolute;
   bottom: -4px;
