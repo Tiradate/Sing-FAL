@@ -9,6 +9,7 @@
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
 <body class="bg-light">
+  {% block header %}
   <header class="bg-white border-bottom">
     <div class="container-fluid py-2 px-3">
       <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -53,6 +54,7 @@
     </div>
     {% endif %}
   </header>
+  {% endblock %}
 
   <main class="container-fluid py-3 px-3">
     {% block content %}{% endblock %}
