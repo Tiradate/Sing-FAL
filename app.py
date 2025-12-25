@@ -120,6 +120,16 @@ def alarms():
     return render_template("alarms.html", active_alarms=active_alarms, history=history)
 
 
+@app.post("/alarms/response")
+def save_alarm_response():
+    alarm_id = request.form.get("alarm_id", type=int)
+    action_owner = request.form.get("action_owner", "").strip() or None
+    action_note = request.form.get("action_note", "").strip() or None
+    if alarm_id:
+        data_service.save_alarm_response(alarm_id, action_owner=action_owner, action_note=action_note)
+    return redirect(url_for("alarms"))
+
+
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
     if not session.get("is_admin"):

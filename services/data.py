@@ -159,6 +159,65 @@ def get_alarm_history():
         return conn.execute("SELECT * FROM alarm_history ORDER BY ts DESC LIMIT 50").fetchall()
 
 
+def save_alarm_response(alarm_id, action_owner=None, action_note=None):
+    from services.db import connect, ALARM_DB, SENSOR_DB
+
+    with connect(SENSOR_DB) as conn:
+        alarm = conn.execute("SELECT * FROM alarm_events WHERE id = ?", (alarm_id,)).fetchone()
+        if not alarm:
+            return False
+        newer_alarm = conn.execute(
+            """
+            SELECT 1
+            FROM alarm_events
+            WHERE device_id = ? AND ts > ? AND active = 1
+            ORDER BY ts DESC
+            LIMIT 1
+            """,
+            (alarm["device_id"], alarm["ts"]),
+        ).fetchone()
+        if newer_alarm:
+            return False
+
+    with connect(ALARM_DB) as conn:
+        existing = conn.execute(
+            "SELECT 1 FROM alarm_history WHERE alarm_event_id = ?",
+            (alarm_id,),
+        ).fetchone()
+        if existing:
+            return False
+        conn.execute(
+            """
+            INSERT INTO alarm_history (
+                alarm_event_id,
+                ts,
+                device_id,
+                floor_id,
+                metric,
+                value,
+                severity,
+                message,
+                action_owner,
+                action_note
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                alarm_id,
+                alarm["ts"],
+                alarm["device_id"],
+                alarm["floor_id"],
+                alarm["metric"],
+                alarm["value"],
+                alarm["severity"],
+                alarm["message"],
+                action_owner,
+                action_note,
+            ),
+        )
+    return True
+
+
 def get_sensor_readings_csv():
     with connect(SENSOR_DB) as conn:
         rows = conn.execute(
