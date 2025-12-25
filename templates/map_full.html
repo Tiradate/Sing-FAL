@@ -1,47 +1,26 @@
 {% extends 'base.html' %}
 
+{% block header %}{% endblock %}
+
 {% block content %}
-<div class="row g-3">
-  <div class="col-12">
-    <div class="card shadow-sm">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <div>
-          <h5 class="mb-0">Map</h5>
-          <small class="text-muted">Floor plan &amp; sensors</small>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('index', floor=active_floor) }}">Back</a>
-          <select id="floorSelect" class="form-select form-select-sm">
-            {% for floor in floors %}
-            <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ floor }}</option>
-            {% endfor %}
-          </select>
-          <button id="floorRotate" class="btn btn-sm btn-outline-secondary">Auto</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="map-container map-container-expanded" data-floor="{{ active_floor }}">
-          {% set floor_image = settings.floor_plans.get(active_floor, '') %}
-          {% if floor_image %}
-          <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ active_floor }}">
-          {% else %}
-          <div class="map-placeholder">Upload a floor plan in settings</div>
-          {% endif %}
-          {% for device in devices %}
-          {% if device.floor_id == active_floor %}
-          {% set severity = alarm_severity.get(device.device_id, '') %}
-          <div class="sensor-icon" data-device="{{ device.device_id }}" style="left: {{ device.location_x }}%; top: {{ device.location_y }}%;">
-            <img src="/{{ settings.sensor_icon }}" alt="sensor" style="width: {{ settings.sensor_icon_size }}px; height: {{ settings.sensor_icon_size }}px;">
-            {% if severity %}
-            <span class="sensor-badge" style="background: {{ (settings.severity_levels|selectattr('label','equalto',severity)|list|first).color if settings.severity_levels else '#dc3545' }}"></span>
-            {% endif %}
-          </div>
-          {% endif %}
-          {% endfor %}
-        </div>
-      </div>
-    </div>
+<div class="map-container map-container-expanded" data-floor="{{ active_floor }}">
+  {% set floor_image = settings.floor_plans.get(active_floor, '') %}
+  {% if floor_image %}
+  <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ active_floor }}">
+  {% else %}
+  <div class="map-placeholder">Upload a floor plan in settings</div>
+  {% endif %}
+  {% for device in devices %}
+  {% if device.floor_id == active_floor %}
+  {% set severity = alarm_severity.get(device.device_id, '') %}
+  <div class="sensor-icon" data-device="{{ device.device_id }}" style="left: {{ device.location_x }}%; top: {{ device.location_y }}%;">
+    <img src="/{{ settings.sensor_icon }}" alt="sensor" style="width: {{ settings.sensor_icon_size }}px; height: {{ settings.sensor_icon_size }}px;">
+    {% if severity %}
+    <span class="sensor-badge" style="background: {{ (settings.severity_levels|selectattr('label','equalto',severity)|list|first).color if settings.severity_levels else '#dc3545' }}"></span>
+    {% endif %}
   </div>
+  {% endif %}
+  {% endfor %}
 </div>
 {% endblock %}
 
