@@ -29,20 +29,9 @@
             <span class="badge rounded-pill bg-danger">{{ alarm_count }}</span>
           </a>
           {% endif %}
-          {% if settings.show_icons.calendar %}
-          <div class="header-icon">
-            <i class="bi bi-calendar-event"></i>
-            <span class="badge rounded-pill bg-secondary">{{ calendar_value }}</span>
-          </div>
-          {% endif %}
           {% if settings.show_icons.download %}
           <a class="header-icon" href="{{ url_for('export_sensor_csv') }}">
             <i class="bi bi-download"></i>
-          </a>
-          {% endif %}
-          {% if is_admin %}
-          <a class="header-icon" href="{{ url_for('settings') }}" aria-label="Configuration">
-            <i class="bi bi-sliders"></i>
           </a>
           {% endif %}
           {% if is_admin and settings.show_icons.settings %}
