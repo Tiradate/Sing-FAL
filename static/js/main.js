@@ -46,14 +46,11 @@
   const rotateBtn = document.getElementById('floorRotate');
   if (floorSelect && rotateBtn && data.floors) {
     const floorRoute = data.floorRoute || '/';
+    const rotateStorageKey = 'dashboardAutoRotate';
     let rotateTimer = null;
-    rotateBtn.addEventListener('click', () => {
+
+    const startAutoRotate = () => {
       if (rotateTimer) {
-        clearInterval(rotateTimer);
-        rotateTimer = null;
-        rotateBtn.classList.remove('btn-success');
-        rotateBtn.classList.add('btn-outline-secondary');
-        rotateBtn.textContent = 'Auto';
         return;
       }
       rotateBtn.classList.remove('btn-outline-secondary');
@@ -65,7 +62,33 @@
         floorSelect.value = data.floors[nextIndex];
         window.location = `${floorRoute}?floor=${data.floors[nextIndex]}`;
       }, (data.autoRotateSeconds || 10) * 1000);
+      localStorage.setItem(rotateStorageKey, 'true');
+    };
+
+    const stopAutoRotate = () => {
+      if (!rotateTimer) {
+        return;
+      }
+      clearInterval(rotateTimer);
+      rotateTimer = null;
+      rotateBtn.classList.remove('btn-success');
+      rotateBtn.classList.add('btn-outline-secondary');
+      rotateBtn.textContent = 'Auto';
+      localStorage.setItem(rotateStorageKey, 'false');
+    };
+
+    rotateBtn.addEventListener('click', () => {
+      if (rotateTimer) {
+        stopAutoRotate();
+      } else {
+        startAutoRotate();
+      }
     });
+
+    if (localStorage.getItem(rotateStorageKey) === 'true') {
+      startAutoRotate();
+    }
+
     floorSelect.addEventListener('change', (event) => {
       const floor = event.target.value;
       window.location = `${floorRoute}?floor=${floor}`;
