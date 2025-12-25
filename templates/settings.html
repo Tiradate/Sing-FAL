@@ -49,11 +49,20 @@
       <div id="severityRows">
         {% for level in settings.severity_levels %}
         <div class="row g-2 align-items-center mb-2 severity-row">
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-3">
             <input class="form-control" type="text" name="severity_label" value="{{ level.label }}" placeholder="Label">
           </div>
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-3">
             <input class="form-control" type="color" name="severity_color" value="{{ level.color }}">
+          </div>
+          <div class="col-12 col-md-3">
+            <input class="form-control" type="text" name="severity_icon" value="{{ level.icon }}" placeholder="Bootstrap icon">
+          </div>
+          <div class="col-12 col-md-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="critical_levels" value="{{ level.label }}" {% if level.label in settings.critical_levels %}checked{% endif %}>
+              <label class="form-check-label">Critical</label>
+            </div>
           </div>
         </div>
         {% endfor %}
@@ -161,13 +170,25 @@
     const row = document.createElement('div');
     row.className = 'row g-2 align-items-center mb-2 severity-row';
     row.innerHTML = `
-      <div class="col-12 col-md-6">
+      <div class="col-12 col-md-3">
         <input class="form-control" type="text" name="severity_label" placeholder="Label">
       </div>
-      <div class="col-12 col-md-6">
+      <div class="col-12 col-md-3">
         <input class="form-control" type="color" name="severity_color" value="#28a745">
       </div>
+      <div class="col-12 col-md-3">
+        <input class="form-control" type="text" name="severity_icon" placeholder="Bootstrap icon">
+      </div>
+      <div class="col-12 col-md-3">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="critical_levels" value="">
+          <label class="form-check-label">Critical</label>
+        </div>
+      </div>
     `;
+    row.querySelector('input[name="severity_label"]').addEventListener('input', (event) => {
+      row.querySelector('input[name="critical_levels"]').value = event.target.value;
+    });
     container.appendChild(row);
   });
 
