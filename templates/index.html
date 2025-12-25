@@ -58,6 +58,7 @@
           <small class="text-muted">Floor plan &amp; sensors</small>
         </div>
         <div class="d-flex align-items-center gap-2">
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('map_full', floor=active_floor) }}" target="_blank">Expand</a>
           <select id="floorSelect" class="form-select form-select-sm">
             {% for floor in floors %}
             <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ floor }}</option>
@@ -186,6 +187,7 @@
     floors: {{ floors|tojson }},
     activeFloor: {{ active_floor|tojson }},
     autoRotateSeconds: {{ settings.floor_auto_rotate_seconds|tojson }},
+    floorRoute: {{ url_for('index')|tojson }},
   };
 </script>
 {% endblock %}

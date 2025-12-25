@@ -83,6 +83,21 @@ def index():
     )
 
 
+@app.route("/map")
+def map_full():
+    floors = data_service.get_floor_list()
+    floor_id = request.args.get("floor") or (floors[0] if floors else None)
+    devices = data_service.get_devices()
+    alarm_severity = data_service.get_device_alarm_severity()
+    return render_template(
+        "map_full.html",
+        floors=floors,
+        active_floor=floor_id,
+        devices=devices,
+        alarm_severity=alarm_severity,
+    )
+
+
 @app.route("/export/sensor.csv")
 def export_sensor_csv():
     rows = data_service.get_sensor_readings_csv()

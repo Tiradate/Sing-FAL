@@ -52,6 +52,10 @@ body {
   overflow: hidden;
 }
 
+.map-container-expanded {
+  min-height: 520px;
+}
+
 .map-image {
   width: 100%;
   height: auto;
@@ -90,6 +94,9 @@ canvas {
   .map-container {
     min-height: 260px;
   }
+  .map-container-expanded {
+    min-height: 420px;
+  }
 }
 
 @media (max-width: 767px) {
@@ -98,5 +105,8 @@ canvas {
   }
   .map-container {
     min-height: 220px;
+  }
+  .map-container-expanded {
+    min-height: 320px;
   }
 }
