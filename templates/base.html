@@ -37,6 +37,11 @@
             <i class="bi bi-download"></i>
           </a>
           {% endif %}
+          {% if is_admin %}
+          <a class="header-icon" href="{{ url_for('settings') }}" aria-label="Configuration">
+            <i class="bi bi-sliders"></i>
+          </a>
+          {% endif %}
           {% if is_admin and settings.show_icons.settings %}
           <a class="header-icon" href="{{ url_for('settings') }}">
             <i class="bi bi-gear"></i>
