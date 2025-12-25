@@ -186,7 +186,7 @@
 
   const floorPlanButton = document.getElementById('addFloorPlan');
   const floorPlanContainer = document.getElementById('floorPlanRows');
-  const availableUploads = {{ available_uploads | tojson }};
+  const availableUploads = {{ available_uploads | default([]) | tojson }};
 
   floorPlanButton.addEventListener('click', () => {
     const row = document.createElement('div');
