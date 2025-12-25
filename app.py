@@ -1,4 +1,6 @@
 import csv
+import io
+import json
 import os
 from datetime import datetime
 
@@ -110,6 +112,46 @@ def export_sensor_csv():
     return send_file(csv_path, as_attachment=True, download_name="sensor_readings.csv")
 
 
+@app.route("/settings/export.csv")
+def export_settings_csv():
+    if not session.get("is_admin"):
+        return redirect(url_for("login"))
+
+    settings = settings_service.load_settings()
+    csv_path = os.path.join(BASE_DIR, "settings_export.csv")
+    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["key", "value"])
+        for key, value in settings.items():
+            writer.writerow([key, json.dumps(value)])
+    return send_file(csv_path, as_attachment=True, download_name="settings.csv")
+
+
+@app.post("/settings/import")
+def import_settings_csv():
+    if not session.get("is_admin"):
+        return redirect(url_for("login"))
+
+    settings_file = request.files.get("settings_csv")
+    if not settings_file or not settings_file.filename:
+        return redirect(url_for("settings"))
+
+    settings = settings_service.load_settings()
+    file_content = settings_file.stream.read().decode("utf-8")
+    reader = csv.DictReader(io.StringIO(file_content))
+    for row in reader:
+        key = (row.get("key") or "").strip()
+        value = row.get("value")
+        if not key:
+            continue
+        try:
+            settings[key] = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            settings[key] = value
+    settings_service.save_settings(settings)
+    return redirect(url_for("settings"))
+
+
 @app.route("/graphs/daily")
 def graphs_daily():
     metric = request.args.get("metric", "pm25")
@@ -212,6 +254,13 @@ def settings():
         return redirect(url_for("login"))
 
     settings = settings_service.load_settings()
+    available_uploads = []
+    if os.path.exists(UPLOAD_DIR):
+        for filename in os.listdir(UPLOAD_DIR):
+            path = os.path.join(UPLOAD_DIR, filename)
+            if os.path.isfile(path):
+                available_uploads.append(f"static/uploads/{filename}")
+    available_uploads.sort()
     if request.method == "POST":
         settings["project_name"] = request.form.get("project_name", settings["project_name"])
         settings["location_label"] = request.form.get("location_label", settings["location_label"])
@@ -245,6 +294,9 @@ def settings():
                 path = os.path.join(UPLOAD_DIR, filename)
                 file.save(path)
                 settings["sensor_icon"] = f"static/uploads/{filename}"
+        sensor_icon_existing = request.form.get("sensor_icon_existing", "").strip()
+        if sensor_icon_existing:
+            settings["sensor_icon"] = sensor_icon_existing
 
         if "project_logo" in request.files:
             file = request.files["project_logo"]
@@ -253,20 +305,37 @@ def settings():
                 path = os.path.join(UPLOAD_DIR, filename)
                 file.save(path)
                 settings["project_logo"] = f"static/uploads/{filename}"
+        project_logo_existing = request.form.get("project_logo_existing", "").strip()
+        if project_logo_existing or project_logo_existing == "":
+            settings["project_logo"] = project_logo_existing
 
-        if "floor_plan" in request.files:
-            file = request.files["floor_plan"]
-            floor_id = request.form.get("floor_id")
-            if file and file.filename and floor_id:
-                filename = secure_filename(file.filename)
+        floor_ids = request.form.getlist("floor_id")
+        floor_files = request.files.getlist("floor_plan")
+        floor_existing = request.form.getlist("floor_plan_existing")
+        updated_floor_plans = {}
+        for index, floor_id in enumerate(floor_ids):
+            floor_id = floor_id.strip()
+            if not floor_id:
+                continue
+            floor_file = floor_files[index] if index < len(floor_files) else None
+            existing_path = floor_existing[index] if index < len(floor_existing) else ""
+            if floor_file and floor_file.filename:
+                filename = secure_filename(floor_file.filename)
                 path = os.path.join(UPLOAD_DIR, filename)
-                file.save(path)
-                settings["floor_plans"][floor_id] = f"static/uploads/{filename}"
+                floor_file.save(path)
+                updated_floor_plans[floor_id] = f"static/uploads/{filename}"
+            elif existing_path:
+                updated_floor_plans[floor_id] = existing_path
+            elif floor_id in settings.get("floor_plans", {}):
+                updated_floor_plans[floor_id] = settings["floor_plans"][floor_id]
+
+        if updated_floor_plans:
+            settings["floor_plans"] = updated_floor_plans
 
         settings_service.save_settings(settings)
         return redirect(url_for("settings"))
 
-    return render_template("settings.html", settings=settings)
+    return render_template("settings.html", settings=settings, available_uploads=available_uploads)
 
 
 @app.route("/login", methods=["GET", "POST"])

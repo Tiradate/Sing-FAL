@@ -74,21 +74,89 @@
       <div class="row g-3">
         <div class="col-12 col-md-6">
           <label class="form-label">Floor Plan Upload</label>
-          <input class="form-control" type="file" name="floor_plan">
-          <input class="form-control mt-2" type="text" name="floor_id" placeholder="Floor ID (e.g., F1)">
+          <div id="floorPlanRows">
+            {% if settings.floor_plans %}
+            {% for floor_id, floor_path in settings.floor_plans.items() %}
+            <div class="row g-2 align-items-end mb-2 floor-plan-row">
+              <div class="col-12 col-md-3">
+                <label class="form-label">Floor ID</label>
+                <input class="form-control" type="text" name="floor_id" value="{{ floor_id }}" placeholder="Floor ID (e.g., F1)">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Upload new file</label>
+                <input class="form-control" type="file" name="floor_plan">
+              </div>
+              <div class="col-12 col-md-5">
+                <label class="form-label">Use saved file</label>
+                <select class="form-select" name="floor_plan_existing">
+                  <option value="">Select saved file</option>
+                  {% for upload in available_uploads %}
+                  <option value="{{ upload }}" {% if upload == floor_path %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="row g-2 align-items-end mb-2 floor-plan-row">
+              <div class="col-12 col-md-3">
+                <label class="form-label">Floor ID</label>
+                <input class="form-control" type="text" name="floor_id" placeholder="Floor ID (e.g., F1)">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label">Upload new file</label>
+                <input class="form-control" type="file" name="floor_plan">
+              </div>
+              <div class="col-12 col-md-5">
+                <label class="form-label">Use saved file</label>
+                <select class="form-select" name="floor_plan_existing">
+                  <option value="">Select saved file</option>
+                  {% for upload in available_uploads %}
+                  <option value="{{ upload }}">{{ upload.split('/')[-1] }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="addFloorPlan">+ Add Floor Plan</button>
         </div>
         <div class="col-12 col-md-6">
           <label class="form-label">Sensor Icon Upload</label>
           <input class="form-control" type="file" name="sensor_icon">
+          <label class="form-label mt-2">Use saved file</label>
+          <select class="form-select" name="sensor_icon_existing">
+            <option value="">Select saved file</option>
+            {% for upload in available_uploads %}
+            <option value="{{ upload }}" {% if upload == settings.sensor_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+            {% endfor %}
+          </select>
         </div>
         <div class="col-12 col-md-6">
           <label class="form-label">Project Logo Upload</label>
           <input class="form-control" type="file" name="project_logo">
+          <label class="form-label mt-2">Use saved file</label>
+          <select class="form-select" name="project_logo_existing">
+            <option value="" {% if not settings.project_logo %}selected{% endif %}>No logo</option>
+            {% for upload in available_uploads %}
+            <option value="{{ upload }}" {% if upload == settings.project_logo %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+            {% endfor %}
+          </select>
         </div>
       </div>
 
       <div class="mt-4">
-        <button class="btn btn-primary" type="submit">Save Settings</button>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-primary" type="submit">Save Settings</button>
+          <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_csv') }}">Export Settings CSV</a>
+        </div>
+      </div>
+    </form>
+    <form class="mt-3" method="post" action="{{ url_for('import_settings_csv') }}" enctype="multipart/form-data" id="importSettingsForm">
+      <label class="form-label">Import Settings CSV</label>
+      <div class="d-flex flex-wrap gap-2">
+        <input class="form-control" type="file" name="settings_csv" accept=".csv">
+        <button class="btn btn-outline-primary" type="submit">Import CSV</button>
       </div>
     </form>
   </div>
@@ -122,6 +190,36 @@
       row.querySelector('input[name="critical_levels"]').value = event.target.value;
     });
     container.appendChild(row);
+  });
+
+  const floorPlanButton = document.getElementById('addFloorPlan');
+  const floorPlanContainer = document.getElementById('floorPlanRows');
+  const availableUploads = {{ available_uploads | tojson }};
+
+  floorPlanButton.addEventListener('click', () => {
+    const row = document.createElement('div');
+    const options = availableUploads
+      .map((upload) => `<option value="${upload}">${upload.split('/').pop()}</option>`)
+      .join('');
+    row.className = 'row g-2 align-items-end mb-2 floor-plan-row';
+    row.innerHTML = `
+      <div class="col-12 col-md-3">
+        <label class="form-label">Floor ID</label>
+        <input class="form-control" type="text" name="floor_id" placeholder="Floor ID (e.g., F1)">
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">Upload new file</label>
+        <input class="form-control" type="file" name="floor_plan">
+      </div>
+      <div class="col-12 col-md-5">
+        <label class="form-label">Use saved file</label>
+        <select class="form-select" name="floor_plan_existing">
+          <option value="">Select saved file</option>
+          ${options}
+        </select>
+      </div>
+    `;
+    floorPlanContainer.appendChild(row);
   });
 </script>
 {% endblock %}
