@@ -3,12 +3,12 @@
 {% block content %}
 <div class="row align-items-center g-3 mb-3">
   <div class="col-12 col-lg-6 d-flex align-items-center">
-    <h4 class="fw-bold mb-0">{{ settings.project_name or 'Air Quality Index (IAQ)' }}</h4>
+    <h4 class="fw-bold mb-0">{{ settings.project_name or 'Indoor Air Quality (IAQ)' }}</h4>
   </div>
   <div class="col-12 col-lg-6 mt-2 mt-lg-0 d-flex justify-content-lg-end">
     <ul class="nav nav-pills gap-2 mt-3">
       <li class="nav-item">
-        <a class="nav-link active" href="#"><i class="bi bi-bar-chart"></i> AQI</a>
+        <a class="nav-link active" href="#"><i class="bi bi-bar-chart"></i> IAQ</a>
       </li>
       <li class="nav-item">
         <a class="nav-link disabled" href="#"><i class="bi bi-lightning"></i> Energy &amp; Carbon</a>
@@ -23,15 +23,15 @@
       <div class="card-body">
         <div class="d-flex align-items-center flex-wrap gap-4">
           <div>
-            <h6 class="text-muted mb-0">Average Indoor/Outdoor AQI</h6>
+            <h6 class="text-muted mb-0">Average Indoor/Outdoor IAQ</h6>
           </div>
           <div>
             <div class="small text-uppercase text-muted">Indoor</div>
-            <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.indoor or 0) }} AQI</div>
+            <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.indoor or 0) }} IAQ</div>
           </div>
           <div>
             <div class="small text-uppercase text-muted">Outdoor</div>
-            <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.outdoor or 0) }} AQI</div>
+            <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.outdoor or 0) }} IAQ</div>
           </div>
           <div class="flex-grow-1"></div>
           <div class="d-flex gap-3 flex-wrap">
@@ -129,7 +129,9 @@
             </option>
             {% endfor %}
           </select>
-          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('graphs_daily', metric=daily_metric) }}" target="_blank">Expand</a>
+          {% if default_view_device %}
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('view_data', device=default_view_device, start=default_view_start, end=default_view_end, interval=default_view_interval) }}">View data</a>
+          {% endif %}
         </div>
       </div>
       <div class="card-body">
@@ -156,7 +158,9 @@
             </option>
             {% endfor %}
           </select>
-          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('graphs_weekly', metric=weekly_metric) }}" target="_blank">Expand</a>
+          {% if default_view_device %}
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('view_data', device=default_view_device, start=default_view_start, end=default_view_end, interval=default_view_interval) }}">View data</a>
+          {% endif %}
         </div>
       </div>
       <div class="card-body">
@@ -176,7 +180,7 @@
         'pm10':'PM10',
         'humidity':'Humidity',
         'tvoc':'TVOC',
-        'co2':'CO2'
+        'co2':'CO₂'
       }.items() %}
       {% set data = sensor_cards.get(label, {}) %}
       <div class="col-12 col-md-6">

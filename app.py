@@ -2,7 +2,7 @@ import csv
 import io
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from flask import (
     Flask,
@@ -18,7 +18,7 @@ from werkzeug.utils import secure_filename
 
 from services import data as data_service
 from services import settings as settings_service
-from services.db import init_all, seed_demo_data
+from services.db import SENSOR_DB, connect, init_all, seed_demo_data
 
 
 app = Flask(__name__)
@@ -27,6 +27,31 @@ app.secret_key = "replace-with-secure-secret"
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+UTC_PLUS_7 = timezone(timedelta(hours=7))
+UTC_PLUS_6_5 = timezone(timedelta(hours=6, minutes=30))
+
+
+def parse_date_range(start_str, end_str, default_tz):
+    def parse(value):
+        for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                continue
+        return datetime.fromisoformat(value)
+
+    start_dt = parse(start_str)
+    end_dt = parse(end_str)
+    if start_dt.tzinfo is None:
+        start_dt = start_dt.replace(tzinfo=default_tz)
+    else:
+        start_dt = start_dt.astimezone(default_tz)
+    if end_dt.tzinfo is None:
+        end_dt = end_dt.replace(tzinfo=default_tz)
+    else:
+        end_dt = end_dt.astimezone(default_tz)
+    return start_dt, end_dt
 
 
 @app.before_request
@@ -71,6 +96,11 @@ def index():
     indoor_outdoor_aqi = data_service.get_indoor_outdoor_aqi(floor_id=floor_id)
     device_metrics = data_service.get_latest_device_metrics(floor_id=floor_id)
 
+    default_view_device = devices[0]["device_id"] if devices else None
+    default_view_end = datetime.now()
+    default_view_start = default_view_end - timedelta(hours=24)
+    default_view_interval = 10
+
     return render_template(
         "index.html",
         floors=floors,
@@ -91,6 +121,10 @@ def index():
         metric_options=metric_options,
         metric_option_map=metric_option_map,
         now=datetime.now(),
+        default_view_device=default_view_device,
+        default_view_start=default_view_start.strftime("%Y-%m-%dT%H:%M"),
+        default_view_end=default_view_end.strftime("%Y-%m-%dT%H:%M"),
+        default_view_interval=default_view_interval,
         status_label=data_service.aggregate_status_label(settings),
     )
 
@@ -141,6 +175,91 @@ def export_settings_csv():
     return send_file(csv_path, as_attachment=True, download_name="settings.csv")
 
 
+@app.route("/view_data")
+def view_data():
+    device = request.args.get("device")
+    start = request.args.get("start")
+    end = request.args.get("end")
+    interval_minutes = request.args.get("interval", type=int) or 10
+
+    if not device or not start or not end:
+        return "Missing required parameters", 400
+
+    try:
+        start_dt, end_dt = parse_date_range(start, end, UTC_PLUS_7)
+    except ValueError:
+        return "Invalid date format", 400
+
+    if end_dt < start_dt:
+        return "Invalid date format", 400
+
+    start_utc = start_dt.astimezone(timezone.utc).replace(tzinfo=None)
+    end_utc = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+    query = """
+        SELECT ts, device_id, metric, value, unit
+        FROM sensor_readings
+        WHERE device_id = ? AND ts BETWEEN ? AND ?
+        ORDER BY ts ASC
+    """
+    with connect(SENSOR_DB) as conn:
+        rows = conn.execute(query, (device, start_utc.isoformat(), end_utc.isoformat())).fetchall()
+
+    local_tz = UTC_PLUS_6_5 if device == "Room Environment #4" else UTC_PLUS_7
+    aggregates = {}
+    for row in rows:
+        value = row["value"]
+        if value is None or value == "" or str(value).strip().upper() == "N/A":
+            continue
+        ts = datetime.fromisoformat(row["ts"])
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        local_ts = ts.astimezone(local_tz).replace(tzinfo=None)
+        bucket = local_ts.replace(
+            minute=(local_ts.minute // interval_minutes) * interval_minutes,
+            second=0,
+            microsecond=0,
+        )
+        key = (bucket, row["metric"], row["unit"])
+        if key not in aggregates:
+            aggregates[key] = {"sum": 0.0, "count": 0}
+        aggregates[key]["sum"] += float(value)
+        aggregates[key]["count"] += 1
+
+    metric_order = {metric: idx for idx, metric in enumerate(data_service.METRIC_ORDER)}
+    records = []
+    for (bucket, metric, unit), stats in sorted(
+        aggregates.items(),
+        key=lambda item: (item[0][0], metric_order.get(item[0][1], 999)),
+    ):
+        avg_value = stats["sum"] / stats["count"]
+        records.append(
+            {
+                "timestamp": bucket.strftime("%d/%m/%Y %I:%M %p"),
+                "gateway": "N/A",
+                "topic": "N/A",
+                "device": device,
+                "tag": data_service.get_metric_label(metric),
+                "value": round(avg_value, 2),
+                "unit": unit,
+            }
+        )
+
+    start_display = start_dt.strftime("%Y-%m-%dT%H:%M")
+    end_display = end_dt.strftime("%Y-%m-%dT%H:%M")
+    devices = data_service.get_devices()
+
+    return render_template(
+        "view_data.html",
+        data=records,
+        start_datetime=start_display,
+        end_datetime=end_display,
+        active_device=device,
+        interval_minutes=interval_minutes,
+        devices=devices,
+    )
+
+
 @app.post("/settings/import")
 def import_settings_csv():
     if not session.get("is_admin"):
@@ -171,19 +290,7 @@ def graphs_daily():
     metric = request.args.get("metric", "pm25")
     floor_id = request.args.get("floor")
     labels, values = data_service.get_daily_series(metric, floor_id)
-    if request.args.get("format") == "json":
-        return jsonify({"labels": labels, "values": values})
-    metric_options = data_service.get_metric_options()
-    metric_option_map = {option["key"]: {"label": option["label"], "unit": option["unit"]} for option in metric_options}
-    return render_template(
-        "graphs_daily.html",
-        labels=labels,
-        values=values,
-        metric=metric,
-        metric_label=data_service.get_metric_label(metric),
-        metric_options=metric_options,
-        metric_option_map=metric_option_map,
-    )
+    return jsonify({"labels": labels, "values": values})
 
 
 @app.route("/graphs/weekly")
@@ -191,19 +298,7 @@ def graphs_weekly():
     metric = request.args.get("metric", "pm25")
     floor_id = request.args.get("floor")
     labels, values = data_service.get_weekly_series(metric, floor_id)
-    if request.args.get("format") == "json":
-        return jsonify({"labels": labels, "values": values})
-    metric_options = data_service.get_metric_options()
-    metric_option_map = {option["key"]: {"label": option["label"], "unit": option["unit"]} for option in metric_options}
-    return render_template(
-        "graphs_weekly.html",
-        labels=labels,
-        values=values,
-        metric=metric,
-        metric_label=data_service.get_metric_label(metric),
-        metric_options=metric_options,
-        metric_option_map=metric_option_map,
-    )
+    return jsonify({"labels": labels, "values": values})
 
 
 @app.route("/alarms")
