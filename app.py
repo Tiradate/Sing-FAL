@@ -97,8 +97,13 @@ def index():
     device_metrics = data_service.get_latest_device_metrics(floor_id=floor_id)
 
     default_view_device = devices[0]["device_id"] if devices else None
-    default_view_end = datetime.now()
-    default_view_start = default_view_end - timedelta(hours=24)
+    daily_view_end = datetime.now()
+    daily_view_start = daily_view_end - timedelta(hours=24)
+    weekly_view_end = datetime.now()
+    weekly_view_start = weekly_view_end - timedelta(days=7)
+    all_data_start, all_data_end = data_service.get_sensor_time_bounds(floor_id=floor_id)
+    if not all_data_start or not all_data_end:
+        all_data_start, all_data_end = daily_view_start, daily_view_end
     default_view_interval = 10
 
     return render_template(
@@ -122,8 +127,12 @@ def index():
         metric_option_map=metric_option_map,
         now=datetime.now(),
         default_view_device=default_view_device,
-        default_view_start=default_view_start.strftime("%Y-%m-%dT%H:%M"),
-        default_view_end=default_view_end.strftime("%Y-%m-%dT%H:%M"),
+        daily_view_start=daily_view_start.strftime("%Y-%m-%dT%H:%M"),
+        daily_view_end=daily_view_end.strftime("%Y-%m-%dT%H:%M"),
+        weekly_view_start=weekly_view_start.strftime("%Y-%m-%dT%H:%M"),
+        weekly_view_end=weekly_view_end.strftime("%Y-%m-%dT%H:%M"),
+        all_data_start=all_data_start.strftime("%Y-%m-%dT%H:%M"),
+        all_data_end=all_data_end.strftime("%Y-%m-%dT%H:%M"),
         default_view_interval=default_view_interval,
         status_label=data_service.aggregate_status_label(settings),
     )

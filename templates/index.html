@@ -130,7 +130,19 @@
             {% endfor %}
           </select>
           {% if default_view_device %}
-          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('view_data', device=default_view_device, start=default_view_start, end=default_view_end, interval=default_view_interval) }}">View data</a>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              View data
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a class="dropdown-item" href="{{ url_for('view_data', device=default_view_device, start=daily_view_start, end=daily_view_end, interval=default_view_interval) }}">Last 24 hours</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('view_data', device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">All data</a>
+              </li>
+            </ul>
+          </div>
           {% endif %}
         </div>
       </div>
@@ -159,7 +171,19 @@
             {% endfor %}
           </select>
           {% if default_view_device %}
-          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('view_data', device=default_view_device, start=default_view_start, end=default_view_end, interval=default_view_interval) }}">View data</a>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              View data
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a class="dropdown-item" href="{{ url_for('view_data', device=default_view_device, start=weekly_view_start, end=weekly_view_end, interval=default_view_interval) }}">Last 7 days</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('view_data', device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">All data</a>
+              </li>
+            </ul>
+          </div>
           {% endif %}
         </div>
       </div>

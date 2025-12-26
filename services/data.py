@@ -247,6 +247,24 @@ def get_weekly_series(metric="pm25", floor_id=None):
         return labels, values
 
 
+def get_sensor_time_bounds(floor_id=None):
+    params = []
+    floor_clause = ""
+    if floor_id:
+        floor_clause = "WHERE floor_id = ?"
+        params.append(floor_id)
+    query = f"""
+        SELECT MIN(ts) AS min_ts, MAX(ts) AS max_ts
+        FROM sensor_readings
+        {floor_clause}
+    """
+    with connect(SENSOR_DB) as conn:
+        row = conn.execute(query, params).fetchone()
+    if not row or not row["min_ts"] or not row["max_ts"]:
+        return None, None
+    return datetime.fromisoformat(row["min_ts"]), datetime.fromisoformat(row["max_ts"])
+
+
 def get_device_alarm_severity():
     with connect(SENSOR_DB) as conn:
         rows = conn.execute(
