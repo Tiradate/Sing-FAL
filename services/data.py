@@ -11,10 +11,6 @@ SUPPORTED_METRICS = {
     "pm25": "µg/m³",
     "pm10": "µg/m³",
     "tvoc": "mg/m³",
-    "light": "lux",
-    "pressure": "hPa",
-    "motion": "",
-    "signal_quality": "%",
 }
 
 METRIC_DISPLAY = {
@@ -24,9 +20,6 @@ METRIC_DISPLAY = {
     "pm25": "PM2.5",
     "pm10": "PM10",
     "tvoc": "TVOC",
-    "light": "Light",
-    "pressure": "Barometric Pressure",
-    "motion": "Motion",
 }
 
 METRIC_ORDER = [
@@ -36,9 +29,6 @@ METRIC_ORDER = [
     "pm25",
     "pm10",
     "tvoc",
-    "light",
-    "pressure",
-    "motion",
 ]
 
 

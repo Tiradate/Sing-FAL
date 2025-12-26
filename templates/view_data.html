@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <div>
+    <h4 class="fw-bold mb-0">Sensor Data Explorer</h4>
+    <div class="text-muted small">{{ data|length }} records</div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form class="row g-3 align-items-end" method="get" action="{{ url_for('view_data') }}">
+      <div class="col-12 col-md-3">
+        <label class="form-label">Device</label>
+        <select class="form-select" name="device" required>
+          {% for device in devices %}
+          <option value="{{ device.device_id }}" {% if device.device_id == active_device %}selected{% endif %}>
+            {{ device.device_id }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Start</label>
+        <input class="form-control" type="datetime-local" name="start" value="{{ start_datetime }}" required>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">End</label>
+        <input class="form-control" type="datetime-local" name="end" value="{{ end_datetime }}" required>
+      </div>
+      <div class="col-12 col-md-2">
+        <label class="form-label">Interval</label>
+        <select class="form-select" name="interval">
+          {% for option in [10, 30, 60] %}
+          <option value="{{ option }}" {% if option == interval_minutes %}selected{% endif %}>{{ option }} min</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-1 d-grid">
+        <button class="btn btn-primary" type="submit">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped align-middle" id="dataTable">
+        <thead>
+          <tr>
+            <th scope="col" role="button" onclick="sortTable(0)">Timestamp</th>
+            <th scope="col" role="button" onclick="sortTable(1)">Gateway</th>
+            <th scope="col" role="button" onclick="sortTable(2)">Topic</th>
+            <th scope="col" role="button" onclick="sortTable(3)">Device</th>
+            <th scope="col" role="button" onclick="sortTable(4)">Tag</th>
+            <th scope="col" role="button" onclick="sortTable(5)">Value</th>
+            <th scope="col" role="button" onclick="sortTable(6)">Unit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data %}
+          <tr>
+            <td>{{ row.timestamp }}</td>
+            <td>{{ row.gateway }}</td>
+            <td>{{ row.topic }}</td>
+            <td>{{ row.device }}</td>
+            <td>{{ row.tag }}</td>
+            <td>{{ row.value }}</td>
+            <td>{{ row.unit }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted">No data available for this range.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function sortTable(columnIndex) {
+    const table = document.getElementById('dataTable');
+    const tbody = table.tBodies[0];
+    const rows = Array.from(tbody.rows);
+    const direction = table.getAttribute('data-sort-direction') === 'asc' ? 'desc' : 'asc';
+    rows.sort((a, b) => {
+      const aText = a.cells[columnIndex].textContent.trim();
+      const bText = b.cells[columnIndex].textContent.trim();
+      const aValue = parseFloat(aText.replace(/[^0-9.-]/g, ''));
+      const bValue = parseFloat(bText.replace(/[^0-9.-]/g, ''));
+      if (!Number.isNaN(aValue) && !Number.isNaN(bValue)) {
+        return direction === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      return direction === 'asc'
+        ? aText.localeCompare(bText)
+        : bText.localeCompare(aText);
+    });
+    rows.forEach((row) => tbody.appendChild(row));
+    table.setAttribute('data-sort-direction', direction);
+  }
+</script>
+{% endblock %}

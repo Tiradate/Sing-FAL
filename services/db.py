@@ -169,10 +169,6 @@ def seed_demo_data():
                 ("pm25", "µg/m³"),
                 ("pm10", "µg/m³"),
                 ("tvoc", "mg/m³"),
-                ("light", "lux"),
-                ("pressure", "hPa"),
-                ("motion", ""),
-                ("signal_quality", "%"),
             ]
             devices = ["AM30X-001", "AM30X-002", "AM30X-003"]
             floors = {"AM30X-001": "F1", "AM30X-002": "F1", "AM30X-003": "F2"}
@@ -194,14 +190,6 @@ def seed_demo_data():
                             base = 24
                         elif metric == "tvoc":
                             base = 0.4
-                        elif metric == "light":
-                            base = 320
-                        elif metric == "pressure":
-                            base = 1012
-                        elif metric == "motion":
-                            base = 0
-                        elif metric == "signal_quality":
-                            base = 90
                         value = base + (hour_offset % 5) * 0.5
                         rows.append((ts.isoformat(), device, floors[device], metric, value, unit))
             conn.executemany(

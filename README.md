@@ -1,17 +1,17 @@
-🌍 AQI Dashboard – AM30x Sensor (Flask)
+🌍 IAQ Dashboard – AM30x Sensor (Flask)
 
-A responsive web dashboard for monitoring Indoor Air Quality (AQI) using Milesight AM30x LoRaWAN sensors, built with Python Flask and SQLite.
+A responsive web dashboard for monitoring Indoor Air Quality (IAQ) using Milesight AM30x LoRaWAN sensors, built with Python Flask and SQLite.
 
-This project visualizes real-time and historical environmental data such as PM2.5, PM10, CO₂, Temperature, Humidity, TVOC, and more, with support for multi-floor map UI, alarm management, and admin configuration.
+This project visualizes real-time and historical environmental data such as PM2.5, PM10, CO₂, Temperature, Humidity, and TVOC, with support for multi-floor map UI, alarm management, and admin configuration.
 
 ✨ Features
-📊 AQI Monitoring
+📊 IAQ Monitoring
 
-Real-time AQI status: Good / Moderate / Unhealthy
+Real-time IAQ status: Good / Moderate / Unhealthy
 
 Average Indoor & Outdoor values
 
-Customizable AQI severity mapping (future-ready for Fire Alarm, Energy systems)
+Customizable IAQ severity mapping (future-ready for Fire Alarm, Energy systems)
 
 🗺️ Map UI (Floor Plan)
 
@@ -29,7 +29,7 @@ Daily graph (24-hour timeline)
 
 Weekly overview graph
 
-Full-screen graph view with date range & sampling selector
+Filtered data viewer with date range & sampling selector
 
 🚨 Alarm & Notification
 
@@ -45,7 +45,7 @@ Full alarm history page
 
 Project name & location
 
-AQI severity color/label mapping
+IAQ severity color/label mapping
 
 Floor plan & sensor icon management
 
@@ -71,15 +71,7 @@ CO₂ (ppm)
 
 PM2.5 / PM10 (µg/m³)
 
-TVOC (IAQ / mg/m³)
-
-Light (Lux)
-
-Barometric Pressure (hPa)
-
-Motion (Occupied / Vacant)
-
-Signal Quality (%)
+TVOC (mg/m³)
 
 🏗️ Tech Stack
 Layer	Technology
