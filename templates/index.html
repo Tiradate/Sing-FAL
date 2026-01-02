@@ -103,7 +103,7 @@
                 {% set reading_severity = device_metric_severity.get(device.device_id, {}).get(metric.key) %}
                 <li class="d-flex justify-content-between gap-3">
                   <span class="text-muted">{{ metric.label }}</span>
-                  <span class="fw-semibold"{% if metric.key == 'temperature' and reading_severity and reading_severity.label in settings.critical_levels %} style="color: {{ reading_severity.color }}"{% endif %}>
+                  <span class="fw-semibold"{% if reading_severity and reading_severity.label in settings.critical_levels %} style="color: {{ reading_severity.color }}"{% endif %}>
                     {% if reading %}
                       {% if metric.key == 'motion' %}
                         {{ 'Occupied' if reading.value else 'Vacant' }}
