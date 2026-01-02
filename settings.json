@@ -9,9 +9,45 @@
     "settings": true
   },
   "severity_levels": [
-    {"label": "Good", "color": "#28a745", "icon": "bi-emoji-smile"},
-    {"label": "Moderate", "color": "#fd7e14", "icon": "bi-exclamation-circle"},
-    {"label": "Unhealthy", "color": "#dc3545", "icon": "bi-exclamation-triangle"}
+    {
+      "label": "Good",
+      "color": "#28a745",
+      "icon": "bi-emoji-smile",
+      "thresholds": {
+        "temperature": 24,
+        "humidity": 60,
+        "pm25": 15,
+        "pm10": 45,
+        "tvoc": 0.5,
+        "co2": 1000
+      }
+    },
+    {
+      "label": "Moderate",
+      "color": "#fd7e14",
+      "icon": "bi-exclamation-circle",
+      "thresholds": {
+        "temperature": 27,
+        "humidity": 70,
+        "pm25": 35,
+        "pm10": 75,
+        "tvoc": 1.0,
+        "co2": 1500
+      }
+    },
+    {
+      "label": "Unhealthy",
+      "color": "#dc3545",
+      "icon": "bi-exclamation-triangle",
+      "thresholds": {
+        "temperature": 30,
+        "humidity": 80,
+        "pm25": 55,
+        "pm10": 150,
+        "tvoc": 2.0,
+        "co2": 2000
+      }
+    }
   ],
   "critical_levels": ["Unhealthy"],
   "floor_plans": {
