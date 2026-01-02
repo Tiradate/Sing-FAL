@@ -75,6 +75,30 @@ body {
   transform: translate(-50%, -50%);
 }
 
+.sensor-tooltip-icon {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sensor-tooltip-icon img {
+  width: 100%;
+  height: 100%;
+}
+
+.sensor-tooltip-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
 .sensor-tooltip {
   position: absolute;
   left: 50%;

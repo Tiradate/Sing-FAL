@@ -21,14 +21,24 @@
     {% endif %}
     {% set device_readings = device_metrics.get(device.device_id, {}) %}
     <div class="sensor-tooltip">
-      <div class="fw-semibold"{% if severity_color %} style="color: {{ severity_color }}"{% endif %}>{{ device.device_id }}</div>
-      <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ device.floor_id }}</div>
+      <div class="d-flex align-items-center gap-2">
+        <div class="sensor-tooltip-icon">
+          <img src="/{{ settings.sensor_icon }}" alt="sensor">
+          {% if severity %}
+          <span class="sensor-tooltip-badge" style="background: {{ severity_color }}"></span>
+          {% endif %}
+        </div>
+        <div>
+          <div class="fw-semibold"{% if severity_color %} style="color: {{ severity_color }}"{% endif %}>{{ device.device_id }}</div>
+          <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ device.floor_id }}</div>
+        </div>
+      </div>
       <ul class="list-unstyled mb-0 mt-2">
         {% for metric in metric_options %}
         {% set reading = device_readings.get(metric.key) %}
         <li class="d-flex justify-content-between gap-3">
           <span class="text-muted">{{ metric.label }}</span>
-          <span class="fw-semibold">
+          <span class="fw-semibold"{% if severity_color %} style="color: {{ severity_color }}"{% endif %}>
             {% if reading %}
               {% if metric.key == 'motion' %}
                 {{ 'Occupied' if reading.value else 'Vacant' }}
