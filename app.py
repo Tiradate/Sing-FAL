@@ -479,6 +479,7 @@ def settings():
             "download": bool(request.form.get("show_download")),
             "settings": True,
         }
+        settings["show_severity_lines"] = bool(request.form.get("show_severity_lines"))
 
         severity_labels = request.form.getlist("severity_label")
         severity_colors = request.form.getlist("severity_color")

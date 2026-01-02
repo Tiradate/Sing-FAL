@@ -14,6 +14,7 @@ DEFAULT_SETTINGS = {
         "download": True,
         "settings": True,
     },
+    "show_severity_lines": True,
     "severity_levels": [
         {
             "label": "Good",
@@ -72,7 +73,22 @@ def load_settings():
     if not os.path.exists(SETTINGS_PATH):
         save_settings(DEFAULT_SETTINGS)
     with open(SETTINGS_PATH, "r", encoding="utf-8") as handle:
-        return json.load(handle)
+        settings = json.load(handle)
+
+    updated = False
+    for key, value in DEFAULT_SETTINGS.items():
+        if key not in settings:
+            settings[key] = value
+            updated = True
+        elif isinstance(value, dict):
+            for subkey, subvalue in value.items():
+                if subkey not in settings[key]:
+                    settings[key][subkey] = subvalue
+                    updated = True
+
+    if updated:
+        save_settings(settings)
+    return settings
 
 
 def save_settings(settings):
