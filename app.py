@@ -54,6 +54,34 @@ def parse_date_range(start_str, end_str, default_tz):
     return start_dt, end_dt
 
 
+def derive_device_severity(devices, device_metric_severity, alarm_severity, settings):
+    levels = settings.get("severity_levels", [])
+    severity_rank = {level["label"]: index for index, level in enumerate(levels)}
+
+    def get_rank(label):
+        if not label:
+            return -1
+        return severity_rank.get(label, -1)
+
+    device_severity = {}
+    for device in devices:
+        device_id = device["device_id"]
+        metric_levels = device_metric_severity.get(device_id, {})
+        best_label = ""
+        best_rank = -1
+        for level in metric_levels.values():
+            label = level.get("label") if level else ""
+            rank = get_rank(label)
+            if rank > best_rank:
+                best_rank = rank
+                best_label = label
+        alarm_label = alarm_severity.get(device_id, "")
+        if get_rank(alarm_label) > best_rank:
+            best_label = alarm_label
+        device_severity[device_id] = best_label
+    return device_severity
+
+
 @app.before_request
 def ensure_init():
     init_all()
@@ -106,6 +134,9 @@ def index():
         }
         for device_id, metrics in device_metrics.items()
     }
+    device_severity = derive_device_severity(
+        devices, device_metric_severity, alarm_severity, settings
+    )
 
     default_view_device = devices[0]["device_id"] if devices else None
     daily_view_end = datetime.now()
@@ -138,6 +169,7 @@ def index():
         metric_options=metric_options,
         metric_option_map=metric_option_map,
         device_metric_severity=device_metric_severity,
+        device_severity=device_severity,
         now=datetime.now(),
         default_view_device=default_view_device,
         daily_view_start=daily_view_start.strftime("%Y-%m-%dT%H:%M"),
@@ -167,6 +199,9 @@ def map_full():
         }
         for device_id, metrics in device_metrics.items()
     }
+    device_severity = derive_device_severity(
+        devices, device_metric_severity, alarm_severity, settings
+    )
     return render_template(
         "map_full.html",
         floors=floors,
@@ -176,6 +211,7 @@ def map_full():
         metric_options=metric_options,
         device_metrics=device_metrics,
         device_metric_severity=device_metric_severity,
+        device_severity=device_severity,
     )
 
 
