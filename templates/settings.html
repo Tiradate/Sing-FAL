@@ -179,6 +179,24 @@
         </div>
       </div>
 
+      <hr class="my-4">
+
+      <h6>Floor Plan Sensor Layout</h6>
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <label class="form-label mb-0">Floor</label>
+        <select id="floorPlanEditorSelect" class="form-select form-select-sm w-auto">
+          {% for floor in floors %}
+          <option value="{{ floor }}">{{ floor }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="addSensorBtn">+ Add Sensor</button>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="removeSensorBtn">- Remove Sensor</button>
+        <span class="text-muted small" id="sensorCountLabel"></span>
+      </div>
+      <div class="map-container map-editor" id="floorPlanEditor">
+        <div class="map-placeholder">Select a floor plan to place sensors</div>
+      </div>
+
       <div class="mt-4">
         <div class="d-flex flex-wrap gap-2">
           <button class="btn btn-primary" type="submit">Save Settings</button>
@@ -247,6 +265,16 @@
   const floorPlanButton = document.getElementById('addFloorPlan');
   const floorPlanContainer = document.getElementById('floorPlanRows');
   const availableUploads = {{ available_uploads | default([]) | tojson }};
+  const editorData = {
+    floors: {{ floors | default([]) | tojson }},
+    floorPlans: {{ settings.floor_plans | default({}) | tojson }},
+    devices: {{ devices | default([]) | tojson }},
+    sensorIcon: {{ settings.sensor_icon | tojson }},
+    sensorIconSize: {{ settings.sensor_icon_size | tojson }},
+    createDeviceRoute: {{ url_for('create_device') | tojson }},
+    updateDeviceRoute: {{ url_for('update_device_position', device_id='__device__') | tojson }},
+    deleteDeviceRoute: {{ url_for('delete_device', device_id='__device__') | tojson }},
+  };
 
   floorPlanButton.addEventListener('click', () => {
     const row = document.createElement('div');
@@ -273,5 +301,156 @@
     `;
     floorPlanContainer.appendChild(row);
   });
+
+  const editorSelect = document.getElementById('floorPlanEditorSelect');
+  const editorContainer = document.getElementById('floorPlanEditor');
+  const addSensorBtn = document.getElementById('addSensorBtn');
+  const removeSensorBtn = document.getElementById('removeSensorBtn');
+  const sensorCountLabel = document.getElementById('sensorCountLabel');
+  let selectedDeviceId = null;
+
+  const updateSensorCount = (floorId) => {
+    const count = editorData.devices.filter((device) => device.floor_id === floorId).length;
+    sensorCountLabel.textContent = `${count} sensor${count === 1 ? '' : 's'}`;
+  };
+
+  const renderEditor = (floorId) => {
+    editorContainer.innerHTML = '';
+    editorContainer.dataset.floor = floorId || '';
+    const floorImage = editorData.floorPlans[floorId];
+    if (floorImage) {
+      const img = document.createElement('img');
+      img.src = `/${floorImage}`;
+      img.className = 'map-image';
+      img.alt = `Floor ${floorId}`;
+      editorContainer.appendChild(img);
+    } else {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'map-placeholder';
+      placeholder.textContent = 'Upload a floor plan in settings';
+      editorContainer.appendChild(placeholder);
+    }
+
+    editorData.devices
+      .filter((device) => device.floor_id === floorId)
+      .forEach((device) => {
+        const icon = document.createElement('div');
+        icon.className = 'sensor-icon map-editor-icon';
+        icon.dataset.device = device.device_id;
+        icon.style.left = `${device.location_x}%`;
+        icon.style.top = `${device.location_y}%`;
+        icon.title = device.device_id;
+        icon.innerHTML = `<img src="/${editorData.sensorIcon}" alt="sensor" style="width: ${editorData.sensorIconSize}px; height: ${editorData.sensorIconSize}px;">`;
+        editorContainer.appendChild(icon);
+      });
+
+    attachDragHandlers();
+    updateSensorCount(floorId);
+  };
+
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+  const attachDragHandlers = () => {
+    const icons = editorContainer.querySelectorAll('.map-editor-icon');
+    icons.forEach((icon) => {
+      icon.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        const deviceId = icon.dataset.device;
+        selectedDeviceId = deviceId;
+        editorContainer.querySelectorAll('.map-editor-icon').forEach((item) => {
+          item.classList.toggle('is-selected', item === icon);
+        });
+        const containerRect = editorContainer.getBoundingClientRect();
+
+        const moveHandler = (moveEvent) => {
+          const x = ((moveEvent.clientX - containerRect.left) / containerRect.width) * 100;
+          const y = ((moveEvent.clientY - containerRect.top) / containerRect.height) * 100;
+          const clampedX = clamp(x, 0, 100);
+          const clampedY = clamp(y, 0, 100);
+          icon.style.left = `${clampedX}%`;
+          icon.style.top = `${clampedY}%`;
+        };
+
+        const upHandler = async (upEvent) => {
+          document.removeEventListener('pointermove', moveHandler);
+          document.removeEventListener('pointerup', upHandler);
+          const left = parseFloat(icon.style.left);
+          const top = parseFloat(icon.style.top);
+          const route = editorData.updateDeviceRoute.replace('__device__', deviceId);
+          await fetch(route, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ location_x: left, location_y: top }),
+          });
+          const device = editorData.devices.find((item) => item.device_id === deviceId);
+          if (device) {
+            device.location_x = left;
+            device.location_y = top;
+          }
+        };
+
+        document.addEventListener('pointermove', moveHandler);
+        document.addEventListener('pointerup', upHandler);
+      });
+    });
+  };
+
+  if (editorSelect) {
+    const initialFloor = editorSelect.value || editorData.floors[0];
+    if (initialFloor) {
+      editorSelect.value = initialFloor;
+      renderEditor(initialFloor);
+    }
+    editorSelect.addEventListener('change', (event) => {
+      selectedDeviceId = null;
+      renderEditor(event.target.value);
+    });
+  }
+
+  if (addSensorBtn) {
+    addSensorBtn.addEventListener('click', async () => {
+      const floorId = editorSelect.value;
+      if (!floorId) {
+        return;
+      }
+      const response = await fetch(editorData.createDeviceRoute, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ floor_id: floorId }),
+      });
+      if (!response.ok) {
+        return;
+      }
+      const device = await response.json();
+      editorData.devices.push(device);
+      renderEditor(floorId);
+    });
+  }
+
+  if (removeSensorBtn) {
+    removeSensorBtn.addEventListener('click', async () => {
+      const floorId = editorSelect.value;
+      if (!floorId) {
+        return;
+      }
+      let deviceId = selectedDeviceId;
+      if (!deviceId) {
+        const floorDevices = editorData.devices.filter((device) => device.floor_id === floorId);
+        if (!floorDevices.length) {
+          return;
+        }
+        deviceId = floorDevices[floorDevices.length - 1].device_id;
+      }
+      const response = await fetch(editorData.deleteDeviceRoute.replace('__device__', deviceId), {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        return;
+      }
+      editorData.devices = editorData.devices.filter((device) => device.device_id !== deviceId);
+      selectedDeviceId = null;
+      renderEditor(floorId);
+    });
+  }
 </script>
 {% endblock %}

@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
+import re
 
 from services.db import connect, SENSOR_DB, CALENDAR_DB
 
@@ -52,6 +53,65 @@ def get_metric_options():
 def get_devices():
     with connect(SENSOR_DB) as conn:
         return conn.execute("SELECT * FROM devices").fetchall()
+
+
+def update_device_position(device_id, location_x, location_y):
+    with connect(SENSOR_DB) as conn:
+        conn.execute(
+            "UPDATE devices SET location_x = ?, location_y = ? WHERE device_id = ?",
+            (location_x, location_y, device_id),
+        )
+
+
+def _next_device_id(conn, prefix="AM30X-"):
+    rows = conn.execute(
+        "SELECT device_id FROM devices WHERE device_id LIKE ?", (f"{prefix}%",)
+    ).fetchall()
+    max_value = 0
+    for row in rows:
+        match = re.search(r"(\d+)$", row["device_id"])
+        if match:
+            max_value = max(max_value, int(match.group(1)))
+    return f"{prefix}{max_value + 1:03d}"
+
+
+def create_device(floor_id, location_x=50, location_y=50, zone="Unassigned"):
+    now = datetime.utcnow().isoformat()
+    with connect(SENSOR_DB) as conn:
+        device_id = _next_device_id(conn)
+        conn.execute(
+            """
+            INSERT INTO devices (device_id, model, floor_id, zone, location_x, location_y, last_seen, signal_quality)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                device_id,
+                "Milesight AM30x",
+                floor_id,
+                zone,
+                location_x,
+                location_y,
+                now,
+                100,
+            ),
+        )
+    return {
+        "device_id": device_id,
+        "model": "Milesight AM30x",
+        "floor_id": floor_id,
+        "zone": zone,
+        "location_x": location_x,
+        "location_y": location_y,
+        "last_seen": now,
+        "signal_quality": 100,
+    }
+
+
+def delete_device(device_id):
+    with connect(SENSOR_DB) as conn:
+        conn.execute("DELETE FROM devices WHERE device_id = ?", (device_id,))
+        conn.execute("DELETE FROM sensor_readings WHERE device_id = ?", (device_id,))
+        conn.execute("DELETE FROM alarm_events WHERE device_id = ?", (device_id,))
 
 
 def get_avg_signal_quality():
