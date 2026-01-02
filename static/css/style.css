@@ -116,6 +116,10 @@ body {
   z-index: 5;
 }
 
+.sensor-tooltip .sensor-tooltip-severity {
+  color: var(--severity-color, inherit);
+}
+
 .sensor-icon:hover .sensor-tooltip {
   opacity: 1;
 }
