@@ -229,30 +229,32 @@ def view_data():
             second=0,
             microsecond=0,
         )
-        key = (bucket, row["metric"], row["unit"])
+        key = (bucket, row["metric"])
         if key not in aggregates:
-            aggregates[key] = {"sum": 0.0, "count": 0}
+            aggregates[key] = {"sum": 0.0, "count": 0, "unit": row["unit"]}
         aggregates[key]["sum"] += float(value)
         aggregates[key]["count"] += 1
 
-    metric_order = {metric: idx for idx, metric in enumerate(data_service.METRIC_ORDER)}
+    metric_options = data_service.get_metric_options()
+    metric_order = [option["key"] for option in metric_options]
     records = []
-    for (bucket, metric, unit), stats in sorted(
-        aggregates.items(),
-        key=lambda item: (item[0][0], metric_order.get(item[0][1], 999)),
-    ):
-        avg_value = stats["sum"] / stats["count"]
-        records.append(
-            {
-                "timestamp": bucket.strftime("%d/%m/%Y %I:%M %p"),
-                "gateway": "N/A",
-                "topic": "N/A",
-                "device": device,
-                "tag": data_service.get_metric_label(metric),
-                "value": round(avg_value, 2),
-                "unit": unit,
-            }
-        )
+    buckets = sorted({bucket for bucket, _metric in aggregates.keys()})
+    for bucket in buckets:
+        record = {
+            "timestamp": bucket.strftime("%d/%m/%Y %I:%M %p"),
+            "gateway": "N/A",
+            "topic": "N/A",
+            "device": device,
+            "metrics": {},
+        }
+        for metric in metric_order:
+            stats = aggregates.get((bucket, metric))
+            if stats:
+                avg_value = stats["sum"] / stats["count"]
+                record["metrics"][metric] = round(avg_value, 2)
+            else:
+                record["metrics"][metric] = None
+        records.append(record)
 
     start_display = start_dt.strftime("%Y-%m-%dT%H:%M")
     end_display = end_dt.strftime("%Y-%m-%dT%H:%M")
@@ -266,6 +268,7 @@ def view_data():
         active_device=device,
         interval_minutes=interval_minutes,
         devices=devices,
+        metric_options=metric_options,
     )
 
 

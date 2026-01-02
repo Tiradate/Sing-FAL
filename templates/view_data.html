@@ -54,9 +54,11 @@
             <th scope="col" role="button" onclick="sortTable(1)">Gateway</th>
             <th scope="col" role="button" onclick="sortTable(2)">Topic</th>
             <th scope="col" role="button" onclick="sortTable(3)">Device</th>
-            <th scope="col" role="button" onclick="sortTable(4)">Tag</th>
-            <th scope="col" role="button" onclick="sortTable(5)">Value</th>
-            <th scope="col" role="button" onclick="sortTable(6)">Unit</th>
+            {% for metric in metric_options %}
+            <th scope="col" role="button" onclick="sortTable({{ loop.index + 3 }})">
+              {{ metric.label }}{% if metric.unit %}({{ metric.unit }}){% endif %}
+            </th>
+            {% endfor %}
           </tr>
         </thead>
         <tbody>
@@ -66,13 +68,15 @@
             <td>{{ row.gateway }}</td>
             <td>{{ row.topic }}</td>
             <td>{{ row.device }}</td>
-            <td>{{ row.tag }}</td>
-            <td>{{ row.value }}</td>
-            <td>{{ row.unit }}</td>
+            {% for metric in metric_options %}
+            <td>{{ row.metrics[metric.key] if row.metrics[metric.key] is not none else "" }}</td>
+            {% endfor %}
           </tr>
           {% else %}
           <tr>
-            <td colspan="7" class="text-center text-muted">No data available for this range.</td>
+            <td colspan="{{ 4 + metric_options|length }}" class="text-center text-muted">
+              No data available for this range.
+            </td>
           </tr>
           {% endfor %}
         </tbody>
