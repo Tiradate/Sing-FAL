@@ -73,6 +73,11 @@ body {
 .sensor-icon {
   position: absolute;
   transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.sensor-icon:hover {
+  z-index: 20;
 }
 
 .sensor-tooltip-icon {
@@ -113,7 +118,7 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
-  z-index: 5;
+  z-index: 20;
 }
 
 .sensor-icon:hover .sensor-tooltip {

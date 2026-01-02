@@ -12,7 +12,7 @@
   {% endif %}
   {% for device in devices %}
   {% if device.floor_id == active_floor %}
-  {% set severity = alarm_severity.get(device.device_id, '') %}
+  {% set severity = device_severity.get(device.device_id, '') %}
   {% set severity_color = (settings.severity_levels|selectattr('label','equalto',severity)|list|first).color if severity and settings.severity_levels else ('#dc3545' if severity else '') %}
   <div class="sensor-icon" data-device="{{ device.device_id }}" style="left: {{ device.location_x }}%; top: {{ device.location_y }}%;">
     <img src="/{{ settings.sensor_icon }}" alt="sensor" style="width: {{ settings.sensor_icon_size }}px; height: {{ settings.sensor_icon_size }}px;">
