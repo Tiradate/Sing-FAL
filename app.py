@@ -99,6 +99,13 @@ def index():
     indoor_outdoor = data_service.get_latest_indoor_outdoor(floor_id=floor_id)
     indoor_outdoor_aqi = data_service.get_indoor_outdoor_aqi(floor_id=floor_id)
     device_metrics = data_service.get_latest_device_metrics(floor_id=floor_id)
+    device_metric_severity = {
+        device_id: {
+            metric: data_service.get_metric_severity(settings, metric, reading.get("value"))
+            for metric, reading in metrics.items()
+        }
+        for device_id, metrics in device_metrics.items()
+    }
 
     default_view_device = devices[0]["device_id"] if devices else None
     daily_view_end = datetime.now()
@@ -130,6 +137,7 @@ def index():
         device_metrics=device_metrics,
         metric_options=metric_options,
         metric_option_map=metric_option_map,
+        device_metric_severity=device_metric_severity,
         now=datetime.now(),
         default_view_device=default_view_device,
         daily_view_start=daily_view_start.strftime("%Y-%m-%dT%H:%M"),
@@ -145,12 +153,20 @@ def index():
 
 @app.route("/map")
 def map_full():
+    settings = settings_service.load_settings()
     floors = data_service.get_floor_list()
     floor_id = request.args.get("floor") or (floors[0] if floors else None)
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
     metric_options = data_service.get_metric_options()
     device_metrics = data_service.get_latest_device_metrics(floor_id=floor_id)
+    device_metric_severity = {
+        device_id: {
+            metric: data_service.get_metric_severity(settings, metric, reading.get("value"))
+            for metric, reading in metrics.items()
+        }
+        for device_id, metrics in device_metrics.items()
+    }
     return render_template(
         "map_full.html",
         floors=floors,
@@ -159,6 +175,7 @@ def map_full():
         alarm_severity=alarm_severity,
         metric_options=metric_options,
         device_metrics=device_metrics,
+        device_metric_severity=device_metric_severity,
     )
 
 

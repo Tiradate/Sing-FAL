@@ -84,7 +84,7 @@
             <span class="sensor-badge" style="background: {{ severity_color }}"></span>
             {% endif %}
             {% set device_readings = device_metrics.get(device.device_id, {}) %}
-            <div class="sensor-tooltip"{% if severity_color %} style="--severity-color: {{ severity_color }}"{% endif %}>
+            <div class="sensor-tooltip">
               <div class="d-flex align-items-center gap-2">
                 <div class="sensor-tooltip-icon">
                   <img src="/{{ settings.sensor_icon }}" alt="sensor">
@@ -93,16 +93,17 @@
                   {% endif %}
                 </div>
                 <div>
-                  <div class="fw-semibold sensor-tooltip-severity">{{ device.device_id }}</div>
+                  <div class="fw-semibold">{{ device.device_id }}</div>
                   <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ device.floor_id }}</div>
                 </div>
               </div>
               <ul class="list-unstyled mb-0 mt-2">
                 {% for metric in metric_options %}
                 {% set reading = device_readings.get(metric.key) %}
+                {% set reading_severity = device_metric_severity.get(device.device_id, {}).get(metric.key) %}
                 <li class="d-flex justify-content-between gap-3">
                   <span class="text-muted">{{ metric.label }}</span>
-                  <span class="fw-semibold sensor-tooltip-severity">
+                  <span class="fw-semibold"{% if metric.key == 'temperature' and reading_severity and reading_severity.label in settings.critical_levels %} style="color: {{ reading_severity.color }}"{% endif %}>
                     {% if reading %}
                       {% if metric.key == 'motion' %}
                         {{ 'Occupied' if reading.value else 'Vacant' }}

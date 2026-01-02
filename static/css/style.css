@@ -102,7 +102,7 @@ body {
 .sensor-tooltip {
   position: absolute;
   left: 50%;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 8px);
   transform: translateX(-50%);
   min-width: 220px;
   padding: 10px 12px;
@@ -114,10 +114,6 @@ body {
   pointer-events: none;
   transition: opacity 0.2s ease;
   z-index: 5;
-}
-
-.sensor-tooltip .sensor-tooltip-severity {
-  color: var(--severity-color, inherit);
 }
 
 .sensor-icon:hover .sensor-tooltip {
