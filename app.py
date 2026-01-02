@@ -421,10 +421,47 @@ def settings():
         severity_labels = request.form.getlist("severity_label")
         severity_colors = request.form.getlist("severity_color")
         severity_icons = request.form.getlist("severity_icon")
+        severity_temperatures = request.form.getlist("severity_temperature")
+        severity_humidity = request.form.getlist("severity_humidity")
+        severity_pm25 = request.form.getlist("severity_pm25")
+        severity_pm10 = request.form.getlist("severity_pm10")
+        severity_tvoc = request.form.getlist("severity_tvoc")
+        severity_co2 = request.form.getlist("severity_co2")
         severity_levels = []
-        for label, color, icon in zip(severity_labels, severity_colors, severity_icons):
+
+        def parse_float(value):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        for label, color, icon, temperature, humidity, pm25, pm10, tvoc, co2 in zip(
+            severity_labels,
+            severity_colors,
+            severity_icons,
+            severity_temperatures,
+            severity_humidity,
+            severity_pm25,
+            severity_pm10,
+            severity_tvoc,
+            severity_co2,
+        ):
             if label.strip():
-                severity_levels.append({"label": label.strip(), "color": color, "icon": icon})
+                severity_levels.append(
+                    {
+                        "label": label.strip(),
+                        "color": color,
+                        "icon": icon,
+                        "thresholds": {
+                            "temperature": parse_float(temperature),
+                            "humidity": parse_float(humidity),
+                            "pm25": parse_float(pm25),
+                            "pm10": parse_float(pm10),
+                            "tvoc": parse_float(tvoc),
+                            "co2": parse_float(co2),
+                        },
+                    }
+                )
         settings["severity_levels"] = severity_levels
         settings["critical_levels"] = request.form.getlist("critical_levels")
 

@@ -46,10 +46,20 @@
       <hr class="my-4">
 
       <h6>IAQ Severity Mapping</h6>
+      <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
+        <div class="col-12 col-md-3">Severity</div>
+        <div class="col-6 col-md-2 col-xl-1">Temp (°C)</div>
+        <div class="col-6 col-md-2 col-xl-1">PM2.5</div>
+        <div class="col-6 col-md-2 col-xl-1">PM10</div>
+        <div class="col-6 col-md-2 col-xl-1">Humidity (%)</div>
+        <div class="col-6 col-md-2 col-xl-1">TVOC</div>
+        <div class="col-6 col-md-2 col-xl-1">CO₂ (ppm)</div>
+        <div class="col-12 col-md-2">Critical</div>
+      </div>
       <div id="severityRows">
         {% for level in settings.severity_levels %}
         <div class="row g-2 align-items-center mb-2 severity-row">
-          <div class="col-12 col-md-6">
+          <div class="col-12 col-md-3">
             <div class="input-group">
               <input class="form-control" type="text" name="severity_label" value="{{ level.label }}" placeholder="Label">
               <span class="input-group-text p-0">
@@ -58,7 +68,31 @@
             </div>
             <input type="hidden" name="severity_icon" value="{{ level.icon }}">
           </div>
-          <div class="col-12 col-md-6">
+          <div class="col-6 col-md-2 col-xl-1">
+            <input class="form-control" type="number" name="severity_temperature" step="0.1" placeholder="°C"
+              value="{{ level.thresholds.temperature if level.thresholds is defined else '' }}">
+          </div>
+          <div class="col-6 col-md-2 col-xl-1">
+            <input class="form-control" type="number" name="severity_pm25" step="1" placeholder="µg/m³"
+              value="{{ level.thresholds.pm25 if level.thresholds is defined else '' }}">
+          </div>
+          <div class="col-6 col-md-2 col-xl-1">
+            <input class="form-control" type="number" name="severity_pm10" step="1" placeholder="µg/m³"
+              value="{{ level.thresholds.pm10 if level.thresholds is defined else '' }}">
+          </div>
+          <div class="col-6 col-md-2 col-xl-1">
+            <input class="form-control" type="number" name="severity_humidity" step="1" placeholder="%"
+              value="{{ level.thresholds.humidity if level.thresholds is defined else '' }}">
+          </div>
+          <div class="col-6 col-md-2 col-xl-1">
+            <input class="form-control" type="number" name="severity_tvoc" step="0.01" placeholder="mg/m³"
+              value="{{ level.thresholds.tvoc if level.thresholds is defined else '' }}">
+          </div>
+          <div class="col-6 col-md-2 col-xl-1">
+            <input class="form-control" type="number" name="severity_co2" step="1" placeholder="ppm"
+              value="{{ level.thresholds.co2 if level.thresholds is defined else '' }}">
+          </div>
+          <div class="col-12 col-md-2">
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="critical_levels" value="{{ level.label }}" {% if level.label in settings.critical_levels %}checked{% endif %}>
               <label class="form-check-label">Critical</label>
@@ -170,7 +204,7 @@
     const row = document.createElement('div');
     row.className = 'row g-2 align-items-center mb-2 severity-row';
     row.innerHTML = `
-      <div class="col-12 col-md-6">
+      <div class="col-12 col-md-3">
         <div class="input-group">
           <input class="form-control" type="text" name="severity_label" placeholder="Label">
           <span class="input-group-text p-0">
@@ -179,7 +213,25 @@
         </div>
         <input type="hidden" name="severity_icon" value="">
       </div>
-      <div class="col-12 col-md-6">
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="number" name="severity_temperature" step="0.1" placeholder="°C">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="number" name="severity_pm25" step="1" placeholder="µg/m³">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="number" name="severity_pm10" step="1" placeholder="µg/m³">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="number" name="severity_humidity" step="1" placeholder="%">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="number" name="severity_tvoc" step="0.01" placeholder="mg/m³">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="number" name="severity_co2" step="1" placeholder="ppm">
+      </div>
+      <div class="col-12 col-md-2">
         <div class="form-check">
           <input class="form-check-input" type="checkbox" name="critical_levels" value="">
           <label class="form-check-label">Critical</label>
