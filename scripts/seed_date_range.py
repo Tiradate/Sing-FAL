@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 import random
 import sys
 from pathlib import Path
@@ -49,7 +49,7 @@ def generate_devices(count, rng):
                 zone,
                 location_x,
                 location_y,
-                datetime.utcnow().isoformat(),
+                datetime.now(timezone.utc).isoformat(),
                 signal_quality,
             )
         )
