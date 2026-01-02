@@ -92,6 +92,10 @@ def index():
     weekly_labels, weekly_values = data_service.get_weekly_series(weekly_metric, floor_id=floor_id)
 
     sensor_cards = data_service.get_latest_avg_metrics(floor_id=floor_id)
+    sensor_card_severity = {
+        metric: data_service.get_metric_severity(settings, metric, data.get("value"))
+        for metric, data in sensor_cards.items()
+    }
     indoor_outdoor = data_service.get_latest_indoor_outdoor(floor_id=floor_id)
     indoor_outdoor_aqi = data_service.get_indoor_outdoor_aqi(floor_id=floor_id)
     device_metrics = data_service.get_latest_device_metrics(floor_id=floor_id)
@@ -120,6 +124,7 @@ def index():
         daily_metric=daily_metric,
         weekly_metric=weekly_metric,
         sensor_cards=sensor_cards,
+        sensor_card_severity=sensor_card_severity,
         indoor_outdoor=indoor_outdoor,
         indoor_outdoor_aqi=indoor_outdoor_aqi,
         device_metrics=device_metrics,
