@@ -1,6 +1,7 @@
 (function () {
   const data = window.dashboardData || {};
   const metricOptions = data.metricOptions || {};
+  const severityLevels = Array.isArray(data.severityLevels) ? data.severityLevels : [];
 
   const formatMetricLabel = (metricKey) => {
     const meta = metricOptions[metricKey];
@@ -11,6 +12,44 @@
       return `${meta.label} (${meta.unit})`;
     }
     return meta.label;
+  };
+
+  const buildSeverityDatasets = (metricKey, labels) => {
+    if (!data.showSeverityLines) {
+      return [];
+    }
+    if (!Array.isArray(labels) || labels.length === 0) {
+      return [];
+    }
+    return severityLevels
+      .map((level) => {
+        const value = level?.thresholds ? level.thresholds[metricKey] : null;
+        if (value === null || value === undefined || Number.isNaN(value)) {
+          return null;
+        }
+        return {
+          type: 'line',
+          label: `${level.label} threshold`,
+          data: labels.map(() => value),
+          borderColor: level.color || '#dc3545',
+          borderWidth: 1.5,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 1,
+        };
+      })
+      .filter(Boolean);
+  };
+
+  const applySeriesToChart = (chart, metricKey, series) => {
+    chart.data.labels = series.labels;
+    const baseDataset = chart.data.datasets[0];
+    baseDataset.data = series.values;
+    baseDataset.label = formatMetricLabel(metricKey);
+    chart.data.datasets = [baseDataset, ...buildSeverityDatasets(metricKey, series.labels)];
+    chart.update();
   };
 
   const fetchSeries = async (route, metricKey) => {
@@ -32,18 +71,21 @@
   const dailyMetricSelect = document.getElementById('dailyMetricSelect');
   let dailyChart = null;
   if (dailyCtx && data.dailyLabels) {
+    const baseDataset = {
+      label: formatMetricLabel(data.dailyMetric || 'pm25'),
+      data: data.dailyValues,
+      borderColor: '#0d6efd',
+      backgroundColor: 'rgba(13, 110, 253, 0.1)',
+      fill: true,
+      tension: 0.3,
+      order: 0,
+    };
+    const severityDatasets = buildSeverityDatasets(data.dailyMetric || 'pm25', data.dailyLabels);
     dailyChart = new Chart(dailyCtx, {
       type: 'line',
       data: {
         labels: data.dailyLabels,
-        datasets: [{
-          label: formatMetricLabel(data.dailyMetric || 'pm25'),
-          data: data.dailyValues,
-          borderColor: '#0d6efd',
-          backgroundColor: 'rgba(13, 110, 253, 0.1)',
-          fill: true,
-          tension: 0.3,
-        }]
+        datasets: [baseDataset, ...severityDatasets],
       },
       options: {
         responsive: true,
@@ -56,15 +98,19 @@
   const weeklyMetricSelect = document.getElementById('weeklyMetricSelect');
   let weeklyChart = null;
   if (weeklyCtx && data.weeklyLabels) {
+    const baseDataset = {
+      type: 'bar',
+      label: formatMetricLabel(data.weeklyMetric || 'pm25'),
+      data: data.weeklyValues,
+      backgroundColor: '#198754',
+      order: 0,
+    };
+    const severityDatasets = buildSeverityDatasets(data.weeklyMetric || 'pm25', data.weeklyLabels);
     weeklyChart = new Chart(weeklyCtx, {
       type: 'bar',
       data: {
         labels: data.weeklyLabels,
-        datasets: [{
-          label: formatMetricLabel(data.weeklyMetric || 'pm25'),
-          data: data.weeklyValues,
-          backgroundColor: '#198754',
-        }]
+        datasets: [baseDataset, ...severityDatasets],
       },
       options: {
         responsive: true,
@@ -81,10 +127,7 @@
       if (!series || !dailyChart) {
         return;
       }
-      dailyChart.data.labels = series.labels;
-      dailyChart.data.datasets[0].data = series.values;
-      dailyChart.data.datasets[0].label = formatMetricLabel(metricKey);
-      dailyChart.update();
+      applySeriesToChart(dailyChart, metricKey, series);
     });
   }
 
@@ -96,10 +139,7 @@
       if (!series || !weeklyChart) {
         return;
       }
-      weeklyChart.data.labels = series.labels;
-      weeklyChart.data.datasets[0].data = series.values;
-      weeklyChart.data.datasets[0].label = formatMetricLabel(metricKey);
-      weeklyChart.update();
+      applySeriesToChart(weeklyChart, metricKey, series);
     });
   }
 

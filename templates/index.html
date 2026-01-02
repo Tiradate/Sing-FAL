@@ -279,6 +279,8 @@
     dailyRoute: {{ url_for('graphs_daily')|tojson }},
     weeklyRoute: {{ url_for('graphs_weekly')|tojson }},
     metricOptions: {{ metric_option_map|tojson }},
+    severityLevels: {{ settings.severity_levels|tojson }},
+    showSeverityLines: {{ settings.show_severity_lines|tojson }},
   };
 </script>
 {% endblock %}
