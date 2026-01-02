@@ -365,6 +365,26 @@ def get_sensor_readings_csv():
         return rows
 
 
+def get_metric_severity(settings, metric, value):
+    if value is None:
+        return None
+    levels = settings.get("severity_levels", [])
+    if not levels:
+        return None
+    eligible_levels = []
+    for level in levels:
+        thresholds = level.get("thresholds", {})
+        threshold = thresholds.get(metric)
+        if threshold is None:
+            continue
+        if value <= threshold:
+            return level
+        eligible_levels.append(level)
+    if eligible_levels:
+        return eligible_levels[-1]
+    return None
+
+
 def aggregate_status_label(settings):
     levels = settings.get("severity_levels", [])
     if not levels:
