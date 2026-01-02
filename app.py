@@ -453,6 +453,10 @@ def settings():
         return redirect(url_for("login"))
 
     settings = settings_service.load_settings()
+    devices = data_service.get_devices()
+    device_floors = {device["floor_id"] for device in devices if device["floor_id"]}
+    floor_plan_ids = set(settings.get("floor_plans", {}).keys())
+    floors = sorted(floor_plan_ids | device_floors)
     available_uploads = []
     if os.path.exists(UPLOAD_DIR):
         for filename in os.listdir(UPLOAD_DIR):
@@ -571,7 +575,49 @@ def settings():
         settings_service.save_settings(settings)
         return redirect(url_for("settings"))
 
-    return render_template("settings.html", settings=settings, available_uploads=available_uploads)
+    return render_template(
+        "settings.html",
+        settings=settings,
+        available_uploads=available_uploads,
+        floors=floors,
+        devices=[dict(device) for device in devices],
+    )
+
+
+@app.post("/api/devices")
+def create_device():
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    payload = request.get_json(silent=True) or {}
+    floor_id = (payload.get("floor_id") or "").strip()
+    if not floor_id:
+        return jsonify({"error": "Missing floor_id"}), 400
+    device = data_service.create_device(floor_id)
+    return jsonify(device)
+
+
+@app.post("/api/devices/<device_id>/position")
+def update_device_position(device_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    payload = request.get_json(silent=True) or {}
+    try:
+        location_x = float(payload.get("location_x"))
+        location_y = float(payload.get("location_y"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid coordinates"}), 400
+    location_x = max(0, min(100, location_x))
+    location_y = max(0, min(100, location_y))
+    data_service.update_device_position(device_id, location_x, location_y)
+    return jsonify({"device_id": device_id, "location_x": location_x, "location_y": location_y})
+
+
+@app.delete("/api/devices/<device_id>")
+def delete_device(device_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    data_service.delete_device(device_id)
+    return jsonify({"device_id": device_id})
 
 
 @app.route("/login", methods=["GET", "POST"])
