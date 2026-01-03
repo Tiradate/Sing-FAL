@@ -558,6 +558,13 @@ def get_alarm_history():
         ).fetchall()
 
 
+def clear_alarm_history():
+    from services.db import connect, ALARM_DB
+
+    with connect(ALARM_DB) as conn:
+        conn.execute("DELETE FROM action_history")
+
+
 def get_action_history(start_date, end_date):
     from services.db import connect, ALARM_DB
 
