@@ -219,7 +219,10 @@
               </div>
               <div class="col-12 col-md-1">
                 <label class="form-label d-none d-md-block">&nbsp;</label>
-                <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-floor-plan" aria-label="Remove floor plan">-</button>
+                <div class="d-grid gap-1">
+                  <button type="button" class="btn btn-sm btn-outline-secondary move-floor-plan-up" aria-label="Move floor plan up">↑</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger remove-floor-plan" aria-label="Remove floor plan">-</button>
+                </div>
               </div>
             </div>
             {% endfor %}
@@ -248,7 +251,10 @@
               </div>
               <div class="col-12 col-md-1">
                 <label class="form-label d-none d-md-block">&nbsp;</label>
-                <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-floor-plan" aria-label="Remove floor plan">-</button>
+                <div class="d-grid gap-1">
+                  <button type="button" class="btn btn-sm btn-outline-secondary move-floor-plan-up" aria-label="Move floor plan up">↑</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger remove-floor-plan" aria-label="Remove floor plan">-</button>
+                </div>
               </div>
             </div>
             {% endif %}
@@ -584,11 +590,54 @@
       </div>
       <div class="col-12 col-md-1">
         <label class="form-label d-none d-md-block">&nbsp;</label>
-        <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-floor-plan" aria-label="Remove floor plan">-</button>
+        <div class="d-grid gap-1">
+          <button type="button" class="btn btn-sm btn-outline-secondary move-floor-plan-up" aria-label="Move floor plan up">↑</button>
+          <button type="button" class="btn btn-sm btn-outline-danger remove-floor-plan" aria-label="Remove floor plan">-</button>
+        </div>
       </div>
     `;
     floorPlanContainer.appendChild(row);
+    syncEditorSelectOptions();
   });
+
+  const syncEditorSelectOptions = () => {
+    if (!editorSelect) {
+      return;
+    }
+    const selected = editorSelect.value;
+    const rows = Array.from(floorPlanContainer.querySelectorAll('.floor-plan-row'));
+    const nameMap = {};
+    const orderedIds = [];
+    rows.forEach((row) => {
+      const idInput = row.querySelector('input[name="floor_id"]');
+      const nameInput = row.querySelector('input[name="floor_name"]');
+      const floorId = idInput ? idInput.value.trim() : '';
+      if (!floorId || orderedIds.includes(floorId)) {
+        return;
+      }
+      const floorName = nameInput ? nameInput.value.trim() : '';
+      nameMap[floorId] = floorName;
+      orderedIds.push(floorId);
+    });
+    editorData.floors.forEach((floorId) => {
+      if (!orderedIds.includes(floorId)) {
+        orderedIds.push(floorId);
+      }
+    });
+    editorSelect.innerHTML = '';
+    orderedIds.forEach((floorId) => {
+      const option = document.createElement('option');
+      option.value = floorId;
+      option.textContent = nameMap[floorId] || floorId;
+      editorSelect.appendChild(option);
+    });
+    editorData.floors = orderedIds;
+    const nextValue = orderedIds.includes(selected) ? selected : (orderedIds[0] || '');
+    if (editorSelect.value !== nextValue) {
+      editorSelect.value = nextValue;
+      renderEditor(nextValue);
+    }
+  };
 
   const removeFloorFromEditor = (floorId) => {
     if (!floorId || !editorSelect) {
@@ -611,6 +660,19 @@
   };
 
   floorPlanContainer.addEventListener('click', async (event) => {
+    const moveButton = event.target.closest('.move-floor-plan-up');
+    if (moveButton) {
+      const row = moveButton.closest('.floor-plan-row');
+      if (!row) {
+        return;
+      }
+      const previousRow = row.previousElementSibling;
+      if (previousRow) {
+        floorPlanContainer.insertBefore(row, previousRow);
+        syncEditorSelectOptions();
+      }
+      return;
+    }
     const removeButton = event.target.closest('.remove-floor-plan');
     if (!removeButton) {
       return;
@@ -634,6 +696,16 @@
       removeFloorFromEditor(floorId);
     }
     row.remove();
+    syncEditorSelectOptions();
+  });
+
+  floorPlanContainer.addEventListener('input', (event) => {
+    if (
+      event.target.matches('input[name="floor_id"]') ||
+      event.target.matches('input[name="floor_name"]')
+    ) {
+      syncEditorSelectOptions();
+    }
   });
 
   const editorSelect = document.getElementById('floorPlanEditorSelect');
@@ -868,6 +940,7 @@
     editorSelect.addEventListener('change', (event) => {
       renderEditor(event.target.value);
     });
+    syncEditorSelectOptions();
   }
 
   if (addSensorBtn) {
