@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
 import re
+import sqlite3
 
 from services.db import connect, SENSOR_DB, CALENDAR_DB
 
@@ -307,7 +308,11 @@ def delete_devices_by_floor(floor_id):
         conn.execute("DELETE FROM devices WHERE floor_id = ?", (floor_id,))
         conn.execute("DELETE FROM sensor_readings WHERE floor_id = ?", (floor_id,))
         conn.execute("DELETE FROM alarm_events WHERE floor_id = ?", (floor_id,))
-        conn.execute("DELETE FROM action_history WHERE floor_id = ?", (floor_id,))
+        try:
+            conn.execute("DELETE FROM action_history WHERE floor_id = ?", (floor_id,))
+        except sqlite3.OperationalError as exc:
+            if "no such table: action_history" not in str(exc):
+                raise
 
 
 def get_avg_signal_quality():
