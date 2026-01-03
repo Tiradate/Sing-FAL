@@ -32,6 +32,18 @@ METRIC_ORDER = [
     "tvoc",
 ]
 
+MILESIGHT_METRIC_ALIASES = {
+    "temp": "temperature",
+    "temperature": "temperature",
+    "humidity": "humidity",
+    "co2": "co2",
+    "pm2_5": "pm25",
+    "pm2.5": "pm25",
+    "pm25": "pm25",
+    "pm10": "pm10",
+    "tvoc": "tvoc",
+}
+
 
 def get_metric_label(metric):
     return METRIC_DISPLAY.get(metric, metric.upper())
@@ -63,7 +75,20 @@ def update_device_position(device_id, location_x, location_y):
         )
 
 
-def _next_device_id(conn, prefix="AM30X-"):
+def _format_floor_reference(floor_id):
+    normalized = floor_id.strip().upper()
+    if normalized.startswith("FL"):
+        return normalized
+    if normalized.startswith("F") and normalized[1:].isdigit():
+        return f"FL{normalized[1:]}"
+    if normalized.isdigit():
+        return f"FL{normalized}"
+    return normalized
+
+
+def _next_device_id(conn, floor_id, model_prefix="AM30X"):
+    floor_ref = _format_floor_reference(floor_id)
+    prefix = f"{model_prefix}-{floor_ref}-"
     rows = conn.execute(
         "SELECT device_id FROM devices WHERE device_id LIKE ?", (f"{prefix}%",)
     ).fetchall()
@@ -75,10 +100,163 @@ def _next_device_id(conn, prefix="AM30X-"):
     return f"{prefix}{max_value + 1:03d}"
 
 
+def _normalize_metric_key(metric):
+    if not metric:
+        return None
+    key = str(metric).strip().lower()
+    return MILESIGHT_METRIC_ALIASES.get(key)
+
+
+def _normalize_timestamp(value):
+    if not value:
+        return datetime.utcnow().isoformat()
+    if isinstance(value, (int, float)):
+        epoch = float(value)
+        if epoch > 1e12:
+            epoch /= 1000
+        return datetime.utcfromtimestamp(epoch).isoformat()
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if cleaned.endswith("Z"):
+            cleaned = cleaned[:-1] + "+00:00"
+        try:
+            return datetime.fromisoformat(cleaned).isoformat()
+        except ValueError:
+            try:
+                epoch = float(cleaned)
+                if epoch > 1e12:
+                    epoch /= 1000
+                return datetime.utcfromtimestamp(epoch).isoformat()
+            except ValueError:
+                return datetime.utcnow().isoformat()
+    return datetime.utcnow().isoformat()
+
+
+def ingest_milesight_payload(payload, *, conn=None):
+    readings = payload
+    if isinstance(payload, dict):
+        readings = (
+            payload.get("readings")
+            or payload.get("records")
+            or payload.get("devices")
+            or []
+        )
+    if not isinstance(readings, list):
+        return {"error": "Payload must include a list of readings"}
+
+    owns_conn = conn is None
+    if owns_conn:
+        conn = connect(SENSOR_DB)
+
+    try:
+        inserted = 0
+        created = 0
+        insert_rows = []
+        for reading in readings:
+            if not isinstance(reading, dict):
+                continue
+            floor_id = (reading.get("floor_id") or reading.get("floor") or "").strip()
+            device_id = (reading.get("device_id") or reading.get("device") or "").strip()
+            if not device_id:
+                device_id = reading.get("device_eui") or reading.get("dev_eui") or ""
+                device_id = str(device_id).strip()
+            if not device_id and floor_id:
+                device_id = _next_device_id(conn, floor_id)
+                created += 1
+            if not device_id or not floor_id:
+                continue
+
+            model = reading.get("model") or "Milesight AM30x"
+            zone = reading.get("zone") or "Unassigned"
+            location_x = reading.get("location_x")
+            location_y = reading.get("location_y")
+            if location_x is None:
+                location_x = 50
+            if location_y is None:
+                location_y = 50
+            signal_quality = reading.get("signal_quality")
+            if signal_quality is None:
+                signal_quality = 100
+            ts = _normalize_timestamp(reading.get("ts") or reading.get("timestamp"))
+            conn.execute(
+                """
+                INSERT INTO devices (
+                    device_id, model, floor_id, zone, location_x, location_y, last_seen, signal_quality
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(device_id) DO UPDATE SET
+                    model = excluded.model,
+                    floor_id = excluded.floor_id,
+                    zone = excluded.zone,
+                    location_x = excluded.location_x,
+                    location_y = excluded.location_y,
+                    last_seen = excluded.last_seen,
+                    signal_quality = excluded.signal_quality
+                """,
+                (
+                    device_id,
+                    model,
+                    floor_id,
+                    zone,
+                    location_x,
+                    location_y,
+                    ts,
+                    signal_quality,
+                ),
+            )
+
+            metrics = reading.get("metrics") or reading.get("data") or {}
+            if isinstance(metrics, dict):
+                for metric_key, raw_value in metrics.items():
+                    normalized_metric = _normalize_metric_key(metric_key)
+                    if not normalized_metric or normalized_metric not in SUPPORTED_METRICS:
+                        continue
+                    if raw_value is None:
+                        continue
+                    try:
+                        value = float(raw_value)
+                    except (TypeError, ValueError):
+                        continue
+                    insert_rows.append(
+                        (
+                            ts,
+                            device_id,
+                            floor_id,
+                            normalized_metric,
+                            round(value, 2),
+                            SUPPORTED_METRICS[normalized_metric],
+                        )
+                    )
+            if insert_rows:
+                conn.executemany(
+                    """
+                    INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    insert_rows,
+                )
+                inserted += len(insert_rows)
+                insert_rows.clear()
+        if insert_rows:
+            conn.executemany(
+                """
+                INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                insert_rows,
+            )
+            inserted += len(insert_rows)
+        return {"inserted": inserted, "created_devices": created}
+    finally:
+        if owns_conn:
+            conn.commit()
+            conn.close()
+
+
 def create_device(floor_id, location_x=50, location_y=50, zone="Unassigned"):
     now = datetime.utcnow().isoformat()
     with connect(SENSOR_DB) as conn:
-        device_id = _next_device_id(conn)
+        device_id = _next_device_id(conn, floor_id)
         conn.execute(
             """
             INSERT INTO devices (device_id, model, floor_id, zone, location_x, location_y, last_seen, signal_quality)

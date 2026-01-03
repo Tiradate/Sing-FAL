@@ -722,6 +722,20 @@ def update_floor_logo_position(logo_id):
     return jsonify({"error": "Logo not found"}), 404
 
 
+@app.post("/api/ingest/milesight")
+def ingest_milesight():
+    payload = request.get_json(silent=True) or {}
+    settings = settings_service.load_settings()
+    ingest_token = settings.get("ingest_token")
+    if ingest_token:
+        if request.headers.get("X-API-Key") != ingest_token:
+            return jsonify({"error": "Unauthorized"}), 403
+    result = data_service.ingest_milesight_payload(payload)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
 @app.delete("/api/floor-logos/<logo_id>")
 def delete_floor_logo(logo_id):
     if not session.get("is_admin"):
