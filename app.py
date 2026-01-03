@@ -474,6 +474,9 @@ def settings():
         settings["sensor_icon_size"] = int(
             request.form.get("sensor_icon_size", settings["sensor_icon_size"])
         )
+        settings["logo_icon_size"] = int(
+            request.form.get("logo_icon_size", settings["logo_icon_size"])
+        )
         settings["show_icons"] = {
             "bell": bool(request.form.get("show_bell")),
             "calendar": bool(request.form.get("show_calendar")),
