@@ -149,9 +149,6 @@
       <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Alarm History</h5>
         <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#actionHistoryModal">
-            Action Log
-          </button>
           <a
             class="btn btn-sm btn-outline-primary"
             href="{{ url_for('export_action_history', action_start=action_start, action_end=action_end) }}"
@@ -234,75 +231,6 @@
         {% else %}
         <div class="text-muted">No history yet.</div>
         {% endif %}
-      </div>
-    </div>
-  </div>
-</div>
-
-<div
-  class="modal fade"
-  id="actionHistoryModal"
-  tabindex="-1"
-  aria-labelledby="actionHistoryLabel"
-  aria-hidden="true"
->
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="actionHistoryLabel">Action History Log</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form class="row gy-2 gx-3 align-items-end mb-3" method="get" action="{{ url_for('alarms') }}">
-          <div class="col-auto">
-            <label class="form-label small">Start date</label>
-            <input class="form-control" type="date" name="action_start" value="{{ action_start }}">
-          </div>
-          <div class="col-auto">
-            <label class="form-label small">End date</label>
-            <input class="form-control" type="date" name="action_end" value="{{ action_end }}">
-          </div>
-          <div class="col-auto">
-            <button class="btn btn-primary" type="submit">View</button>
-          </div>
-        </form>
-        {% if action_history %}
-        <div class="table-responsive">
-          <table class="table table-sm align-middle">
-            <thead>
-              <tr>
-                <th>Action Time</th>
-                <th>Alarm Time</th>
-                <th>Device</th>
-                <th>Floor</th>
-                <th>Metric</th>
-                <th>Severity</th>
-                <th>Owner</th>
-                <th>Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for action in action_history %}
-              <tr>
-                <td>{{ action.action_ts }}</td>
-                <td>{{ action.alarm_ts }}</td>
-                <td>{{ action.device_id }}</td>
-                <td>{{ settings.floor_names.get(action.floor_id, action.floor_id) if settings.floor_names else action.floor_id }}</td>
-                <td>{{ action.metric | upper }}</td>
-                <td>{{ action.severity }}</td>
-                <td>{{ action.action_owner or "Not provided" }}</td>
-                <td>{{ action.action_note or "Not provided" }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% else %}
-        <div class="text-muted">No action history in this range.</div>
-        {% endif %}
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>

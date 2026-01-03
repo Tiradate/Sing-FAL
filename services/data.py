@@ -328,6 +328,16 @@ def get_active_alarms():
         ).fetchall()
 
 
+def get_today_alarms(date_value=None):
+    if not date_value:
+        date_value = datetime.utcnow().date().isoformat()
+    with connect(SENSOR_DB) as conn:
+        return conn.execute(
+            "SELECT * FROM alarm_events WHERE date(ts) = date(?) ORDER BY ts DESC",
+            (date_value,),
+        ).fetchall()
+
+
 def get_alarm_count():
     with connect(SENSOR_DB) as conn:
         row = conn.execute("SELECT COUNT(*) AS total FROM alarm_events WHERE active = 1").fetchone()
