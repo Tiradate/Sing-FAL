@@ -442,7 +442,7 @@
   const deleteFloorLogoBtn = document.getElementById('deleteFloorLogoBtn');
   const deleteProjectLogoBtn = document.getElementById('deleteProjectLogoBtn');
 
-  const ensureUploadOption = (select, path) => {
+  const ensureUploadOption = (select, path, shouldSelect = true) => {
     if (!select || !path) {
       return;
     }
@@ -453,7 +453,9 @@
       option.textContent = path.split('/').pop();
       select.appendChild(option);
     }
-    select.value = path;
+    if (shouldSelect) {
+      select.value = path;
+    }
   };
 
   const removeUploadOption = (select, path) => {
@@ -469,7 +471,7 @@
     }
   };
 
-  const uploadSettingsFile = async (fileInput, selects) => {
+  const uploadSettingsFile = async (fileInput, targetSelect, otherSelects = []) => {
     if (!fileInput || !fileInput.files.length) {
       alert('Choose a file to upload.');
       return;
@@ -485,9 +487,10 @@
     if (!availableUploads.includes(data.path)) {
       availableUploads.push(data.path);
     }
-    selects.forEach((select) => ensureUploadOption(select, data.path));
+    ensureUploadOption(targetSelect, data.path, true);
+    otherSelects.forEach((select) => ensureUploadOption(select, data.path, false));
     fileInput.value = '';
-    if (selects.includes(floorLogoSelect)) {
+    if (targetSelect === floorLogoSelect) {
       editorData.logoIconSelected = data.path;
     }
   };
@@ -525,13 +528,13 @@
 
   if (uploadFloorLogoBtn) {
     uploadFloorLogoBtn.addEventListener('click', () => {
-      uploadSettingsFile(floorLogoFile, [floorLogoSelect, projectLogoSelect]);
+      uploadSettingsFile(floorLogoFile, floorLogoSelect, [projectLogoSelect]);
     });
   }
 
   if (uploadProjectLogoBtn) {
     uploadProjectLogoBtn.addEventListener('click', () => {
-      uploadSettingsFile(projectLogoFile, [projectLogoSelect, floorLogoSelect]);
+      uploadSettingsFile(projectLogoFile, projectLogoSelect, [floorLogoSelect]);
     });
   }
 
@@ -547,32 +550,9 @@
     });
   }
 
-  let isLogoSelectSyncing = false;
-
-  const syncLogoSelections = (sourceSelect, targetSelect) => {
-    if (!sourceSelect || !targetSelect || isLogoSelectSyncing) {
-      return;
-    }
-    isLogoSelectSyncing = true;
-    const selectedPath = sourceSelect.value || '';
-    if (selectedPath && !Array.from(targetSelect.options).some((option) => option.value === selectedPath)) {
-      ensureUploadOption(targetSelect, selectedPath);
-    } else {
-      targetSelect.value = selectedPath;
-    }
-    editorData.logoIconSelected = selectedPath;
-    isLogoSelectSyncing = false;
-  };
-
   if (floorLogoSelect) {
     floorLogoSelect.addEventListener('change', (event) => {
-      syncLogoSelections(event.target, projectLogoSelect);
-    });
-  }
-
-  if (projectLogoSelect) {
-    projectLogoSelect.addEventListener('change', (event) => {
-      syncLogoSelections(event.target, floorLogoSelect);
+      editorData.logoIconSelected = event.target.value || '';
     });
   }
 
