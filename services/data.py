@@ -299,6 +299,7 @@ def delete_devices_by_floor(floor_id):
         conn.execute("DELETE FROM devices WHERE floor_id = ?", (floor_id,))
         conn.execute("DELETE FROM sensor_readings WHERE floor_id = ?", (floor_id,))
         conn.execute("DELETE FROM alarm_events WHERE floor_id = ?", (floor_id,))
+        conn.execute("DELETE FROM action_history WHERE floor_id = ?", (floor_id,))
 
 
 def get_avg_signal_quality():
