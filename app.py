@@ -724,6 +724,17 @@ def settings():
         if sensor_icon_existing:
             settings["sensor_icon"] = sensor_icon_existing
 
+        if "floor_logo_icon" in request.files:
+            file = request.files["floor_logo_icon"]
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                path = os.path.join(UPLOAD_DIR, filename)
+                file.save(path)
+                settings["floor_logo_icon"] = f"static/uploads/{filename}"
+        floor_logo_icon_existing = request.form.get("floor_logo_icon_existing", "").strip()
+        if floor_logo_icon_existing or floor_logo_icon_existing == "":
+            settings["floor_logo_icon"] = floor_logo_icon_existing
+
         if "project_logo" in request.files:
             file = request.files["project_logo"]
             if file and file.filename:

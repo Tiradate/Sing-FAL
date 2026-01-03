@@ -267,6 +267,17 @@
           </select>
         </div>
         <div class="col-12 col-md-6">
+          <label class="form-label">Floor Plan Logo Upload</label>
+          <input class="form-control" type="file" name="floor_logo_icon">
+          <label class="form-label mt-2">Use saved file</label>
+          <select class="form-select" name="floor_logo_icon_existing">
+            <option value="" {% if not settings.floor_logo_icon %}selected{% endif %}>Select saved file</option>
+            {% for upload in available_uploads %}
+            <option value="{{ upload }}" {% if upload == settings.floor_logo_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-6">
           <label class="form-label">Project Logo Upload</label>
           <input class="form-control" type="file" name="project_logo">
           <label class="form-label mt-2">Use saved file</label>
@@ -300,7 +311,7 @@
       </div>
       <div class="map-editor-bin mt-2" id="sensorDeleteBin">
         <i class="bi bi-trash"></i>
-        <span>Drag sensor here to remove</span>
+        <span>Drag sensor or logo here to remove</span>
       </div>
 
       <div class="mt-4">
@@ -395,8 +406,7 @@
     devices: {{ devices | default([]) | tojson }},
     sensorIcon: {{ settings.sensor_icon | tojson }},
     sensorIconSize: {{ settings.sensor_icon_size | tojson }},
-    logoIcon: {{ settings.project_logo | tojson }},
-    logoFallbackIcon: {{ settings.floor_logo_icon | tojson }},
+    logoIcon: {{ settings.floor_logo_icon | tojson }},
     logoIconSize: {{ settings.logo_icon_size | tojson }},
     createDeviceRoute: {{ url_for('create_device') | tojson }},
     updateDeviceRoute: {{ url_for('update_device_position', device_id='__device__') | tojson }},
@@ -502,7 +512,7 @@
     sensorCountLabel.textContent = `${count} sensor${count === 1 ? '' : 's'}`;
   };
 
-  const getLogoIconPath = () => editorData.logoIcon || editorData.logoFallbackIcon || '';
+  const getLogoIconPath = () => editorData.logoIcon || '';
 
   const renderEditor = (floorId) => {
     editorContainer.innerHTML = '';
@@ -644,11 +654,49 @@
           const clampedY = clamp(y, 0, 100);
           icon.style.left = `${clampedX}%`;
           icon.style.top = `${clampedY}%`;
+          if (sensorDeleteBin) {
+            const binRect = sensorDeleteBin.getBoundingClientRect();
+            const isOverBin =
+              moveEvent.clientX >= binRect.left &&
+              moveEvent.clientX <= binRect.right &&
+              moveEvent.clientY >= binRect.top &&
+              moveEvent.clientY <= binRect.bottom;
+            sensorDeleteBin.classList.toggle('is-active', isOverBin);
+          }
         };
 
-        const upHandler = async () => {
+        const upHandler = async (upEvent) => {
           document.removeEventListener('pointermove', moveHandler);
           document.removeEventListener('pointerup', upHandler);
+          let removeLogo = false;
+          if (sensorDeleteBin) {
+            const binRect = sensorDeleteBin.getBoundingClientRect();
+            removeLogo =
+              upEvent.clientX >= binRect.left &&
+              upEvent.clientX <= binRect.right &&
+              upEvent.clientY >= binRect.top &&
+              upEvent.clientY <= binRect.bottom;
+            sensorDeleteBin.classList.remove('is-active');
+          }
+          if (removeLogo) {
+            const response = await fetch(editorData.deleteLogoRoute.replace('__logo__', logoId), {
+              method: 'DELETE',
+            });
+            if (!response.ok) {
+              return;
+            }
+            const floorId = editorContainer.dataset.floor;
+            if (floorId && editorData.floorLogos[floorId]) {
+              editorData.floorLogos[floorId] = editorData.floorLogos[floorId].filter(
+                (logo) => logo.logo_id !== logoId
+              );
+              if (!editorData.floorLogos[floorId].length) {
+                delete editorData.floorLogos[floorId];
+              }
+            }
+            renderEditor(editorSelect.value);
+            return;
+          }
           const left = parseFloat(icon.style.left);
           const top = parseFloat(icon.style.top);
           const route = editorData.updateLogoRoute.replace('__logo__', logoId);
@@ -711,7 +759,7 @@
       }
       const logoIconPath = getLogoIconPath();
       if (!logoIconPath) {
-        alert('Upload a project logo before adding floor plan logos.');
+        alert('Upload a floor plan logo before adding floor plan logos.');
         return;
       }
       const response = await fetch(editorData.createLogoRoute, {
