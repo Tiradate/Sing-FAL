@@ -595,8 +595,7 @@ def settings():
             elif floor_id in settings.get("floor_plans", {}):
                 updated_floor_plans[floor_id] = settings["floor_plans"][floor_id]
 
-        if updated_floor_plans:
-            settings["floor_plans"] = updated_floor_plans
+        settings["floor_plans"] = updated_floor_plans
         if updated_floor_names or "floor_names" in settings:
             settings["floor_names"] = updated_floor_names
 
