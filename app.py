@@ -567,13 +567,20 @@ def settings():
             settings["project_logo"] = project_logo_existing
 
         floor_ids = request.form.getlist("floor_id")
+        floor_names = request.form.getlist("floor_name")
         floor_files = request.files.getlist("floor_plan")
         floor_existing = request.form.getlist("floor_plan_existing")
         updated_floor_plans = {}
+        updated_floor_names = {}
         for index, floor_id in enumerate(floor_ids):
             floor_id = floor_id.strip()
             if not floor_id:
                 continue
+            floor_name = floor_names[index].strip() if index < len(floor_names) else ""
+            if floor_name:
+                updated_floor_names[floor_id] = floor_name
+            elif settings.get("floor_names", {}).get(floor_id):
+                updated_floor_names[floor_id] = settings["floor_names"][floor_id]
             floor_file = floor_files[index] if index < len(floor_files) else None
             existing_path = floor_existing[index] if index < len(floor_existing) else ""
             if floor_file and floor_file.filename:
@@ -588,6 +595,8 @@ def settings():
 
         if updated_floor_plans:
             settings["floor_plans"] = updated_floor_plans
+        if updated_floor_names or "floor_names" in settings:
+            settings["floor_names"] = updated_floor_names
 
         settings_service.save_settings(settings)
         return redirect(url_for("settings"))

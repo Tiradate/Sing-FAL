@@ -6,7 +6,7 @@
 <div class="map-container map-container-expanded" data-floor="{{ active_floor }}">
   {% set floor_image = settings.floor_plans.get(active_floor, '') %}
   {% if floor_image %}
-  <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ active_floor }}">
+  <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ settings.floor_names.get(active_floor, active_floor) if settings.floor_names else active_floor }}">
   {% else %}
   <div class="map-placeholder">Upload a floor plan in settings</div>
   {% endif %}
@@ -30,7 +30,7 @@
         </div>
         <div>
           <div class="fw-semibold">{{ device.device_id }}</div>
-          <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ device.floor_id }}</div>
+          <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ settings.floor_names.get(device.floor_id, device.floor_id) if settings.floor_names else device.floor_id }}</div>
         </div>
       </div>
       <ul class="list-unstyled mb-0 mt-2">
