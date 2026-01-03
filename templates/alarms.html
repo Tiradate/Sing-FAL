@@ -72,7 +72,7 @@
             <div class="d-flex justify-content-between">
               <div>
                 <div class="fw-semibold">{{ alarm.metric | upper }} - {{ alarm.message }}</div>
-                <small class="text-muted">{{ alarm.device_id }} | {{ alarm.floor_id }}</small>
+                <small class="text-muted">{{ alarm.device_id }} | {{ settings.floor_names.get(alarm.floor_id, alarm.floor_id) if settings.floor_names else alarm.floor_id }}</small>
               </div>
               <span class="badge" style="background: {{ (settings.severity_levels|selectattr('label','equalto',alarm.severity)|list|first).color if settings.severity_levels else '#dc3545' }}">
                 {{ alarm.severity }}
@@ -168,7 +168,7 @@
             <div class="d-flex justify-content-between align-items-start">
               <div>
                 <div class="fw-semibold">{{ alarm.metric | upper }} - {{ alarm.message }}</div>
-                <small class="text-muted">{{ alarm.device_id }} | {{ alarm.floor_id }}</small>
+                <small class="text-muted">{{ alarm.device_id }} | {{ settings.floor_names.get(alarm.floor_id, alarm.floor_id) if settings.floor_names else alarm.floor_id }}</small>
               </div>
               <div class="text-end">
                 <span class="badge" style="background: {{ (settings.severity_levels|selectattr('label','equalto',alarm.severity)|list|first).color if settings.severity_levels else '#dc3545' }}">
@@ -287,7 +287,7 @@
                 <td>{{ action.action_ts }}</td>
                 <td>{{ action.alarm_ts }}</td>
                 <td>{{ action.device_id }}</td>
-                <td>{{ action.floor_id }}</td>
+                <td>{{ settings.floor_names.get(action.floor_id, action.floor_id) if settings.floor_names else action.floor_id }}</td>
                 <td>{{ action.metric | upper }}</td>
                 <td>{{ action.severity }}</td>
                 <td>{{ action.action_owner or "Not provided" }}</td>

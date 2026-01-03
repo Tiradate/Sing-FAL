@@ -192,15 +192,19 @@
             {% if settings.floor_plans %}
             {% for floor_id, floor_path in settings.floor_plans.items() %}
             <div class="row g-2 align-items-end mb-2 floor-plan-row">
-              <div class="col-12 col-md-3">
+              <div class="col-12 col-md-2">
                 <label class="form-label">Floor ID</label>
                 <input class="form-control" type="text" name="floor_id" value="{{ floor_id }}" placeholder="Floor ID (e.g., F1)">
               </div>
-              <div class="col-12 col-md-4">
+              <div class="col-12 col-md-3">
+                <label class="form-label">Floor Name</label>
+                <input class="form-control" type="text" name="floor_name" value="{{ settings.floor_names.get(floor_id, '') if settings.floor_names else '' }}" placeholder="Floor name (e.g., Level 1)">
+              </div>
+              <div class="col-12 col-md-3">
                 <label class="form-label">Upload new file</label>
                 <input class="form-control" type="file" name="floor_plan">
               </div>
-              <div class="col-12 col-md-5">
+              <div class="col-12 col-md-4">
                 <label class="form-label">Use saved file</label>
                 <select class="form-select" name="floor_plan_existing">
                   <option value="">Select saved file</option>
@@ -213,15 +217,19 @@
             {% endfor %}
             {% else %}
             <div class="row g-2 align-items-end mb-2 floor-plan-row">
-              <div class="col-12 col-md-3">
+              <div class="col-12 col-md-2">
                 <label class="form-label">Floor ID</label>
                 <input class="form-control" type="text" name="floor_id" placeholder="Floor ID (e.g., F1)">
               </div>
-              <div class="col-12 col-md-4">
+              <div class="col-12 col-md-3">
+                <label class="form-label">Floor Name</label>
+                <input class="form-control" type="text" name="floor_name" placeholder="Floor name (e.g., Level 1)">
+              </div>
+              <div class="col-12 col-md-3">
                 <label class="form-label">Upload new file</label>
                 <input class="form-control" type="file" name="floor_plan">
               </div>
-              <div class="col-12 col-md-5">
+              <div class="col-12 col-md-4">
                 <label class="form-label">Use saved file</label>
                 <select class="form-select" name="floor_plan_existing">
                   <option value="">Select saved file</option>
@@ -266,7 +274,7 @@
         <label class="form-label mb-0">Floor</label>
         <select id="floorPlanEditorSelect" class="form-select form-select-sm w-auto">
           {% for floor in floors %}
-          <option value="{{ floor }}">{{ floor }}</option>
+          <option value="{{ floor }}">{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
           {% endfor %}
         </select>
         <button type="button" class="btn btn-sm btn-outline-primary" id="addSensorBtn">+ Add Sensor</button>
@@ -380,15 +388,19 @@
       .join('');
     row.className = 'row g-2 align-items-end mb-2 floor-plan-row';
     row.innerHTML = `
-      <div class="col-12 col-md-3">
+      <div class="col-12 col-md-2">
         <label class="form-label">Floor ID</label>
         <input class="form-control" type="text" name="floor_id" placeholder="Floor ID (e.g., F1)">
       </div>
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md-3">
+        <label class="form-label">Floor Name</label>
+        <input class="form-control" type="text" name="floor_name" placeholder="Floor name (e.g., Level 1)">
+      </div>
+      <div class="col-12 col-md-3">
         <label class="form-label">Upload new file</label>
         <input class="form-control" type="file" name="floor_plan">
       </div>
-      <div class="col-12 col-md-5">
+      <div class="col-12 col-md-4">
         <label class="form-label">Use saved file</label>
         <select class="form-select" name="floor_plan_existing">
           <option value="">Select saved file</option>
