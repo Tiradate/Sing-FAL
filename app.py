@@ -914,7 +914,10 @@ def create_floor_logo():
     floor_id = (payload.get("floor_id") or "").strip()
     if not floor_id:
         return jsonify({"error": "Missing floor_id"}), 400
+    logo_icon = (payload.get("logo_icon") or "").strip()
     settings = settings_service.load_settings()
+    if not logo_icon:
+        logo_icon = settings.get("floor_logo_icon", "")
     floor_logos = settings.get("floor_plan_logos", {})
     logo_id = uuid.uuid4().hex
     new_logo = {
@@ -923,6 +926,8 @@ def create_floor_logo():
         "location_x": 50,
         "location_y": 50,
     }
+    if logo_icon:
+        new_logo["logo_icon"] = logo_icon
     floor_logos.setdefault(floor_id, []).append(new_logo)
     settings["floor_plan_logos"] = floor_logos
     settings_service.save_settings(settings)

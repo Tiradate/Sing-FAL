@@ -420,7 +420,8 @@
     devices: {{ devices | default([]) | tojson }},
     sensorIcon: {{ settings.sensor_icon | tojson }},
     sensorIconSize: {{ settings.sensor_icon_size | tojson }},
-    logoIcon: {{ settings.floor_logo_icon | tojson }},
+    logoIconDefault: {{ settings.floor_logo_icon | tojson }},
+    logoIconSelected: {{ settings.floor_logo_icon | tojson }},
     logoIconSize: {{ settings.logo_icon_size | tojson }},
     createDeviceRoute: {{ url_for('create_device') | tojson }},
     updateDeviceRoute: {{ url_for('update_device_position', device_id='__device__') | tojson }},
@@ -487,7 +488,7 @@
     selects.forEach((select) => ensureUploadOption(select, data.path));
     fileInput.value = '';
     if (selects.includes(floorLogoSelect)) {
-      editorData.logoIcon = data.path;
+      editorData.logoIconSelected = data.path;
     }
   };
 
@@ -515,7 +516,10 @@
     }
     selects.forEach((select) => removeUploadOption(select, deletedPath));
     if (selects.includes(floorLogoSelect)) {
-      editorData.logoIcon = '';
+      if (editorData.logoIconDefault === deletedPath) {
+        editorData.logoIconDefault = '';
+      }
+      editorData.logoIconSelected = '';
     }
   };
 
@@ -545,7 +549,7 @@
 
   if (floorLogoSelect) {
     floorLogoSelect.addEventListener('change', (event) => {
-      editorData.logoIcon = event.target.value || '';
+      editorData.logoIconSelected = event.target.value || '';
     });
   }
 
@@ -643,7 +647,7 @@
     sensorCountLabel.textContent = `${count} sensor${count === 1 ? '' : 's'}`;
   };
 
-  const getLogoIconPath = () => editorData.logoIcon || '';
+  const getLogoIconPath = () => editorData.logoIconSelected || '';
 
   const renderEditor = (floorId) => {
     editorContainer.innerHTML = '';
@@ -662,19 +666,20 @@
       editorContainer.appendChild(placeholder);
     }
 
-    const logoIconPath = getLogoIconPath();
-    if (logoIconPath) {
-      (editorData.floorLogos[floorId] || []).forEach((logo) => {
-        const logoIcon = document.createElement('div');
-        logoIcon.className = 'logo-icon map-editor-icon map-editor-logo';
-        logoIcon.dataset.logo = logo.logo_id;
-        logoIcon.style.left = `${logo.location_x}%`;
-        logoIcon.style.top = `${logo.location_y}%`;
-        logoIcon.title = 'Logo';
-        logoIcon.innerHTML = `<img src="/${logoIconPath}" alt="logo" style="width: ${editorData.logoIconSize}px; height: ${editorData.logoIconSize}px;">`;
-        editorContainer.appendChild(logoIcon);
-      });
-    }
+    (editorData.floorLogos[floorId] || []).forEach((logo) => {
+      const logoIconPath = logo.logo_icon || editorData.logoIconDefault;
+      if (!logoIconPath) {
+        return;
+      }
+      const logoIcon = document.createElement('div');
+      logoIcon.className = 'logo-icon map-editor-icon map-editor-logo';
+      logoIcon.dataset.logo = logo.logo_id;
+      logoIcon.style.left = `${logo.location_x}%`;
+      logoIcon.style.top = `${logo.location_y}%`;
+      logoIcon.title = 'Logo';
+      logoIcon.innerHTML = `<img src="/${logoIconPath}" alt="logo" style="width: ${editorData.logoIconSize}px; height: ${editorData.logoIconSize}px;">`;
+      editorContainer.appendChild(logoIcon);
+    });
 
     editorData.devices
       .filter((device) => device.floor_id === floorId)
@@ -896,7 +901,7 @@
       const response = await fetch(editorData.createLogoRoute, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ floor_id: floorId }),
+        body: JSON.stringify({ floor_id: floorId, logo_icon: logoIconPath }),
       });
       if (!response.ok) {
         return;
