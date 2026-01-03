@@ -239,11 +239,16 @@
   if (sensorDetailsPanel && sensorDetailsContent) {
     const sensors = document.querySelectorAll('.sensor-icon');
     const updatePanel = (sensor) => {
+      const tooltipTemplate = sensor.querySelector('template.sensor-tooltip-template');
       const tooltip = sensor.querySelector('.sensor-tooltip');
-      if (!tooltip) {
+      if (!tooltipTemplate && !tooltip) {
         return;
       }
-      sensorDetailsContent.innerHTML = tooltip.outerHTML;
+      if (tooltipTemplate) {
+        sensorDetailsContent.innerHTML = tooltipTemplate.innerHTML.trim();
+      } else if (tooltip) {
+        sensorDetailsContent.innerHTML = tooltip.outerHTML;
+      }
       sensorDetailsContent.hidden = false;
       if (sensorDetailsPlaceholder) {
         sensorDetailsPlaceholder.hidden = true;

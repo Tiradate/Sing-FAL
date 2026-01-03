@@ -106,12 +106,15 @@
                 </div>
               </div>
               <ul class="list-unstyled mb-0 mt-2">
+                {% set critical = namespace(found=false) %}
                 {% for metric in metric_options %}
                 {% set reading = device_readings.get(metric.key) %}
                 {% set reading_severity = device_metric_severity.get(device.device_id, {}).get(metric.key) %}
+                {% if reading_severity and reading_severity.label in settings.critical_levels %}
+                {% set critical.found = true %}
                 <li class="d-flex justify-content-between gap-3">
                   <span class="text-muted">{{ metric.label }}</span>
-                  <span class="fw-semibold"{% if reading_severity and reading_severity.label in settings.critical_levels %} style="color: {{ reading_severity.color }}"{% endif %}>
+                  <span class="fw-semibold" style="color: {{ reading_severity.color }}">
                     {% if reading %}
                       {% if metric.key == 'motion' %}
                         {{ 'Occupied' if reading.value else 'Vacant' }}
@@ -123,9 +126,49 @@
                     {% endif %}
                   </span>
                 </li>
+                {% endif %}
                 {% endfor %}
+                {% if not critical.found %}
+                <li class="text-muted small">No critical readings.</li>
+                {% endif %}
               </ul>
             </div>
+            <template class="sensor-tooltip-template">
+              <div class="sensor-tooltip">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="sensor-tooltip-icon">
+                    <img src="/{{ settings.sensor_icon }}" alt="sensor">
+                    {% if severity %}
+                    <span class="sensor-tooltip-badge" style="background: {{ severity_color }}"></span>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <div class="fw-semibold">{{ device.device_id }}</div>
+                    <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ settings.floor_names.get(device.floor_id, device.floor_id) if settings.floor_names else device.floor_id }}</div>
+                  </div>
+                </div>
+                <ul class="list-unstyled mb-0 mt-2">
+                  {% for metric in metric_options %}
+                  {% set reading = device_readings.get(metric.key) %}
+                  {% set reading_severity = device_metric_severity.get(device.device_id, {}).get(metric.key) %}
+                  <li class="d-flex justify-content-between gap-3">
+                    <span class="text-muted">{{ metric.label }}</span>
+                    <span class="fw-semibold"{% if reading_severity and reading_severity.label in settings.critical_levels %} style="color: {{ reading_severity.color }}"{% endif %}>
+                      {% if reading %}
+                        {% if metric.key == 'motion' %}
+                          {{ 'Occupied' if reading.value else 'Vacant' }}
+                        {% else %}
+                          {{ '%.1f'|format(reading.value or 0) }} {{ reading.unit or metric.unit }}
+                        {% endif %}
+                      {% else %}
+                        --
+                      {% endif %}
+                    </span>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </template>
           </div>
           {% endif %}
           {% endfor %}
