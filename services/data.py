@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import re
 import sqlite3
 
+from services import settings as settings_service
 from services.db import connect, SENSOR_DB, CALENDAR_DB
 
 
@@ -119,6 +120,23 @@ def _normalize_metric_key(metric):
     return MILESIGHT_METRIC_ALIASES.get(key)
 
 
+def _format_metric_value(value, unit):
+    if value is None:
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    return f"{value}{unit}"
+
+
+def _build_alarm_message(metric, value, threshold, unit):
+    metric_label = get_metric_label(metric)
+    value_label = _format_metric_value(value, unit)
+    threshold_label = _format_metric_value(threshold, unit) if threshold is not None else ""
+    if threshold_label:
+        return f"{metric_label} {value_label} exceeds {threshold_label}"
+    return f"{metric_label} {value_label} is above the limit"
+
+
 def _normalize_timestamp(value):
     if not value:
         return datetime.now(timezone.utc).isoformat()
@@ -157,6 +175,10 @@ def ingest_milesight_payload(payload, *, conn=None):
         return {"error": "Payload must include a list of readings"}
 
     owns_conn = conn is None
+    settings = settings_service.load_settings()
+    critical_levels = {
+        str(level) for level in settings.get("critical_levels", []) if level
+    }
     if owns_conn:
         conn = connect(SENSOR_DB)
 
@@ -227,6 +249,8 @@ def ingest_milesight_payload(payload, *, conn=None):
                         value = float(raw_value)
                     except (TypeError, ValueError):
                         continue
+                    severity = get_metric_severity(settings, normalized_metric, value)
+                    severity_label = severity["label"] if severity else None
                     insert_rows.append(
                         (
                             ts,
@@ -238,6 +262,65 @@ def ingest_milesight_payload(payload, *, conn=None):
                             topic,
                         )
                     )
+                    if severity_label and severity_label in critical_levels:
+                        threshold = severity.get("thresholds", {}).get(normalized_metric)
+                        unit = SUPPORTED_METRICS.get(normalized_metric, "")
+                        message = _build_alarm_message(
+                            normalized_metric, round(value, 2), threshold, unit
+                        )
+                        existing_alarm = conn.execute(
+                            """
+                            SELECT id
+                            FROM alarm_events
+                            WHERE device_id = ? AND metric = ? AND active = 1
+                            ORDER BY ts DESC
+                            LIMIT 1
+                            """,
+                            (device_id, normalized_metric),
+                        ).fetchone()
+                        if existing_alarm:
+                            conn.execute(
+                                """
+                                UPDATE alarm_events
+                                SET ts = ?, floor_id = ?, value = ?, severity = ?, message = ?
+                                WHERE id = ?
+                                """,
+                                (
+                                    ts,
+                                    floor_id,
+                                    round(value, 2),
+                                    severity_label,
+                                    message,
+                                    existing_alarm["id"],
+                                ),
+                            )
+                        else:
+                            conn.execute(
+                                """
+                                INSERT INTO alarm_events (
+                                    ts, device_id, floor_id, metric, value, severity, message, active
+                                )
+                                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                                """,
+                                (
+                                    ts,
+                                    device_id,
+                                    floor_id,
+                                    normalized_metric,
+                                    round(value, 2),
+                                    severity_label,
+                                    message,
+                                ),
+                            )
+                    else:
+                        conn.execute(
+                            """
+                            UPDATE alarm_events
+                            SET active = 0
+                            WHERE device_id = ? AND metric = ? AND active = 1
+                            """,
+                            (device_id, normalized_metric),
+                        )
             if insert_rows:
                 conn.executemany(
                     """
