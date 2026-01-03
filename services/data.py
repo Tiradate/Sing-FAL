@@ -1,6 +1,5 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
-import re
 
 from services.db import connect, SENSOR_DB, CALENDAR_DB
 
@@ -75,31 +74,6 @@ def update_device_position(device_id, location_x, location_y):
         )
 
 
-def _format_floor_reference(floor_id):
-    normalized = floor_id.strip().upper()
-    if normalized.startswith("FL"):
-        return normalized
-    if normalized.startswith("F") and normalized[1:].isdigit():
-        return f"FL{normalized[1:]}"
-    if normalized.isdigit():
-        return f"FL{normalized}"
-    return normalized
-
-
-def _next_device_id(conn, floor_id, model_prefix="AM30X"):
-    floor_ref = _format_floor_reference(floor_id)
-    prefix = f"{model_prefix}-{floor_ref}-"
-    rows = conn.execute(
-        "SELECT device_id FROM devices WHERE device_id LIKE ?", (f"{prefix}%",)
-    ).fetchall()
-    max_value = 0
-    for row in rows:
-        match = re.search(r"(\d+)$", row["device_id"])
-        if match:
-            max_value = max(max_value, int(match.group(1)))
-    return f"{prefix}{max_value + 1:03d}"
-
-
 def _normalize_metric_key(metric):
     if not metric:
         return None
@@ -160,9 +134,6 @@ def ingest_milesight_payload(payload, *, conn=None):
             if not device_id:
                 device_id = reading.get("device_eui") or reading.get("dev_eui") or ""
                 device_id = str(device_id).strip()
-            if not device_id and floor_id:
-                device_id = _next_device_id(conn, floor_id)
-                created += 1
             if not device_id or not floor_id:
                 continue
 
