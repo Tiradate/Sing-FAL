@@ -47,6 +47,80 @@
             <label class="form-check-label">Show severity lines on daily/weekly graphs</label>
           </div>
         </div>
+        <div class="col-12">
+          <label class="form-label">Main Page Colors</label>
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label mb-1">Card Header</label>
+              <div class="d-flex align-items-center gap-2">
+                <input
+                  class="form-control form-control-color"
+                  type="color"
+                  id="cardHeaderColor"
+                  name="card_header_color"
+                  value="{{ settings.card_header_color if settings.card_header_color != 'transparent' else '#ffffff' }}"
+                  {% if settings.card_header_color == 'transparent' %}disabled{% endif %}
+                >
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="cardHeaderTransparent"
+                    name="card_header_transparent"
+                    {% if settings.card_header_color == 'transparent' %}checked{% endif %}
+                  >
+                  <label class="form-check-label" for="cardHeaderTransparent">Transparent</label>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label mb-1">Card Body</label>
+              <div class="d-flex align-items-center gap-2">
+                <input
+                  class="form-control form-control-color"
+                  type="color"
+                  id="cardBodyColor"
+                  name="card_body_color"
+                  value="{{ settings.card_body_color if settings.card_body_color != 'transparent' else '#ffffff' }}"
+                  {% if settings.card_body_color == 'transparent' %}disabled{% endif %}
+                >
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="cardBodyTransparent"
+                    name="card_body_transparent"
+                    {% if settings.card_body_color == 'transparent' %}checked{% endif %}
+                  >
+                  <label class="form-check-label" for="cardBodyTransparent">Transparent</label>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label mb-1">Page Background</label>
+              <div class="d-flex align-items-center gap-2">
+                <input
+                  class="form-control form-control-color"
+                  type="color"
+                  id="pageBackgroundColor"
+                  name="page_background_color"
+                  value="{{ settings.page_background_color if settings.page_background_color != 'transparent' else '#f8f9fa' }}"
+                  {% if settings.page_background_color == 'transparent' %}disabled{% endif %}
+                >
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="pageBackgroundTransparent"
+                    name="page_background_transparent"
+                    {% if settings.page_background_color == 'transparent' %}checked{% endif %}
+                  >
+                  <label class="form-check-label" for="pageBackgroundTransparent">Transparent</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <hr class="my-4">
@@ -223,6 +297,23 @@
 
 {% block scripts %}
 <script>
+  const bindColorToggle = (checkboxId, inputId) => {
+    const checkbox = document.getElementById(checkboxId);
+    const input = document.getElementById(inputId);
+    if (!checkbox || !input) {
+      return;
+    }
+    const toggle = () => {
+      input.disabled = checkbox.checked;
+    };
+    checkbox.addEventListener('change', toggle);
+    toggle();
+  };
+
+  bindColorToggle('cardHeaderTransparent', 'cardHeaderColor');
+  bindColorToggle('cardBodyTransparent', 'cardBodyColor');
+  bindColorToggle('pageBackgroundTransparent', 'pageBackgroundColor');
+
   document.getElementById('addSeverity').addEventListener('click', () => {
     const container = document.getElementById('severityRows');
     const row = document.createElement('div');

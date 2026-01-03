@@ -64,6 +64,9 @@ DEFAULT_SETTINGS = {
     "sensor_icon": "static/uploads/sensor_icon.svg",
     "sensor_icon_size": 28,
     "project_logo": "",
+    "card_header_color": "#ffffff",
+    "card_body_color": "#ffffff",
+    "page_background_color": "#f8f9fa",
     "admin_username": "admin",
     "admin_password": "admin123",
 }

@@ -480,6 +480,22 @@ def settings():
             "settings": True,
         }
         settings["show_severity_lines"] = bool(request.form.get("show_severity_lines"))
+        card_header_color = request.form.get("card_header_color", settings["card_header_color"])
+        card_body_color = request.form.get("card_body_color", settings["card_body_color"])
+        page_background_color = request.form.get(
+            "page_background_color", settings["page_background_color"]
+        )
+        settings["card_header_color"] = (
+            "transparent" if request.form.get("card_header_transparent") else card_header_color
+        )
+        settings["card_body_color"] = (
+            "transparent" if request.form.get("card_body_transparent") else card_body_color
+        )
+        settings["page_background_color"] = (
+            "transparent"
+            if request.form.get("page_background_transparent")
+            else page_background_color
+        )
 
         severity_labels = request.form.getlist("severity_label")
         severity_colors = request.form.getlist("severity_color")
