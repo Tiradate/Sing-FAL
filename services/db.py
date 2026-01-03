@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DATA_DIR = BASE_DIR
@@ -148,7 +148,7 @@ def init_all():
 
 def seed_demo_data():
     with connect(CALENDAR_DB) as conn:
-        today = datetime.utcnow().date().isoformat()
+        today = datetime.now(timezone.utc).date().isoformat()
         existing = conn.execute(
             "SELECT date FROM daily_alarm_summary WHERE date = ?", (today,)
         ).fetchone()

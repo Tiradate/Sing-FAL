@@ -554,7 +554,7 @@ def alarms():
     else:
         active_alarms = data_service.get_active_alarms()
     history = data_service.get_alarm_history()
-    today = datetime.utcnow().date().isoformat()
+    today = datetime.now(timezone.utc).date().isoformat()
     action_start = request.args.get("action_start") or today
     action_end = request.args.get("action_end") or today
     return render_template(
@@ -585,7 +585,7 @@ def save_alarm_response():
 
 @app.route("/alarms/actions.csv")
 def export_action_history():
-    today = datetime.utcnow().date().isoformat()
+    today = datetime.now(timezone.utc).date().isoformat()
     action_start = request.args.get("action_start") or today
     action_end = request.args.get("action_end") or today
     rows = data_service.get_action_history(action_start, action_end)
