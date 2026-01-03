@@ -386,11 +386,13 @@ def seed_test_data():
 
     start_date = request.form.get("start_date")
     end_date = request.form.get("end_date")
+    device_scope = request.form.get("device_scope", "selected")
+    device = request.form.get("device")
     if not start_date or not end_date:
         return redirect(
             url_for(
                 "view_data",
-                device=request.form.get("device"),
+                device=device,
                 start=request.form.get("start"),
                 end=request.form.get("end"),
                 interval=request.form.get("interval", type=int) or 10,
@@ -398,17 +400,22 @@ def seed_test_data():
         )
 
     script_path = os.path.join(BASE_DIR, "scripts", "seed_date_range.py")
+    command = [
+        sys.executable,
+        script_path,
+        "--start",
+        start_date,
+        "--end",
+        end_date,
+        "--topic",
+        "Test",
+    ]
+    if device_scope == "all":
+        command.append("--all-devices")
+    elif device:
+        command.extend(["--device", device])
     subprocess.run(
-        [
-            sys.executable,
-            script_path,
-            "--start",
-            start_date,
-            "--end",
-            end_date,
-            "--topic",
-            "Test",
-        ],
+        command,
         check=True,
     )
     return redirect(

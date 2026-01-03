@@ -71,6 +71,75 @@ def generate_devices(count, rng):
     return devices
 
 
+def build_device_record(
+    device_id,
+    rng,
+    model=None,
+    floor_id=None,
+    zone=None,
+    location_x=None,
+    location_y=None,
+    last_seen=None,
+    signal_quality=None,
+):
+    resolved_model = model or "Milesight AM30x"
+    resolved_floor = floor_id or rng.choice(FLOORS)
+    resolved_zone = zone or rng.choice(ZONES)
+    resolved_location_x = location_x if location_x is not None else rng.uniform(5, 95)
+    resolved_location_y = location_y if location_y is not None else rng.uniform(5, 95)
+    resolved_last_seen = last_seen or datetime.now(timezone.utc).isoformat()
+    resolved_signal_quality = signal_quality if signal_quality is not None else rng.randint(60, 99)
+    return (
+        device_id,
+        resolved_model,
+        resolved_floor,
+        resolved_zone,
+        resolved_location_x,
+        resolved_location_y,
+        resolved_last_seen,
+        resolved_signal_quality,
+    )
+
+
+def load_devices_from_db(conn, rng, device_ids=None):
+    if device_ids:
+        placeholders = ", ".join(["?"] * len(device_ids))
+        rows = conn.execute(
+            f"""
+            SELECT device_id, model, floor_id, zone, location_x, location_y, last_seen, signal_quality
+            FROM devices
+            WHERE device_id IN ({placeholders})
+            """,
+            device_ids,
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """
+            SELECT device_id, model, floor_id, zone, location_x, location_y, last_seen, signal_quality
+            FROM devices
+            """
+        ).fetchall()
+    devices = []
+    existing_ids = set()
+    for row in rows:
+        device_id = row["device_id"]
+        existing_ids.add(device_id)
+        devices.append(
+            build_device_record(
+                device_id=device_id,
+                rng=rng,
+                model=row["model"],
+                floor_id=row["floor_id"],
+                zone=row["zone"],
+                location_x=row["location_x"],
+                location_y=row["location_y"],
+                last_seen=row["last_seen"],
+                signal_quality=row["signal_quality"],
+            )
+        )
+    return devices, existing_ids
+
+
 def iter_hourly_timestamps(start_date, end_date):
     current = datetime.combine(start_date, time.min)
     end_ts = datetime.combine(end_date, time.max)
@@ -100,9 +169,8 @@ def seed_calendar_summary(start_date, end_date, rng, overwrite):
         )
 
 
-def seed_sensors(start_date, end_date, sensor_count, overwrite, simulate_ingest, topic):
+def seed_sensors(start_date, end_date, devices, overwrite, simulate_ingest, topic):
     rng = random.Random(42)
-    devices = generate_devices(sensor_count, rng)
     if simulate_ingest:
         with connect(SENSOR_DB) as conn:
             if overwrite:
@@ -187,6 +255,23 @@ def seed_sensors(start_date, end_date, sensor_count, overwrite, simulate_ingest,
     seed_calendar_summary(start_date, end_date, rng, overwrite)
 
 
+def resolve_devices(args, rng):
+    if args.all_devices:
+        with connect(SENSOR_DB) as conn:
+            devices, _ = load_devices_from_db(conn, rng=rng)
+        if not devices:
+            return generate_devices(args.sensors, rng)
+        return devices
+    if args.device:
+        with connect(SENSOR_DB) as conn:
+            devices, existing_ids = load_devices_from_db(conn, rng=rng, device_ids=args.device)
+        missing_ids = [device_id for device_id in args.device if device_id not in existing_ids]
+        for device_id in missing_ids:
+            devices.append(build_device_record(device_id=device_id, rng=rng))
+        return devices
+    return generate_devices(args.sensors, rng)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Seed sensor data for a specific date range with optional overwrite."
@@ -198,6 +283,17 @@ def main():
         type=int,
         default=60,
         help="Number of sensors to create (default: 60)",
+    )
+    scope_group = parser.add_mutually_exclusive_group()
+    scope_group.add_argument(
+        "--device",
+        action="append",
+        help="Seed test data for a specific device (can be passed multiple times)",
+    )
+    scope_group.add_argument(
+        "--all-devices",
+        action="store_true",
+        help="Seed test data for all existing devices",
     )
     parser.add_argument(
         "--overwrite",
@@ -220,7 +316,9 @@ def main():
         parser.error("--end must be on or after --start")
 
     init_all()
-    seed_sensors(args.start, args.end, args.sensors, args.overwrite, args.simulate_ingest, args.topic)
+    rng = random.Random(42)
+    devices = resolve_devices(args, rng)
+    seed_sensors(args.start, args.end, devices, args.overwrite, args.simulate_ingest, args.topic)
 
 
 if __name__ == "__main__":

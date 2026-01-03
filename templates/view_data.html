@@ -64,11 +64,12 @@
       <div class="col-12 col-lg-6">
         <div class="border rounded p-3 h-100">
           <div class="fw-semibold mb-2">Test data controls</div>
-          <form class="row g-2 align-items-end" method="post" action="{{ url_for('seed_test_data') }}">
+          <form class="row g-2 align-items-end" method="post" action="{{ url_for('seed_test_data') }}" id="seedTestDataForm">
             <input type="hidden" name="device" value="{{ active_device }}">
             <input type="hidden" name="start" value="{{ start_datetime }}">
             <input type="hidden" name="end" value="{{ end_datetime }}">
             <input type="hidden" name="interval" value="{{ interval_minutes }}">
+            <input type="hidden" name="device_scope" value="selected" id="seedDeviceScope">
             <div class="col-12 col-md-5">
               <label class="form-label mb-0">Start date</label>
               <input class="form-control" type="date" name="start_date" value="{{ start_date }}" required>
@@ -78,9 +79,37 @@
               <input class="form-control" type="date" name="end_date" value="{{ end_date }}" required>
             </div>
             <div class="col-12 col-md-2 d-grid">
-              <button class="btn btn-outline-primary" type="submit">Test</button>
+              <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#seedScopeModal">Test</button>
             </div>
           </form>
+          <div class="modal fade" id="seedScopeModal" tabindex="-1" aria-labelledby="seedScopeModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="seedScopeModalLabel">Seed test data for</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="seedDeviceOption" id="seedDeviceSelected" value="selected" checked>
+                    <label class="form-check-label" for="seedDeviceSelected">
+                      Selected device ({{ active_device }})
+                    </label>
+                  </div>
+                  <div class="form-check mt-2">
+                    <input class="form-check-input" type="radio" name="seedDeviceOption" id="seedDeviceAll" value="all">
+                    <label class="form-check-label" for="seedDeviceAll">
+                      All devices
+                    </label>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="button" class="btn btn-primary" id="seedTestSubmit">Seed Test Data</button>
+                </div>
+              </div>
+            </div>
+          </div>
           <form class="row g-2 align-items-end mt-2" method="post" action="{{ url_for('delete_test_data') }}" onsubmit="return confirm('Delete test data?');">
             <input type="hidden" name="device" value="{{ active_device }}">
             <input type="hidden" name="start" value="{{ start_datetime }}">
@@ -169,6 +198,21 @@
     });
     rows.forEach((row) => tbody.appendChild(row));
     table.setAttribute('data-sort-direction', direction);
+  }
+
+  const seedSubmitButton = document.getElementById('seedTestSubmit');
+  if (seedSubmitButton) {
+    seedSubmitButton.addEventListener('click', () => {
+      const scopeInput = document.getElementById('seedDeviceScope');
+      const selectedOption = document.querySelector('input[name="seedDeviceOption"]:checked');
+      if (scopeInput && selectedOption) {
+        scopeInput.value = selectedOption.value;
+      }
+      const form = document.getElementById('seedTestDataForm');
+      if (form) {
+        form.submit();
+      }
+    });
   }
 </script>
 {% endblock %}
