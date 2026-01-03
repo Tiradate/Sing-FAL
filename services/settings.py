@@ -57,10 +57,7 @@ DEFAULT_SETTINGS = {
         },
     ],
     "critical_levels": ["Unhealthy"],
-    "floor_plans": {
-        "F1": "static/uploads/floor_f1.svg",
-        "F2": "static/uploads/floor_f2.svg",
-    },
+    "floor_plans": {},
     "sensor_icon": "static/uploads/sensor_icon.svg",
     "sensor_icon_size": 28,
     "floor_logo_icon": "static/uploads/logo_icon.svg",
