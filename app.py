@@ -236,11 +236,24 @@ def export_settings_csv():
         return redirect(url_for("login"))
 
     settings = settings_service.load_settings()
+    devices = data_service.get_devices()
+    floor_plan_sensors = {}
+    for device in devices:
+        floor_id = device["floor_id"] or ""
+        floor_plan_sensors.setdefault(floor_id, []).append(
+            {
+                "device_id": device["device_id"],
+                "location_x": device["location_x"],
+                "location_y": device["location_y"],
+            }
+        )
+    export_settings = dict(settings)
+    export_settings["floor_plan_sensors"] = floor_plan_sensors
     csv_path = os.path.join(BASE_DIR, "settings_export.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(["key", "value"])
-        for key, value in settings.items():
+        for key, value in export_settings.items():
             writer.writerow([key, json.dumps(value)])
     return send_file(csv_path, as_attachment=True, download_name="settings.csv")
 
@@ -473,6 +486,32 @@ def import_settings_csv():
         key = (row.get("key") or "").strip()
         value = row.get("value")
         if not key:
+            continue
+        if key == "floor_plan_sensors":
+            try:
+                layout_payload = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(layout_payload, dict):
+                for floor_id, sensors in layout_payload.items():
+                    if not isinstance(sensors, list):
+                        continue
+                    for sensor in sensors:
+                        if not isinstance(sensor, dict):
+                            continue
+                        device_id = (sensor.get("device_id") or "").strip()
+                        if not device_id:
+                            continue
+                        try:
+                            location_x = float(sensor.get("location_x"))
+                            location_y = float(sensor.get("location_y"))
+                        except (TypeError, ValueError):
+                            continue
+                        location_x = max(0, min(100, location_x))
+                        location_y = max(0, min(100, location_y))
+                        data_service.update_device_layout(
+                            device_id, floor_id, location_x, location_y
+                        )
             continue
         try:
             settings[key] = json.loads(value)

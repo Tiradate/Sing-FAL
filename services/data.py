@@ -74,6 +74,14 @@ def update_device_position(device_id, location_x, location_y):
         )
 
 
+def update_device_layout(device_id, floor_id, location_x, location_y):
+    with connect(SENSOR_DB) as conn:
+        conn.execute(
+            "UPDATE devices SET floor_id = ?, location_x = ?, location_y = ? WHERE device_id = ?",
+            (floor_id, location_x, location_y, device_id),
+        )
+
+
 def _normalize_metric_key(metric):
     if not metric:
         return None
