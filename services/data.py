@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
+import re
 
 from services.db import connect, SENSOR_DB, CALENDAR_DB
 
@@ -80,6 +81,34 @@ def update_device_layout(device_id, floor_id, location_x, location_y):
             "UPDATE devices SET floor_id = ?, location_x = ?, location_y = ? WHERE device_id = ?",
             (floor_id, location_x, location_y, device_id),
         )
+
+
+def _slugify_identifier(value, default="device"):
+    cleaned = re.sub(r"\s+", "-", str(value or "").strip())
+    cleaned = re.sub(r"[^A-Za-z0-9_-]", "", cleaned)
+    return cleaned or default
+
+
+def _next_device_id(conn, floor_id):
+    base = _slugify_identifier(floor_id)
+    rows = conn.execute(
+        "SELECT device_id FROM devices WHERE device_id LIKE ?",
+        (f"{base}-%",),
+    ).fetchall()
+    max_suffix = 0
+    for row in rows:
+        device_id = row["device_id"]
+        suffix = device_id[len(base) + 1 :]
+        if suffix.isdigit():
+            max_suffix = max(max_suffix, int(suffix))
+    candidate = f"{base}-{max_suffix + 1}"
+    while conn.execute(
+        "SELECT 1 FROM devices WHERE device_id = ?",
+        (candidate,),
+    ).fetchone():
+        max_suffix += 1
+        candidate = f"{base}-{max_suffix + 1}"
+    return candidate
 
 
 def _normalize_metric_key(metric):
