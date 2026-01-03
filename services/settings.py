@@ -86,7 +86,7 @@ def load_settings():
         if key not in settings:
             settings[key] = value
             updated = True
-        elif isinstance(value, dict):
+        elif isinstance(value, dict) and key != "floor_plans":
             for subkey, subvalue in value.items():
                 if subkey not in settings[key]:
                     settings[key][subkey] = subvalue

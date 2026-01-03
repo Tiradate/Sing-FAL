@@ -208,7 +208,7 @@
                 <label class="form-label">Upload new file</label>
                 <input class="form-control" type="file" name="floor_plan">
               </div>
-              <div class="col-12 col-md-4">
+              <div class="col-12 col-md-3">
                 <label class="form-label">Use saved file</label>
                 <select class="form-select" name="floor_plan_existing">
                   <option value="">Select saved file</option>
@@ -216,6 +216,10 @@
                   <option value="{{ upload }}" {% if upload == floor_path %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
                   {% endfor %}
                 </select>
+              </div>
+              <div class="col-12 col-md-1">
+                <label class="form-label d-none d-md-block">&nbsp;</label>
+                <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-floor-plan" aria-label="Remove floor plan">-</button>
               </div>
             </div>
             {% endfor %}
@@ -233,7 +237,7 @@
                 <label class="form-label">Upload new file</label>
                 <input class="form-control" type="file" name="floor_plan">
               </div>
-              <div class="col-12 col-md-4">
+              <div class="col-12 col-md-3">
                 <label class="form-label">Use saved file</label>
                 <select class="form-select" name="floor_plan_existing">
                   <option value="">Select saved file</option>
@@ -241,6 +245,10 @@
                   <option value="{{ upload }}">{{ upload.split('/')[-1] }}</option>
                   {% endfor %}
                 </select>
+              </div>
+              <div class="col-12 col-md-1">
+                <label class="form-label d-none d-md-block">&nbsp;</label>
+                <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-floor-plan" aria-label="Remove floor plan">-</button>
               </div>
             </div>
             {% endif %}
@@ -419,15 +427,65 @@
         <label class="form-label">Upload new file</label>
         <input class="form-control" type="file" name="floor_plan">
       </div>
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md-3">
         <label class="form-label">Use saved file</label>
         <select class="form-select" name="floor_plan_existing">
           <option value="">Select saved file</option>
           ${options}
         </select>
       </div>
+      <div class="col-12 col-md-1">
+        <label class="form-label d-none d-md-block">&nbsp;</label>
+        <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-floor-plan" aria-label="Remove floor plan">-</button>
+      </div>
     `;
     floorPlanContainer.appendChild(row);
+  });
+
+  const removeFloorFromEditor = (floorId) => {
+    if (!floorId || !editorSelect) {
+      return;
+    }
+    const hasDevices = editorData.devices.some((device) => device.floor_id === floorId);
+    if (hasDevices || editorData.floorPlans[floorId]) {
+      return;
+    }
+    const options = Array.from(editorSelect.options);
+    const match = options.find((option) => option.value === floorId);
+    if (match) {
+      match.remove();
+    }
+    if (editorSelect.value === floorId) {
+      const nextOption = editorSelect.querySelector('option');
+      editorSelect.value = nextOption ? nextOption.value : '';
+      renderEditor(editorSelect.value);
+    }
+  };
+
+  floorPlanContainer.addEventListener('click', async (event) => {
+    const removeButton = event.target.closest('.remove-floor-plan');
+    if (!removeButton) {
+      return;
+    }
+    const row = removeButton.closest('.floor-plan-row');
+    if (!row) {
+      return;
+    }
+    const floorInput = row.querySelector('input[name="floor_id"]');
+    const floorId = floorInput ? floorInput.value.trim() : '';
+    if (floorId && editorData.floorPlans[floorId]) {
+      const response = await fetch(
+        editorData.clearFloorPlanRoute.replace('__floor__', floorId),
+        { method: 'DELETE' }
+      );
+      if (!response.ok) {
+        return;
+      }
+      delete editorData.floorPlans[floorId];
+      delete editorData.floorLogos[floorId];
+      removeFloorFromEditor(floorId);
+    }
+    row.remove();
   });
 
   const editorSelect = document.getElementById('floorPlanEditorSelect');
