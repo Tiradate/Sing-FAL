@@ -399,9 +399,21 @@ def seed_test_data():
 
     start_date = request.form.get("start_date")
     end_date = request.form.get("end_date")
-    device_scope = request.form.get("device_scope", "selected")
     device = request.form.get("device")
     if not start_date or not end_date:
+        return redirect(
+            url_for(
+                "view_data",
+                device=device,
+                start=request.form.get("start"),
+                end=request.form.get("end"),
+                interval=request.form.get("interval", type=int) or 10,
+            )
+        )
+
+    devices = data_service.get_devices()
+    device_ids = [row["device_id"] for row in devices]
+    if not device_ids:
         return redirect(
             url_for(
                 "view_data",
@@ -423,10 +435,8 @@ def seed_test_data():
         "--topic",
         "Test",
     ]
-    if device_scope == "all":
-        command.append("--all-devices")
-    elif device:
-        command.extend(["--device", device])
+    for device_id in device_ids:
+        command.extend(["--device", device_id])
     subprocess.run(
         command,
         check=True,
