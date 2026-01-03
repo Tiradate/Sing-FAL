@@ -176,6 +176,30 @@ body.dashboard-bg {
   opacity: 1;
 }
 
+.sensor-details-panel {
+  border-radius: 10px;
+  border: 1px solid #dee2e6;
+  background: #ffffff;
+  padding: 12px 14px;
+  min-height: 140px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.sensor-details-content .sensor-tooltip {
+  position: static;
+  opacity: 1;
+  transform: none;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  pointer-events: auto;
+}
+
+.sensor-details-content .sensor-tooltip-icon {
+  width: 28px;
+  height: 28px;
+}
+
 .sensor-badge {
   position: absolute;
   bottom: -4px;

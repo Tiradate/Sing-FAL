@@ -232,4 +232,28 @@
       }
     });
   }
+
+  const sensorDetailsPanel = document.getElementById('sensorDetailsPanel');
+  const sensorDetailsContent = sensorDetailsPanel?.querySelector('.sensor-details-content');
+  const sensorDetailsPlaceholder = sensorDetailsPanel?.querySelector('.sensor-details-placeholder');
+  if (sensorDetailsPanel && sensorDetailsContent) {
+    const sensors = document.querySelectorAll('.sensor-icon');
+    const updatePanel = (sensor) => {
+      const tooltip = sensor.querySelector('.sensor-tooltip');
+      if (!tooltip) {
+        return;
+      }
+      sensorDetailsContent.innerHTML = tooltip.outerHTML;
+      sensorDetailsContent.hidden = false;
+      if (sensorDetailsPlaceholder) {
+        sensorDetailsPlaceholder.hidden = true;
+      }
+    };
+
+    sensors.forEach((sensor) => {
+      sensor.addEventListener('mouseenter', () => updatePanel(sensor));
+      sensor.addEventListener('focus', () => updatePanel(sensor));
+      sensor.addEventListener('click', () => updatePanel(sensor));
+    });
+  }
 })();
