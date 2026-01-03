@@ -44,6 +44,68 @@
   </div>
 </div>
 
+{% if is_admin %}
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h6 class="fw-bold">Admin Data Tools</h6>
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="border rounded p-3 h-100">
+          <div class="fw-semibold mb-2">Delete current data range</div>
+          <form method="post" action="{{ url_for('delete_view_data') }}" onsubmit="return confirm('Delete data for the selected device and range?');">
+            <input type="hidden" name="device" value="{{ active_device }}">
+            <input type="hidden" name="start" value="{{ start_datetime }}">
+            <input type="hidden" name="end" value="{{ end_datetime }}">
+            <input type="hidden" name="interval" value="{{ interval_minutes }}">
+            <button class="btn btn-outline-danger" type="submit">Delete Data</button>
+          </form>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="border rounded p-3 h-100">
+          <div class="fw-semibold mb-2">Test data controls</div>
+          <form class="row g-2 align-items-end" method="post" action="{{ url_for('seed_test_data') }}">
+            <input type="hidden" name="device" value="{{ active_device }}">
+            <input type="hidden" name="start" value="{{ start_datetime }}">
+            <input type="hidden" name="end" value="{{ end_datetime }}">
+            <input type="hidden" name="interval" value="{{ interval_minutes }}">
+            <div class="col-12 col-md-5">
+              <label class="form-label mb-0">Start date</label>
+              <input class="form-control" type="date" name="start_date" value="{{ start_date }}" required>
+            </div>
+            <div class="col-12 col-md-5">
+              <label class="form-label mb-0">End date</label>
+              <input class="form-control" type="date" name="end_date" value="{{ end_date }}" required>
+            </div>
+            <div class="col-12 col-md-2 d-grid">
+              <button class="btn btn-outline-primary" type="submit">Test</button>
+            </div>
+          </form>
+          <form class="row g-2 align-items-end mt-2" method="post" action="{{ url_for('delete_test_data') }}" onsubmit="return confirm('Delete test data?');">
+            <input type="hidden" name="device" value="{{ active_device }}">
+            <input type="hidden" name="start" value="{{ start_datetime }}">
+            <input type="hidden" name="end" value="{{ end_datetime }}">
+            <input type="hidden" name="interval" value="{{ interval_minutes }}">
+            <div class="col-12 col-md-5">
+              <label class="form-label mb-0">Start date</label>
+              <input class="form-control" type="date" name="start_date" value="{{ start_date }}">
+            </div>
+            <div class="col-12 col-md-5">
+              <label class="form-label mb-0">End date</label>
+              <input class="form-control" type="date" name="end_date" value="{{ end_date }}">
+            </div>
+            <div class="col-12 col-md-2 d-grid">
+              <button class="btn btn-outline-danger" type="submit">Delete Test Data</button>
+            </div>
+          </form>
+          <div class="small text-muted mt-2">Test data is tagged with topic "Test".</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="card shadow-sm">
   <div class="card-body">
     <div class="table-responsive">

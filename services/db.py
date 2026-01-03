@@ -37,7 +37,8 @@ def init_sensor_db():
                 floor_id TEXT,
                 metric TEXT,
                 value REAL,
-                unit TEXT
+                unit TEXT,
+                topic TEXT DEFAULT 'Live'
             );
             CREATE TABLE IF NOT EXISTS alarm_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +53,9 @@ def init_sensor_db():
             );
             """
         )
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(sensor_readings)").fetchall()}
+        if "topic" not in columns:
+            conn.execute("ALTER TABLE sensor_readings ADD COLUMN topic TEXT DEFAULT 'Live'")
 
 
 def init_calendar_db():
