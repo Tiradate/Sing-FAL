@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 import sqlite3
 
@@ -121,12 +121,12 @@ def _normalize_metric_key(metric):
 
 def _normalize_timestamp(value):
     if not value:
-        return datetime.utcnow().isoformat()
+        return datetime.now(timezone.utc).isoformat()
     if isinstance(value, (int, float)):
         epoch = float(value)
         if epoch > 1e12:
             epoch /= 1000
-        return datetime.utcfromtimestamp(epoch).isoformat()
+        return datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat()
     if isinstance(value, str):
         cleaned = value.strip()
         if cleaned.endswith("Z"):
@@ -138,10 +138,10 @@ def _normalize_timestamp(value):
                 epoch = float(cleaned)
                 if epoch > 1e12:
                     epoch /= 1000
-                return datetime.utcfromtimestamp(epoch).isoformat()
+                return datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat()
             except ValueError:
-                return datetime.utcnow().isoformat()
-    return datetime.utcnow().isoformat()
+                return datetime.now(timezone.utc).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def ingest_milesight_payload(payload, *, conn=None):
@@ -265,7 +265,7 @@ def ingest_milesight_payload(payload, *, conn=None):
 
 
 def create_device(floor_id, location_x=50, location_y=50, zone="Unassigned"):
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     with connect(SENSOR_DB) as conn:
         device_id = _next_device_id(conn, floor_id)
         conn.execute(
@@ -330,7 +330,7 @@ def get_active_alarms():
 
 def get_today_alarms(date_value=None):
     if not date_value:
-        date_value = datetime.utcnow().date().isoformat()
+        date_value = datetime.now(timezone.utc).date().isoformat()
     with connect(SENSOR_DB) as conn:
         return conn.execute(
             "SELECT * FROM alarm_events WHERE date(ts) = date(?) ORDER BY ts DESC",
@@ -345,7 +345,7 @@ def get_alarm_count():
 
 
 def get_calendar_value():
-    today = datetime.utcnow().date().isoformat()
+    today = datetime.now(timezone.utc).date().isoformat()
     with connect(CALENDAR_DB) as conn:
         row = conn.execute(
             "SELECT total_alarm FROM daily_alarm_summary WHERE date = ?", (today,)
@@ -475,7 +475,7 @@ def _get_metric_avg_by_zone(metrics, floor_id=None, is_outdoor=False):
 
 
 def get_daily_series(metric="pm25", floor_id=None):
-    now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     start = now - timedelta(hours=23)
     params = [metric, start.isoformat()]
     floor_clause = ""
@@ -497,7 +497,7 @@ def get_daily_series(metric="pm25", floor_id=None):
 
 
 def get_weekly_series(metric="pm25", floor_id=None):
-    now = datetime.utcnow().date()
+    now = datetime.now(timezone.utc).date()
     start = now - timedelta(days=6)
     params = [metric, start.isoformat()]
     floor_clause = ""
@@ -612,7 +612,7 @@ def save_alarm_response(alarm_id, action_owner=None, action_note=None, checklist
             """,
             (
                 alarm_id,
-                datetime.utcnow().isoformat(),
+                datetime.now(timezone.utc).isoformat(),
                 alarm["ts"],
                 alarm["device_id"],
                 alarm["floor_id"],
