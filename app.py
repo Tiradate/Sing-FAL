@@ -549,17 +549,18 @@ def graphs_weekly():
 
 @app.route("/alarms")
 def alarms():
-    active_alarms = data_service.get_active_alarms()
+    if session.get("is_admin"):
+        active_alarms = data_service.get_today_alarms()
+    else:
+        active_alarms = data_service.get_active_alarms()
     history = data_service.get_alarm_history()
     today = datetime.utcnow().date().isoformat()
     action_start = request.args.get("action_start") or today
     action_end = request.args.get("action_end") or today
-    action_history = data_service.get_action_history(action_start, action_end)
     return render_template(
         "alarms.html",
         active_alarms=active_alarms,
         history=history,
-        action_history=action_history,
         action_start=action_start,
         action_end=action_end,
     )
