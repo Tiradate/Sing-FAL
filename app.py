@@ -2,6 +2,8 @@ import csv
 import io
 import json
 import os
+import subprocess
+import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -265,7 +267,7 @@ def view_data():
     end_utc = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
 
     query = """
-        SELECT ts, device_id, metric, value, unit
+        SELECT ts, device_id, metric, value, unit, topic
         FROM sensor_readings
         WHERE device_id = ? AND ts BETWEEN ? AND ?
         ORDER BY ts ASC
@@ -288,7 +290,8 @@ def view_data():
             second=0,
             microsecond=0,
         )
-        key = (bucket, row["metric"])
+        topic = (row["topic"] or "Live").strip() or "Live"
+        key = (bucket, topic, row["metric"])
         if key not in aggregates:
             aggregates[key] = {"sum": 0.0, "count": 0, "unit": row["unit"]}
         aggregates[key]["sum"] += float(value)
@@ -297,17 +300,17 @@ def view_data():
     metric_options = data_service.get_metric_options()
     metric_order = [option["key"] for option in metric_options]
     records = []
-    buckets = sorted({bucket for bucket, _metric in aggregates.keys()})
-    for bucket in buckets:
+    bucket_topics = sorted({(bucket, topic) for bucket, topic, _metric in aggregates.keys()})
+    for bucket, topic in bucket_topics:
         record = {
             "timestamp": bucket.strftime("%d/%m/%Y %I:%M %p"),
             "gateway": "N/A",
-            "topic": "N/A",
+            "topic": topic,
             "device": device,
             "metrics": {},
         }
         for metric in metric_order:
-            stats = aggregates.get((bucket, metric))
+            stats = aggregates.get((bucket, topic, metric))
             if stats:
                 avg_value = stats["sum"] / stats["count"]
                 record["metrics"][metric] = round(avg_value, 2)
@@ -317,6 +320,8 @@ def view_data():
 
     start_display = start_dt.strftime("%Y-%m-%dT%H:%M")
     end_display = end_dt.strftime("%Y-%m-%dT%H:%M")
+    start_date = start_dt.date().isoformat()
+    end_date = end_dt.date().isoformat()
     devices = data_service.get_devices()
 
     return render_template(
@@ -324,10 +329,124 @@ def view_data():
         data=records,
         start_datetime=start_display,
         end_datetime=end_display,
+        start_date=start_date,
+        end_date=end_date,
         active_device=device,
         interval_minutes=interval_minutes,
         devices=devices,
         metric_options=metric_options,
+    )
+
+
+@app.post("/view_data/delete")
+def delete_view_data():
+    if not session.get("is_admin"):
+        return redirect(url_for("login"))
+
+    device = request.form.get("device")
+    start = request.form.get("start")
+    end = request.form.get("end")
+    if not device or not start or not end:
+        return redirect(url_for("view_data", device=device, start=start, end=end, interval=10))
+
+    try:
+        start_dt, end_dt = parse_date_range(start, end, UTC_PLUS_7)
+    except ValueError:
+        return redirect(url_for("view_data", device=device, start=start, end=end, interval=10))
+
+    if end_dt < start_dt:
+        return redirect(url_for("view_data", device=device, start=start, end=end, interval=10))
+
+    start_utc = start_dt.astimezone(timezone.utc).replace(tzinfo=None)
+    end_utc = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
+    with connect(SENSOR_DB) as conn:
+        conn.execute(
+            "DELETE FROM sensor_readings WHERE device_id = ? AND ts BETWEEN ? AND ?",
+            (device, start_utc.isoformat(), end_utc.isoformat()),
+        )
+        conn.execute(
+            "DELETE FROM alarm_events WHERE device_id = ? AND ts BETWEEN ? AND ?",
+            (device, start_utc.isoformat(), end_utc.isoformat()),
+        )
+    return redirect(
+        url_for(
+            "view_data",
+            device=device,
+            start=start,
+            end=end,
+            interval=request.form.get("interval", type=int) or 10,
+        )
+    )
+
+
+@app.post("/view_data/test/seed")
+def seed_test_data():
+    if not session.get("is_admin"):
+        return redirect(url_for("login"))
+
+    start_date = request.form.get("start_date")
+    end_date = request.form.get("end_date")
+    if not start_date or not end_date:
+        return redirect(
+            url_for(
+                "view_data",
+                device=request.form.get("device"),
+                start=request.form.get("start"),
+                end=request.form.get("end"),
+                interval=request.form.get("interval", type=int) or 10,
+            )
+        )
+
+    script_path = os.path.join(BASE_DIR, "scripts", "seed_date_range.py")
+    subprocess.run(
+        [
+            sys.executable,
+            script_path,
+            "--start",
+            start_date,
+            "--end",
+            end_date,
+            "--topic",
+            "Test",
+        ],
+        check=True,
+    )
+    return redirect(
+        url_for(
+            "view_data",
+            device=request.form.get("device"),
+            start=request.form.get("start"),
+            end=request.form.get("end"),
+            interval=request.form.get("interval", type=int) or 10,
+        )
+    )
+
+
+@app.post("/view_data/test/delete")
+def delete_test_data():
+    if not session.get("is_admin"):
+        return redirect(url_for("login"))
+
+    start_date = request.form.get("start_date")
+    end_date = request.form.get("end_date")
+    params = ["Test"]
+    date_clause = ""
+    if start_date and end_date:
+        date_clause = "AND date(ts) BETWEEN ? AND ?"
+        params.extend([start_date, end_date])
+    with connect(SENSOR_DB) as conn:
+        conn.execute(
+            f"DELETE FROM sensor_readings WHERE topic = ? {date_clause}",
+            params,
+        )
+    return redirect(
+        url_for(
+            "view_data",
+            device=request.form.get("device"),
+            start=request.form.get("start"),
+            end=request.form.get("end"),
+            interval=request.form.get("interval", type=int) or 10,
+        )
     )
 
 

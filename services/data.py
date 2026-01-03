@@ -205,6 +205,7 @@ def ingest_milesight_payload(payload, *, conn=None):
                 ),
             )
 
+            topic = (reading.get("topic") or "Live").strip() or "Live"
             metrics = reading.get("metrics") or reading.get("data") or {}
             if isinstance(metrics, dict):
                 for metric_key, raw_value in metrics.items():
@@ -225,13 +226,14 @@ def ingest_milesight_payload(payload, *, conn=None):
                             normalized_metric,
                             round(value, 2),
                             SUPPORTED_METRICS[normalized_metric],
+                            topic,
                         )
                     )
             if insert_rows:
                 conn.executemany(
                     """
-                    INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit, topic)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
                     insert_rows,
                 )
@@ -240,8 +242,8 @@ def ingest_milesight_payload(payload, *, conn=None):
         if insert_rows:
             conn.executemany(
                 """
-                INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit, topic)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 insert_rows,
             )

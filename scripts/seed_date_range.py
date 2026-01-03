@@ -100,7 +100,7 @@ def seed_calendar_summary(start_date, end_date, rng, overwrite):
         )
 
 
-def seed_sensors(start_date, end_date, sensor_count, overwrite, simulate_ingest):
+def seed_sensors(start_date, end_date, sensor_count, overwrite, simulate_ingest, topic):
     rng = random.Random(42)
     devices = generate_devices(sensor_count, rng)
     if simulate_ingest:
@@ -127,6 +127,7 @@ def seed_sensors(start_date, end_date, sensor_count, overwrite, simulate_ingest)
                             "location_y": location_y,
                             "signal_quality": signal_quality,
                             "ts": ts.isoformat(),
+                            "topic": topic,
                             "metrics": metrics,
                         }
                     )
@@ -162,13 +163,14 @@ def seed_sensors(start_date, end_date, sensor_count, overwrite, simulate_ingest)
                                 metric,
                                 round(value, 2),
                                 config["unit"],
+                                topic,
                             )
                         )
                         if len(insert_rows) >= chunk_size:
                             conn.executemany(
                                 """
-                                INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit)
-                                VALUES (?, ?, ?, ?, ?, ?)
+                                INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit, topic)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
                                 """,
                                 insert_rows,
                             )
@@ -176,8 +178,8 @@ def seed_sensors(start_date, end_date, sensor_count, overwrite, simulate_ingest)
             if insert_rows:
                 conn.executemany(
                     """
-                    INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit, topic)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
                     insert_rows,
                 )
@@ -207,13 +209,18 @@ def main():
         action="store_true",
         help="Seed using the Milesight ingest path for simulated input",
     )
+    parser.add_argument(
+        "--topic",
+        default="Live",
+        help="Topic label to tag seeded data (default: Live)",
+    )
     args = parser.parse_args()
 
     if args.end < args.start:
         parser.error("--end must be on or after --start")
 
     init_all()
-    seed_sensors(args.start, args.end, args.sensors, args.overwrite, args.simulate_ingest)
+    seed_sensors(args.start, args.end, args.sensors, args.overwrite, args.simulate_ingest, args.topic)
 
 
 if __name__ == "__main__":
