@@ -549,7 +549,8 @@ def graphs_weekly():
 
 @app.route("/alarms")
 def alarms():
-    if session.get("is_admin"):
+    alarms_view = request.args.get("view") or "today"
+    if session.get("is_admin") and alarms_view == "today":
         active_alarms = data_service.get_today_alarms()
     else:
         active_alarms = data_service.get_active_alarms()
@@ -563,6 +564,7 @@ def alarms():
         history=history,
         action_start=action_start,
         action_end=action_end,
+        alarms_view=alarms_view,
     )
 
 
