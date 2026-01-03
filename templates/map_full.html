@@ -22,7 +22,7 @@
   {% if device.floor_id == active_floor %}
   {% set severity = device_severity.get(device.device_id, '') %}
   {% set severity_color = (settings.severity_levels|selectattr('label','equalto',severity)|list|first).color if severity and settings.severity_levels else ('#dc3545' if severity else '') %}
-  <div class="sensor-icon" data-device="{{ device.device_id }}" style="left: {{ device.location_x }}%; top: {{ device.location_y }}%;">
+  <div class="sensor-icon" data-device="{{ device.device_id }}" tabindex="0" style="left: {{ device.location_x }}%; top: {{ device.location_y }}%;">
     <img src="/{{ settings.sensor_icon }}" alt="sensor" style="width: {{ settings.sensor_icon_size }}px; height: {{ settings.sensor_icon_size }}px;">
     {% if severity %}
     <span class="sensor-badge" style="background: {{ severity_color }}"></span>
@@ -65,6 +65,10 @@
   </div>
   {% endif %}
   {% endfor %}
+</div>
+<div class="sensor-details-panel mt-3" id="sensorDetailsPanel">
+  <div class="sensor-details-placeholder text-muted small">Hover or tap a sensor to view details.</div>
+  <div class="sensor-details-content" hidden></div>
 </div>
 {% endblock %}
 
