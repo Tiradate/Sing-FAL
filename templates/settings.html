@@ -547,9 +547,32 @@
     });
   }
 
+  let isLogoSelectSyncing = false;
+
+  const syncLogoSelections = (sourceSelect, targetSelect) => {
+    if (!sourceSelect || !targetSelect || isLogoSelectSyncing) {
+      return;
+    }
+    isLogoSelectSyncing = true;
+    const selectedPath = sourceSelect.value || '';
+    if (selectedPath && !Array.from(targetSelect.options).some((option) => option.value === selectedPath)) {
+      ensureUploadOption(targetSelect, selectedPath);
+    } else {
+      targetSelect.value = selectedPath;
+    }
+    editorData.logoIconSelected = selectedPath;
+    isLogoSelectSyncing = false;
+  };
+
   if (floorLogoSelect) {
     floorLogoSelect.addEventListener('change', (event) => {
-      editorData.logoIconSelected = event.target.value || '';
+      syncLogoSelections(event.target, projectLogoSelect);
+    });
+  }
+
+  if (projectLogoSelect) {
+    projectLogoSelect.addEventListener('change', (event) => {
+      syncLogoSelections(event.target, floorLogoSelect);
     });
   }
 
@@ -677,7 +700,7 @@
       logoIcon.style.left = `${logo.location_x}%`;
       logoIcon.style.top = `${logo.location_y}%`;
       logoIcon.title = 'Logo';
-      logoIcon.innerHTML = `<img src="/${logoIconPath}" alt="logo" style="width: ${editorData.logoIconSize}px; height: ${editorData.logoIconSize}px;">`;
+      logoIcon.innerHTML = `<img src="/${logoIconPath}" alt="logo" style="height: ${editorData.logoIconSize}px; width: auto;">`;
       editorContainer.appendChild(logoIcon);
     });
 
