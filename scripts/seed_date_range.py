@@ -10,6 +10,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from services.db import CALENDAR_DB, SENSOR_DB, connect, init_all
+from services.data import ingest_milesight_payload
 
 
 METRICS = {
@@ -32,11 +33,25 @@ def parse_date(value):
         raise argparse.ArgumentTypeError("Date must be in YYYY-MM-DD format") from exc
 
 
+def format_floor_reference(floor_id):
+    normalized = floor_id.strip().upper()
+    if normalized.startswith("FL"):
+        return normalized
+    if normalized.startswith("F") and normalized[1:].isdigit():
+        return f"FL{normalized[1:]}"
+    if normalized.isdigit():
+        return f"FL{normalized}"
+    return normalized
+
+
 def generate_devices(count, rng):
     devices = []
+    floor_counts = {floor: 0 for floor in FLOORS}
     for index in range(1, count + 1):
-        device_id = f"AM30X-{index:03d}"
         floor = FLOORS[(index - 1) % len(FLOORS)]
+        floor_counts[floor] += 1
+        floor_ref = format_floor_reference(floor)
+        device_id = f"AM30X-{floor_ref}-{floor_counts[floor]:03d}"
         zone = rng.choice(ZONES)
         location_x = rng.uniform(5, 95)
         location_y = rng.uniform(5, 95)
@@ -85,58 +100,87 @@ def seed_calendar_summary(start_date, end_date, rng, overwrite):
         )
 
 
-def seed_sensors(start_date, end_date, sensor_count, overwrite):
+def seed_sensors(start_date, end_date, sensor_count, overwrite, simulate_ingest):
     rng = random.Random(42)
     devices = generate_devices(sensor_count, rng)
-    with connect(SENSOR_DB) as conn:
-        if overwrite:
-            conn.execute("DELETE FROM sensor_readings")
-            conn.execute("DELETE FROM alarm_events")
-            conn.execute("DELETE FROM devices")
-        conn.executemany(
-            """
-            INSERT OR REPLACE INTO devices (
-                device_id, model, floor_id, zone, location_x, location_y, last_seen, signal_quality
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            devices,
-        )
-
-        insert_rows = []
-        chunk_size = 5000
-        for ts in iter_hourly_timestamps(start_date, end_date):
-            for device_id, _, floor_id, _, _, _, _, _ in devices:
-                for metric, config in METRICS.items():
-                    value = rng.gauss(config["base"], config["variance"])
-                    value = max(value, 0)
-                    insert_rows.append(
-                        (
-                            ts.isoformat(),
-                            device_id,
-                            floor_id,
-                            metric,
-                            round(value, 2),
-                            config["unit"],
-                        )
+    if simulate_ingest:
+        with connect(SENSOR_DB) as conn:
+            if overwrite:
+                conn.execute("DELETE FROM sensor_readings")
+                conn.execute("DELETE FROM alarm_events")
+                conn.execute("DELETE FROM devices")
+            for ts in iter_hourly_timestamps(start_date, end_date):
+                readings = []
+                for device_id, _, floor_id, zone, location_x, location_y, _, signal_quality in devices:
+                    metrics = {}
+                    for metric, config in METRICS.items():
+                        value = rng.gauss(config["base"], config["variance"])
+                        value = max(value, 0)
+                        metrics[metric] = round(value, 2)
+                    readings.append(
+                        {
+                            "device_id": device_id,
+                            "model": "Milesight AM30x",
+                            "floor_id": floor_id,
+                            "zone": zone,
+                            "location_x": location_x,
+                            "location_y": location_y,
+                            "signal_quality": signal_quality,
+                            "ts": ts.isoformat(),
+                            "metrics": metrics,
+                        }
                     )
-                    if len(insert_rows) >= chunk_size:
-                        conn.executemany(
-                            """
-                            INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                            """,
-                            insert_rows,
-                        )
-                        insert_rows.clear()
-        if insert_rows:
+                ingest_milesight_payload({"readings": readings}, conn=conn)
+    else:
+        with connect(SENSOR_DB) as conn:
+            if overwrite:
+                conn.execute("DELETE FROM sensor_readings")
+                conn.execute("DELETE FROM alarm_events")
+                conn.execute("DELETE FROM devices")
             conn.executemany(
                 """
-                INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO devices (
+                    device_id, model, floor_id, zone, location_x, location_y, last_seen, signal_quality
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                insert_rows,
+                devices,
             )
+
+            insert_rows = []
+            chunk_size = 5000
+            for ts in iter_hourly_timestamps(start_date, end_date):
+                for device_id, _, floor_id, _, _, _, _, _ in devices:
+                    for metric, config in METRICS.items():
+                        value = rng.gauss(config["base"], config["variance"])
+                        value = max(value, 0)
+                        insert_rows.append(
+                            (
+                                ts.isoformat(),
+                                device_id,
+                                floor_id,
+                                metric,
+                                round(value, 2),
+                                config["unit"],
+                            )
+                        )
+                        if len(insert_rows) >= chunk_size:
+                            conn.executemany(
+                                """
+                                INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                                """,
+                                insert_rows,
+                            )
+                            insert_rows.clear()
+            if insert_rows:
+                conn.executemany(
+                    """
+                    INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, unit)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    insert_rows,
+                )
 
     seed_calendar_summary(start_date, end_date, rng, overwrite)
 
@@ -158,13 +202,18 @@ def main():
         action="store_true",
         help="Clear existing data before seeding",
     )
+    parser.add_argument(
+        "--simulate-ingest",
+        action="store_true",
+        help="Seed using the Milesight ingest path for simulated input",
+    )
     args = parser.parse_args()
 
     if args.end < args.start:
         parser.error("--end must be on or after --start")
 
     init_all()
-    seed_sensors(args.start, args.end, args.sensors, args.overwrite)
+    seed_sensors(args.start, args.end, args.sensors, args.overwrite, args.simulate_ingest)
 
 
 if __name__ == "__main__":
