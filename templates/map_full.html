@@ -14,7 +14,7 @@
   {% set logo_icon = logo.logo_icon or settings.floor_logo_icon %}
   {% if logo_icon %}
   <div class="logo-icon" style="left: {{ logo.location_x }}%; top: {{ logo.location_y }}%;">
-    <img src="/{{ logo_icon }}" alt="logo" style="width: {{ settings.logo_icon_size }}px; height: {{ settings.logo_icon_size }}px;">
+    <img src="/{{ logo_icon }}" alt="logo" style="height: {{ settings.logo_icon_size }}px; width: auto;">
   </div>
   {% endif %}
   {% endfor %}
