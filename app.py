@@ -2,6 +2,7 @@ import csv
 import io
 import json
 import os
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from flask import (
@@ -644,6 +645,100 @@ def delete_device(device_id):
         return jsonify({"error": "Unauthorized"}), 403
     data_service.delete_device(device_id)
     return jsonify({"device_id": device_id})
+
+
+@app.delete("/api/floors/<floor_id>/devices")
+def delete_floor_devices(floor_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    data_service.delete_devices_by_floor(floor_id)
+    return jsonify({"floor_id": floor_id})
+
+
+@app.delete("/api/floor-plans/<floor_id>")
+def delete_floor_plan(floor_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    settings = settings_service.load_settings()
+    floor_plans = settings.get("floor_plans", {})
+    removed = floor_plans.pop(floor_id, None)
+    settings["floor_plans"] = floor_plans
+    floor_logos = settings.get("floor_plan_logos", {})
+    floor_logos.pop(floor_id, None)
+    settings["floor_plan_logos"] = floor_logos
+    settings_service.save_settings(settings)
+    return jsonify({"floor_id": floor_id, "removed": bool(removed)})
+
+
+@app.post("/api/floor-logos")
+def create_floor_logo():
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    payload = request.get_json(silent=True) or {}
+    floor_id = (payload.get("floor_id") or "").strip()
+    if not floor_id:
+        return jsonify({"error": "Missing floor_id"}), 400
+    settings = settings_service.load_settings()
+    floor_logos = settings.get("floor_plan_logos", {})
+    logo_id = uuid.uuid4().hex
+    new_logo = {
+        "logo_id": logo_id,
+        "floor_id": floor_id,
+        "location_x": 50,
+        "location_y": 50,
+    }
+    floor_logos.setdefault(floor_id, []).append(new_logo)
+    settings["floor_plan_logos"] = floor_logos
+    settings_service.save_settings(settings)
+    return jsonify(new_logo)
+
+
+@app.post("/api/floor-logos/<logo_id>/position")
+def update_floor_logo_position(logo_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    payload = request.get_json(silent=True) or {}
+    try:
+        location_x = float(payload.get("location_x"))
+        location_y = float(payload.get("location_y"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid coordinates"}), 400
+    location_x = max(0, min(100, location_x))
+    location_y = max(0, min(100, location_y))
+    settings = settings_service.load_settings()
+    floor_logos = settings.get("floor_plan_logos", {})
+    for floor_id, logos in floor_logos.items():
+        for logo in logos:
+            if logo.get("logo_id") == logo_id:
+                logo["location_x"] = location_x
+                logo["location_y"] = location_y
+                logo["floor_id"] = floor_id
+                settings["floor_plan_logos"] = floor_logos
+                settings_service.save_settings(settings)
+                return jsonify(logo)
+    return jsonify({"error": "Logo not found"}), 404
+
+
+@app.delete("/api/floor-logos/<logo_id>")
+def delete_floor_logo(logo_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    settings = settings_service.load_settings()
+    floor_logos = settings.get("floor_plan_logos", {})
+    removed = False
+    for floor_id in list(floor_logos.keys()):
+        logos = floor_logos[floor_id]
+        updated = [logo for logo in logos if logo.get("logo_id") != logo_id]
+        if len(updated) != len(logos):
+            removed = True
+            if updated:
+                floor_logos[floor_id] = updated
+            else:
+                floor_logos.pop(floor_id, None)
+    if removed:
+        settings["floor_plan_logos"] = floor_logos
+        settings_service.save_settings(settings)
+    return jsonify({"logo_id": logo_id, "removed": removed})
 
 
 @app.route("/login", methods=["GET", "POST"])

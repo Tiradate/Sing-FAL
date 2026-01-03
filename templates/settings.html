@@ -278,11 +278,17 @@
           {% endfor %}
         </select>
         <button type="button" class="btn btn-sm btn-outline-primary" id="addSensorBtn">+ Add Sensor</button>
-        <button type="button" class="btn btn-sm btn-outline-danger" id="removeSensorBtn">- Remove Sensor</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="addLogoBtn">+ Add Logo</button>
+        <button type="button" class="btn btn-sm btn-outline-danger" id="clearSensorsBtn">Clear Sensors</button>
+        <button type="button" class="btn btn-sm btn-outline-warning" id="clearFloorPlanBtn">Clear Floor Plan</button>
         <span class="text-muted small" id="sensorCountLabel"></span>
       </div>
       <div class="map-container map-editor" id="floorPlanEditor">
         <div class="map-placeholder">Select a floor plan to place sensors</div>
+      </div>
+      <div class="map-editor-bin mt-2" id="sensorDeleteBin">
+        <i class="bi bi-trash"></i>
+        <span>Drag sensor here to remove</span>
       </div>
 
       <div class="mt-4">
@@ -373,12 +379,21 @@
   const editorData = {
     floors: {{ floors | default([]) | tojson }},
     floorPlans: {{ settings.floor_plans | default({}) | tojson }},
+    floorLogos: {{ settings.floor_plan_logos | default({}) | tojson }},
     devices: {{ devices | default([]) | tojson }},
     sensorIcon: {{ settings.sensor_icon | tojson }},
     sensorIconSize: {{ settings.sensor_icon_size | tojson }},
+    logoIcon: {{ settings.project_logo | tojson }},
+    logoFallbackIcon: {{ settings.floor_logo_icon | tojson }},
+    logoIconSize: {{ settings.logo_icon_size | tojson }},
     createDeviceRoute: {{ url_for('create_device') | tojson }},
     updateDeviceRoute: {{ url_for('update_device_position', device_id='__device__') | tojson }},
     deleteDeviceRoute: {{ url_for('delete_device', device_id='__device__') | tojson }},
+    clearFloorDevicesRoute: {{ url_for('delete_floor_devices', floor_id='__floor__') | tojson }},
+    clearFloorPlanRoute: {{ url_for('delete_floor_plan', floor_id='__floor__') | tojson }},
+    createLogoRoute: {{ url_for('create_floor_logo') | tojson }},
+    updateLogoRoute: {{ url_for('update_floor_logo_position', logo_id='__logo__') | tojson }},
+    deleteLogoRoute: {{ url_for('delete_floor_logo', logo_id='__logo__') | tojson }},
   };
 
   floorPlanButton.addEventListener('click', () => {
@@ -414,14 +429,18 @@
   const editorSelect = document.getElementById('floorPlanEditorSelect');
   const editorContainer = document.getElementById('floorPlanEditor');
   const addSensorBtn = document.getElementById('addSensorBtn');
-  const removeSensorBtn = document.getElementById('removeSensorBtn');
+  const addLogoBtn = document.getElementById('addLogoBtn');
+  const clearSensorsBtn = document.getElementById('clearSensorsBtn');
+  const clearFloorPlanBtn = document.getElementById('clearFloorPlanBtn');
   const sensorCountLabel = document.getElementById('sensorCountLabel');
-  let selectedDeviceId = null;
+  const sensorDeleteBin = document.getElementById('sensorDeleteBin');
 
   const updateSensorCount = (floorId) => {
     const count = editorData.devices.filter((device) => device.floor_id === floorId).length;
     sensorCountLabel.textContent = `${count} sensor${count === 1 ? '' : 's'}`;
   };
+
+  const getLogoIconPath = () => editorData.logoIcon || editorData.logoFallbackIcon || '';
 
   const renderEditor = (floorId) => {
     editorContainer.innerHTML = '';
@@ -440,11 +459,25 @@
       editorContainer.appendChild(placeholder);
     }
 
+    const logoIconPath = getLogoIconPath();
+    if (logoIconPath) {
+      (editorData.floorLogos[floorId] || []).forEach((logo) => {
+        const logoIcon = document.createElement('div');
+        logoIcon.className = 'logo-icon map-editor-icon map-editor-logo';
+        logoIcon.dataset.logo = logo.logo_id;
+        logoIcon.style.left = `${logo.location_x}%`;
+        logoIcon.style.top = `${logo.location_y}%`;
+        logoIcon.title = 'Logo';
+        logoIcon.innerHTML = `<img src="/${logoIconPath}" alt="logo" style="width: ${editorData.logoIconSize}px; height: ${editorData.logoIconSize}px;">`;
+        editorContainer.appendChild(logoIcon);
+      });
+    }
+
     editorData.devices
       .filter((device) => device.floor_id === floorId)
       .forEach((device) => {
         const icon = document.createElement('div');
-        icon.className = 'sensor-icon map-editor-icon';
+        icon.className = 'sensor-icon map-editor-icon map-editor-sensor';
         icon.dataset.device = device.device_id;
         icon.style.left = `${device.location_x}%`;
         icon.style.top = `${device.location_y}%`;
@@ -453,20 +486,20 @@
         editorContainer.appendChild(icon);
       });
 
-    attachDragHandlers();
+    attachSensorDragHandlers();
+    attachLogoDragHandlers();
     updateSensorCount(floorId);
   };
 
   const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-  const attachDragHandlers = () => {
-    const icons = editorContainer.querySelectorAll('.map-editor-icon');
+  const attachSensorDragHandlers = () => {
+    const icons = editorContainer.querySelectorAll('.map-editor-sensor');
     icons.forEach((icon) => {
       icon.addEventListener('pointerdown', (event) => {
         event.preventDefault();
         const deviceId = icon.dataset.device;
-        selectedDeviceId = deviceId;
-        editorContainer.querySelectorAll('.map-editor-icon').forEach((item) => {
+        editorContainer.querySelectorAll('.map-editor-sensor').forEach((item) => {
           item.classList.toggle('is-selected', item === icon);
         });
         const containerRect = editorContainer.getBoundingClientRect();
@@ -478,11 +511,41 @@
           const clampedY = clamp(y, 0, 100);
           icon.style.left = `${clampedX}%`;
           icon.style.top = `${clampedY}%`;
+          if (sensorDeleteBin) {
+            const binRect = sensorDeleteBin.getBoundingClientRect();
+            const isOverBin =
+              moveEvent.clientX >= binRect.left &&
+              moveEvent.clientX <= binRect.right &&
+              moveEvent.clientY >= binRect.top &&
+              moveEvent.clientY <= binRect.bottom;
+            sensorDeleteBin.classList.toggle('is-active', isOverBin);
+          }
         };
 
         const upHandler = async (upEvent) => {
           document.removeEventListener('pointermove', moveHandler);
           document.removeEventListener('pointerup', upHandler);
+          let removeDevice = false;
+          if (sensorDeleteBin) {
+            const binRect = sensorDeleteBin.getBoundingClientRect();
+            removeDevice =
+              upEvent.clientX >= binRect.left &&
+              upEvent.clientX <= binRect.right &&
+              upEvent.clientY >= binRect.top &&
+              upEvent.clientY <= binRect.bottom;
+            sensorDeleteBin.classList.remove('is-active');
+          }
+          if (removeDevice) {
+            const response = await fetch(editorData.deleteDeviceRoute.replace('__device__', deviceId), {
+              method: 'DELETE',
+            });
+            if (!response.ok) {
+              return;
+            }
+            editorData.devices = editorData.devices.filter((device) => device.device_id !== deviceId);
+            renderEditor(editorSelect.value);
+            return;
+          }
           const left = parseFloat(icon.style.left);
           const top = parseFloat(icon.style.top);
           const route = editorData.updateDeviceRoute.replace('__device__', deviceId);
@@ -504,6 +567,49 @@
     });
   };
 
+  const attachLogoDragHandlers = () => {
+    const icons = editorContainer.querySelectorAll('.map-editor-logo');
+    icons.forEach((icon) => {
+      icon.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        const logoId = icon.dataset.logo;
+        const containerRect = editorContainer.getBoundingClientRect();
+
+        const moveHandler = (moveEvent) => {
+          const x = ((moveEvent.clientX - containerRect.left) / containerRect.width) * 100;
+          const y = ((moveEvent.clientY - containerRect.top) / containerRect.height) * 100;
+          const clampedX = clamp(x, 0, 100);
+          const clampedY = clamp(y, 0, 100);
+          icon.style.left = `${clampedX}%`;
+          icon.style.top = `${clampedY}%`;
+        };
+
+        const upHandler = async () => {
+          document.removeEventListener('pointermove', moveHandler);
+          document.removeEventListener('pointerup', upHandler);
+          const left = parseFloat(icon.style.left);
+          const top = parseFloat(icon.style.top);
+          const route = editorData.updateLogoRoute.replace('__logo__', logoId);
+          await fetch(route, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ location_x: left, location_y: top }),
+          });
+          const floorId = editorContainer.dataset.floor;
+          const logos = editorData.floorLogos[floorId] || [];
+          const logo = logos.find((item) => item.logo_id === logoId);
+          if (logo) {
+            logo.location_x = left;
+            logo.location_y = top;
+          }
+        };
+
+        document.addEventListener('pointermove', moveHandler);
+        document.addEventListener('pointerup', upHandler);
+      });
+    });
+  };
+
   if (editorSelect) {
     const initialFloor = editorSelect.value || editorData.floors[0];
     if (initialFloor) {
@@ -511,7 +617,6 @@
       renderEditor(initialFloor);
     }
     editorSelect.addEventListener('change', (event) => {
-      selectedDeviceId = null;
       renderEditor(event.target.value);
     });
   }
@@ -536,28 +641,73 @@
     });
   }
 
-  if (removeSensorBtn) {
-    removeSensorBtn.addEventListener('click', async () => {
+  if (addLogoBtn) {
+    addLogoBtn.addEventListener('click', async () => {
       const floorId = editorSelect.value;
       if (!floorId) {
         return;
       }
-      let deviceId = selectedDeviceId;
-      if (!deviceId) {
-        const floorDevices = editorData.devices.filter((device) => device.floor_id === floorId);
-        if (!floorDevices.length) {
-          return;
-        }
-        deviceId = floorDevices[floorDevices.length - 1].device_id;
+      const logoIconPath = getLogoIconPath();
+      if (!logoIconPath) {
+        alert('Upload a project logo before adding floor plan logos.');
+        return;
       }
-      const response = await fetch(editorData.deleteDeviceRoute.replace('__device__', deviceId), {
-        method: 'DELETE',
+      const response = await fetch(editorData.createLogoRoute, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ floor_id: floorId }),
       });
       if (!response.ok) {
         return;
       }
-      editorData.devices = editorData.devices.filter((device) => device.device_id !== deviceId);
-      selectedDeviceId = null;
+      const logo = await response.json();
+      if (!editorData.floorLogos[floorId]) {
+        editorData.floorLogos[floorId] = [];
+      }
+      editorData.floorLogos[floorId].push(logo);
+      renderEditor(floorId);
+    });
+  }
+
+  if (clearSensorsBtn) {
+    clearSensorsBtn.addEventListener('click', async () => {
+      const floorId = editorSelect.value;
+      if (!floorId) {
+        return;
+      }
+      if (!confirm(`Clear all sensors for ${floorId}?`)) {
+        return;
+      }
+      const response = await fetch(
+        editorData.clearFloorDevicesRoute.replace('__floor__', floorId),
+        { method: 'DELETE' }
+      );
+      if (!response.ok) {
+        return;
+      }
+      editorData.devices = editorData.devices.filter((device) => device.floor_id !== floorId);
+      renderEditor(floorId);
+    });
+  }
+
+  if (clearFloorPlanBtn) {
+    clearFloorPlanBtn.addEventListener('click', async () => {
+      const floorId = editorSelect.value;
+      if (!floorId) {
+        return;
+      }
+      if (!confirm(`Clear the floor plan for ${floorId}?`)) {
+        return;
+      }
+      const response = await fetch(
+        editorData.clearFloorPlanRoute.replace('__floor__', floorId),
+        { method: 'DELETE' }
+      );
+      if (!response.ok) {
+        return;
+      }
+      delete editorData.floorPlans[floorId];
+      delete editorData.floorLogos[floorId];
       renderEditor(floorId);
     });
   }

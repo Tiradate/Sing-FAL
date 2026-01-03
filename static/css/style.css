@@ -96,6 +96,31 @@ body.dashboard-bg {
   color: #6c757d;
 }
 
+.map-editor-bin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 999px;
+  color: #6c757d;
+  font-size: 0.85rem;
+  background: #fff;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.map-editor-bin.is-active {
+  border-color: #dc3545;
+  color: #dc3545;
+  background: #fff5f5;
+}
+
+.logo-icon {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
 .sensor-icon {
   position: absolute;
   transform: translate(-50%, -50%);

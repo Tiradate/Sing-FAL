@@ -10,6 +10,14 @@
   {% else %}
   <div class="map-placeholder">Upload a floor plan in settings</div>
   {% endif %}
+  {% set logo_icon = settings.project_logo or settings.floor_logo_icon %}
+  {% if logo_icon %}
+  {% for logo in settings.floor_plan_logos.get(active_floor, []) %}
+  <div class="logo-icon" style="left: {{ logo.location_x }}%; top: {{ logo.location_y }}%;">
+    <img src="/{{ logo_icon }}" alt="logo" style="width: {{ settings.logo_icon_size }}px; height: {{ settings.logo_icon_size }}px;">
+  </div>
+  {% endfor %}
+  {% endif %}
   {% for device in devices %}
   {% if device.floor_id == active_floor %}
   {% set severity = device_severity.get(device.device_id, '') %}

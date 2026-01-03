@@ -114,6 +114,13 @@ def delete_device(device_id):
         conn.execute("DELETE FROM alarm_events WHERE device_id = ?", (device_id,))
 
 
+def delete_devices_by_floor(floor_id):
+    with connect(SENSOR_DB) as conn:
+        conn.execute("DELETE FROM devices WHERE floor_id = ?", (floor_id,))
+        conn.execute("DELETE FROM sensor_readings WHERE floor_id = ?", (floor_id,))
+        conn.execute("DELETE FROM alarm_events WHERE floor_id = ?", (floor_id,))
+
+
 def get_avg_signal_quality():
     with connect(SENSOR_DB) as conn:
         row = conn.execute("SELECT AVG(signal_quality) AS avg_signal FROM devices").fetchone()
