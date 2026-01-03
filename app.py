@@ -583,8 +583,6 @@ def settings():
             floor_name = floor_names[index].strip() if index < len(floor_names) else ""
             if floor_name:
                 updated_floor_names[floor_id] = floor_name
-            elif settings.get("floor_names", {}).get(floor_id):
-                updated_floor_names[floor_id] = settings["floor_names"][floor_id]
             floor_file = floor_files[index] if index < len(floor_files) else None
             existing_path = floor_existing[index] if index < len(floor_existing) else ""
             if floor_file and floor_file.filename:
