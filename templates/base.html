@@ -7,8 +7,15 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  <style>
+    :root {
+      --dashboard-card-header-bg: {{ settings.card_header_color or '#ffffff' }};
+      --dashboard-card-body-bg: {{ settings.card_body_color or '#ffffff' }};
+      --dashboard-page-bg: {{ settings.page_background_color or '#f8f9fa' }};
+    }
+  </style>
 </head>
-<body class="bg-light">
+<body class="bg-light dashboard-bg">
   {% block header %}
   <header class="bg-white border-bottom">
     <div class="container-fluid py-2 px-3">

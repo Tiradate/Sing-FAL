@@ -2,6 +2,10 @@ body {
   font-family: "Inter", "Segoe UI", sans-serif;
 }
 
+body.dashboard-bg {
+  background-color: var(--dashboard-page-bg, #f8f9fa) !important;
+}
+
 .settings-card {
   border-color: #d7e3f7;
 }
@@ -14,6 +18,14 @@ body {
 
 .settings-card-body {
   background: #f9fbff;
+}
+
+.dashboard-card-header {
+  background-color: var(--dashboard-card-header-bg, #ffffff) !important;
+}
+
+.dashboard-card-body {
+  background-color: var(--dashboard-card-body-bg, #ffffff) !important;
 }
 
 .header-icon {
