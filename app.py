@@ -798,6 +798,50 @@ def settings():
     )
 
 
+@app.post("/settings/uploads")
+def upload_settings_file():
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify({"error": "Missing file"}), 400
+    filename = secure_filename(file.filename)
+    if not filename:
+        return jsonify({"error": "Invalid filename"}), 400
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    path = os.path.join(UPLOAD_DIR, filename)
+    file.save(path)
+    upload_path = f"static/uploads/{filename}"
+    return jsonify({"path": upload_path, "filename": filename})
+
+
+@app.delete("/settings/uploads")
+def delete_settings_file():
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    payload = request.get_json(silent=True) or {}
+    upload_path = (payload.get("path") or "").strip()
+    if not upload_path.startswith("static/uploads/"):
+        return jsonify({"error": "Invalid path"}), 400
+    filename = os.path.basename(upload_path)
+    if not filename:
+        return jsonify({"error": "Invalid filename"}), 400
+    path = os.path.join(UPLOAD_DIR, filename)
+    if os.path.exists(path):
+        os.remove(path)
+    settings = settings_service.load_settings()
+    updated = False
+    if settings.get("floor_logo_icon") == upload_path:
+        settings["floor_logo_icon"] = ""
+        updated = True
+    if settings.get("project_logo") == upload_path:
+        settings["project_logo"] = ""
+        updated = True
+    if updated:
+        settings_service.save_settings(settings)
+    return jsonify({"deleted": upload_path, "settings_updated": updated})
+
+
 @app.post("/api/devices")
 def create_device():
     if not session.get("is_admin"):

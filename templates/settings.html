@@ -268,25 +268,37 @@
         </div>
         <div class="col-12 col-md-6">
           <label class="form-label">Floor Plan Logo Upload</label>
-          <input class="form-control" type="file" name="floor_logo_icon">
+          <div class="d-flex flex-wrap gap-2">
+            <input class="form-control" type="file" name="floor_logo_icon" id="floorLogoFile">
+            <button type="button" class="btn btn-outline-primary" id="uploadFloorLogoBtn">Upload</button>
+          </div>
           <label class="form-label mt-2">Use saved file</label>
-          <select class="form-select" name="floor_logo_icon_existing">
-            <option value="" {% if not settings.floor_logo_icon %}selected{% endif %}>Select saved file</option>
-            {% for upload in available_uploads %}
-            <option value="{{ upload }}" {% if upload == settings.floor_logo_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
-            {% endfor %}
-          </select>
+          <div class="d-flex flex-wrap gap-2">
+            <select class="form-select" name="floor_logo_icon_existing" id="floorLogoSelect">
+              <option value="" {% if not settings.floor_logo_icon %}selected{% endif %}>Select saved file</option>
+              {% for upload in available_uploads %}
+              <option value="{{ upload }}" {% if upload == settings.floor_logo_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-outline-danger" id="deleteFloorLogoBtn">Delete</button>
+          </div>
         </div>
         <div class="col-12 col-md-6">
           <label class="form-label">Project Logo Upload</label>
-          <input class="form-control" type="file" name="project_logo">
+          <div class="d-flex flex-wrap gap-2">
+            <input class="form-control" type="file" name="project_logo" id="projectLogoFile">
+            <button type="button" class="btn btn-outline-primary" id="uploadProjectLogoBtn">Upload</button>
+          </div>
           <label class="form-label mt-2">Use saved file</label>
-          <select class="form-select" name="project_logo_existing">
-            <option value="" {% if not settings.project_logo %}selected{% endif %}>No logo</option>
-            {% for upload in available_uploads %}
-            <option value="{{ upload }}" {% if upload == settings.project_logo %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
-            {% endfor %}
-          </select>
+          <div class="d-flex flex-wrap gap-2">
+            <select class="form-select" name="project_logo_existing" id="projectLogoSelect">
+              <option value="" {% if not settings.project_logo %}selected{% endif %}>No logo</option>
+              {% for upload in available_uploads %}
+              <option value="{{ upload }}" {% if upload == settings.project_logo %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-outline-danger" id="deleteProjectLogoBtn">Delete</button>
+          </div>
         </div>
       </div>
 
@@ -399,6 +411,8 @@
   const floorPlanButton = document.getElementById('addFloorPlan');
   const floorPlanContainer = document.getElementById('floorPlanRows');
   const availableUploads = {{ available_uploads | default([]) | tojson }};
+  const uploadSettingsRoute = {{ url_for('upload_settings_file') | tojson }};
+  const deleteSettingsRoute = {{ url_for('delete_settings_file') | tojson }};
   const editorData = {
     floors: {{ floors | default([]) | tojson }},
     floorPlans: {{ settings.floor_plans | default({}) | tojson }},
@@ -417,6 +431,123 @@
     updateLogoRoute: {{ url_for('update_floor_logo_position', logo_id='__logo__') | tojson }},
     deleteLogoRoute: {{ url_for('delete_floor_logo', logo_id='__logo__') | tojson }},
   };
+
+  const floorLogoSelect = document.getElementById('floorLogoSelect');
+  const projectLogoSelect = document.getElementById('projectLogoSelect');
+  const floorLogoFile = document.getElementById('floorLogoFile');
+  const projectLogoFile = document.getElementById('projectLogoFile');
+  const uploadFloorLogoBtn = document.getElementById('uploadFloorLogoBtn');
+  const uploadProjectLogoBtn = document.getElementById('uploadProjectLogoBtn');
+  const deleteFloorLogoBtn = document.getElementById('deleteFloorLogoBtn');
+  const deleteProjectLogoBtn = document.getElementById('deleteProjectLogoBtn');
+
+  const ensureUploadOption = (select, path) => {
+    if (!select || !path) {
+      return;
+    }
+    let option = Array.from(select.options).find((entry) => entry.value === path);
+    if (!option) {
+      option = document.createElement('option');
+      option.value = path;
+      option.textContent = path.split('/').pop();
+      select.appendChild(option);
+    }
+    select.value = path;
+  };
+
+  const removeUploadOption = (select, path) => {
+    if (!select || !path) {
+      return;
+    }
+    const option = Array.from(select.options).find((entry) => entry.value === path);
+    if (option) {
+      option.remove();
+    }
+    if (select.value === path) {
+      select.value = '';
+    }
+  };
+
+  const uploadSettingsFile = async (fileInput, selects) => {
+    if (!fileInput || !fileInput.files.length) {
+      alert('Choose a file to upload.');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    const response = await fetch(uploadSettingsRoute, { method: 'POST', body: formData });
+    if (!response.ok) {
+      alert('Upload failed.');
+      return;
+    }
+    const data = await response.json();
+    if (!availableUploads.includes(data.path)) {
+      availableUploads.push(data.path);
+    }
+    selects.forEach((select) => ensureUploadOption(select, data.path));
+    fileInput.value = '';
+    if (selects.includes(floorLogoSelect)) {
+      editorData.logoIcon = data.path;
+    }
+  };
+
+  const deleteSettingsFile = async (selects) => {
+    const targetSelect = selects.find(Boolean);
+    const selected = targetSelect ? targetSelect.value : '';
+    if (!selected) {
+      alert('Select a saved file to delete.');
+      return;
+    }
+    const response = await fetch(deleteSettingsRoute, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: selected }),
+    });
+    if (!response.ok) {
+      alert('Delete failed.');
+      return;
+    }
+    const data = await response.json();
+    const deletedPath = data.deleted || selected;
+    const index = availableUploads.indexOf(deletedPath);
+    if (index >= 0) {
+      availableUploads.splice(index, 1);
+    }
+    selects.forEach((select) => removeUploadOption(select, deletedPath));
+    if (selects.includes(floorLogoSelect)) {
+      editorData.logoIcon = '';
+    }
+  };
+
+  if (uploadFloorLogoBtn) {
+    uploadFloorLogoBtn.addEventListener('click', () => {
+      uploadSettingsFile(floorLogoFile, [floorLogoSelect, projectLogoSelect]);
+    });
+  }
+
+  if (uploadProjectLogoBtn) {
+    uploadProjectLogoBtn.addEventListener('click', () => {
+      uploadSettingsFile(projectLogoFile, [projectLogoSelect, floorLogoSelect]);
+    });
+  }
+
+  if (deleteFloorLogoBtn) {
+    deleteFloorLogoBtn.addEventListener('click', () => {
+      deleteSettingsFile([floorLogoSelect, projectLogoSelect]);
+    });
+  }
+
+  if (deleteProjectLogoBtn) {
+    deleteProjectLogoBtn.addEventListener('click', () => {
+      deleteSettingsFile([projectLogoSelect, floorLogoSelect]);
+    });
+  }
+
+  if (floorLogoSelect) {
+    floorLogoSelect.addEventListener('change', (event) => {
+      editorData.logoIcon = event.target.value || '';
+    });
+  }
 
   floorPlanButton.addEventListener('click', () => {
     const row = document.createElement('div');
