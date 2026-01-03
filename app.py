@@ -696,6 +696,7 @@ def settings():
         if project_logo_existing or project_logo_existing == "":
             settings["project_logo"] = project_logo_existing
 
+        existing_floor_plans = settings.get("floor_plans", {}).copy()
         floor_ids = request.form.getlist("floor_id")
         floor_names = request.form.getlist("floor_name")
         floor_files = request.files.getlist("floor_plan")
@@ -724,6 +725,16 @@ def settings():
         settings["floor_plans"] = updated_floor_plans
         if updated_floor_names or "floor_names" in settings:
             settings["floor_names"] = updated_floor_names
+        removed_floor_ids = set(existing_floor_plans.keys()) - set(updated_floor_plans.keys())
+        if removed_floor_ids:
+            floor_logos = settings.get("floor_plan_logos", {})
+            floor_names = settings.get("floor_names", {})
+            for floor_id in removed_floor_ids:
+                floor_logos.pop(floor_id, None)
+                floor_names.pop(floor_id, None)
+                data_service.delete_devices_by_floor(floor_id)
+            settings["floor_plan_logos"] = floor_logos
+            settings["floor_names"] = floor_names
 
         settings_service.save_settings(settings)
         return redirect(url_for("settings"))
@@ -792,6 +803,11 @@ def delete_floor_plan(floor_id):
     floor_logos = settings.get("floor_plan_logos", {})
     floor_logos.pop(floor_id, None)
     settings["floor_plan_logos"] = floor_logos
+    floor_names = settings.get("floor_names", {})
+    floor_names.pop(floor_id, None)
+    settings["floor_names"] = floor_names
+    if removed:
+        data_service.delete_devices_by_floor(floor_id)
     settings_service.save_settings(settings)
     return jsonify({"floor_id": floor_id, "removed": bool(removed)})
 
