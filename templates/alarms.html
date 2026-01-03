@@ -155,6 +155,17 @@
           >
             Download Actions
           </a>
+          {% if session.get("is_admin") %}
+          <form class="m-0" method="post" action="{{ url_for('clear_alarm_history') }}">
+            <button
+              class="btn btn-sm btn-outline-danger"
+              type="submit"
+              onclick="return confirm('Clear all alarm history entries?');"
+            >
+              Clear History
+            </button>
+          </form>
+          {% endif %}
         </div>
       </div>
       <div class="card-body">

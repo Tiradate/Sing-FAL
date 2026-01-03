@@ -583,6 +583,14 @@ def save_alarm_response():
     return redirect(url_for("alarms"))
 
 
+@app.post("/alarms/history/clear")
+def clear_alarm_history():
+    if not session.get("is_admin"):
+        return redirect(url_for("login"))
+    data_service.clear_alarm_history()
+    return redirect(url_for("alarms"))
+
+
 @app.route("/alarms/actions.csv")
 def export_action_history():
     today = datetime.now(timezone.utc).date().isoformat()
