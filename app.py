@@ -549,6 +549,7 @@ def graphs_weekly():
 
 @app.route("/alarms")
 def alarms():
+    settings = settings_service.load_settings()
     alarms_view = request.args.get("view") or "today"
     if session.get("is_admin") and alarms_view == "today":
         active_alarms = data_service.get_today_alarms()
@@ -558,6 +559,11 @@ def alarms():
     today = datetime.now(timezone.utc).date().isoformat()
     action_start = request.args.get("action_start") or today
     action_end = request.args.get("action_end") or today
+    devices = data_service.get_devices()
+    device_floors = {device["floor_id"] for device in devices if device["floor_id"]}
+    floor_plan_ids = set(settings.get("floor_plans", {}).keys())
+    floor_name_ids = set(settings.get("floor_names", {}).keys())
+    floors = sorted(floor_plan_ids | device_floors | floor_name_ids)
     return render_template(
         "alarms.html",
         active_alarms=active_alarms,
@@ -565,6 +571,8 @@ def alarms():
         action_start=action_start,
         action_end=action_end,
         alarms_view=alarms_view,
+        devices=devices,
+        floors=floors,
     )
 
 
