@@ -664,14 +664,13 @@ def save_alarm_response(alarm_id, action_owner=None, action_note=None, checklist
             """
             SELECT 1
             FROM alarm_events
-            WHERE device_id = ? AND ts > ? AND active = 1
+            WHERE device_id = ? AND metric = ? AND value = ? AND ts > ? AND active = 1
             ORDER BY ts DESC
             LIMIT 1
             """,
-            (alarm["device_id"], alarm["ts"]),
+            (alarm["device_id"], alarm["metric"], alarm["value"], alarm["ts"]),
         ).fetchone()
-        if newer_alarm:
-            return False
+        should_delete = not newer_alarm
 
     with connect(ALARM_DB) as conn:
         conn.execute(
@@ -707,6 +706,9 @@ def save_alarm_response(alarm_id, action_owner=None, action_note=None, checklist
                 checklist,
             ),
         )
+    if should_delete:
+        with connect(SENSOR_DB) as conn:
+            conn.execute("DELETE FROM alarm_events WHERE id = ?", (alarm_id,))
     return True
 
 
