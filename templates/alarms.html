@@ -114,20 +114,6 @@
               </select>
             </div>
             <div class="col-12 col-md-4">
-              <label class="form-label mb-1">Floor ID</label>
-              <select class="form-select form-select-sm" name="floor_id" required>
-                {% if floors %}
-                {% for floor in floors %}
-                <option value="{{ floor }}" {% if loop.first %}selected{% endif %}>
-                  {{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}
-                </option>
-                {% endfor %}
-                {% else %}
-                <option value="" selected disabled>No floors available</option>
-                {% endif %}
-              </select>
-            </div>
-            <div class="col-12 col-md-4">
               <label class="form-label mb-1">Metric</label>
               <select class="form-select form-select-sm" name="metric">
                 <option value="pm25" selected>PM2.5</option>
@@ -355,16 +341,15 @@
       const formData = new FormData(alarmForm);
       const metric = formData.get("metric");
       const value = parseFloat(formData.get("metric_value"));
-      const payload = {
-        readings: [
-          {
-            device_id: formData.get("device_id"),
-            floor_id: formData.get("floor_id"),
-            ts: new Date(formData.get("alarm_ts")).toISOString(),
-            metrics: {
-              [metric]: value
-            }
-          }
+          const payload = {
+            readings: [
+              {
+                device_id: formData.get("device_id"),
+                ts: new Date(formData.get("alarm_ts")).toISOString(),
+                metrics: {
+                  [metric]: value
+                }
+              }
         ]
       };
       try {
