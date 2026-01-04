@@ -92,6 +92,47 @@
         {% endif %}
       </div>
       <div class="card-body">
+        {% if session.get("is_admin") %}
+        <div class="border rounded p-3 mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-semibold">Alarm generattion</div>
+            <small class="text-muted">Create a manual alarm for today</small>
+          </div>
+          <form id="alarm-generator" class="row gy-2 gx-2 align-items-end">
+            <div class="col-12 col-md-4">
+              <label class="form-label mb-1">Device ID</label>
+              <input class="form-control form-control-sm" name="device_id" type="text" value="floor1-1" required>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label mb-1">Floor ID</label>
+              <input class="form-control form-control-sm" name="floor_id" type="text" value="Floor1" required>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label mb-1">Metric</label>
+              <select class="form-select form-select-sm" name="metric">
+                <option value="pm25" selected>PM2.5</option>
+                <option value="pm10">PM10</option>
+                <option value="co2">CO₂</option>
+                <option value="temperature">Temperature</option>
+                <option value="humidity">Humidity</option>
+                <option value="tvoc">TVOC</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label mb-1">Value</label>
+              <input class="form-control form-control-sm" name="metric_value" type="number" step="0.1" value="80" required>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label mb-1">Date &amp; Time</label>
+              <input class="form-control form-control-sm" name="alarm_ts" type="datetime-local" required>
+            </div>
+            <div class="col-12 col-md-4 d-flex gap-2">
+              <button class="btn btn-sm btn-primary" type="submit">Alarm generattion</button>
+              <div id="alarm-generator-status" class="small text-muted align-self-center"></div>
+            </div>
+          </form>
+        </div>
+        {% endif %}
         {% if active_alarms %}
         <div class="list-group">
           {% for alarm in active_alarms %}
@@ -273,4 +314,57 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const alarmForm = document.getElementById("alarm-generator");
+  if (alarmForm) {
+    const tsField = alarmForm.querySelector("[name='alarm_ts']");
+    const statusEl = document.getElementById("alarm-generator-status");
+    if (tsField && !tsField.value) {
+      const now = new Date();
+      const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+      tsField.value = localIso;
+    }
+    alarmForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      statusEl.textContent = "Sending...";
+      const formData = new FormData(alarmForm);
+      const metric = formData.get("metric");
+      const value = parseFloat(formData.get("metric_value"));
+      const payload = {
+        readings: [
+          {
+            device_id: formData.get("device_id"),
+            floor_id: formData.get("floor_id"),
+            ts: new Date(formData.get("alarm_ts")).toISOString(),
+            metrics: {
+              [metric]: value
+            }
+          }
+        ]
+      };
+      try {
+        const response = await fetch("{{ url_for('ingest_milesight') }}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to generate alarm.");
+        }
+        statusEl.textContent = "Alarm generated. Refreshing...";
+        window.location.reload();
+      } catch (error) {
+        statusEl.textContent = error.message;
+      }
+    });
+  }
+</script>
 {% endblock %}
