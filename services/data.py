@@ -77,6 +77,14 @@ def update_device_position(device_id, location_x, location_y):
         )
 
 
+def update_device_zone(device_id, zone):
+    with connect(SENSOR_DB) as conn:
+        conn.execute(
+            "UPDATE devices SET zone = ? WHERE device_id = ?",
+            (zone, device_id),
+        )
+
+
 def update_device_layout(device_id, floor_id, location_x, location_y):
     with connect(SENSOR_DB) as conn:
         conn.execute(

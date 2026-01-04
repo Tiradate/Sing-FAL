@@ -327,6 +327,19 @@
       <div class="map-container map-editor" id="floorPlanEditor">
         <div class="map-placeholder">Select a floor plan to place sensors</div>
       </div>
+      <div class="card mt-3 d-none" id="sensorZoneEditor">
+        <div class="card-body p-3">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="fw-semibold">Selected sensor:</div>
+            <div id="selectedSensorLabel" class="text-muted small"></div>
+            <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
+              <label class="form-label mb-0" for="selectedSensorZone">Zone</label>
+              <input class="form-control form-control-sm" id="selectedSensorZone" type="text" placeholder="Zone">
+              <button class="btn btn-sm btn-outline-primary" type="button" id="saveSensorZoneBtn">Save Zone</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="map-editor-bin mt-2" id="sensorDeleteBin">
         <i class="bi bi-trash"></i>
         <span>Drag sensor or logo here to remove</span>
@@ -431,6 +444,7 @@
     logoIconSize: {{ settings.logo_icon_size | tojson }},
     createDeviceRoute: {{ url_for('create_device') | tojson }},
     updateDeviceRoute: {{ url_for('update_device_position', device_id='__device__') | tojson }},
+    updateDeviceZoneRoute: {{ url_for('update_device_zone', device_id='__device__') | tojson }},
     deleteDeviceRoute: {{ url_for('delete_device', device_id='__device__') | tojson }},
     clearFloorDevicesRoute: {{ url_for('delete_floor_devices', floor_id='__floor__') | tojson }},
     clearFloorPlanRoute: {{ url_for('delete_floor_plan', floor_id='__floor__') | tojson }},
@@ -716,6 +730,10 @@
   const clearFloorPlanBtn = document.getElementById('clearFloorPlanBtn');
   const sensorCountLabel = document.getElementById('sensorCountLabel');
   const sensorDeleteBin = document.getElementById('sensorDeleteBin');
+  const sensorZoneEditor = document.getElementById('sensorZoneEditor');
+  const selectedSensorLabel = document.getElementById('selectedSensorLabel');
+  const selectedSensorZone = document.getElementById('selectedSensorZone');
+  const saveSensorZoneBtn = document.getElementById('saveSensorZoneBtn');
 
   const updateSensorCount = (floorId) => {
     const count = editorData.devices.filter((device) => device.floor_id === floorId).length;
@@ -723,10 +741,32 @@
   };
 
   const getLogoIconPath = () => editorData.logoIconSelected || '';
+  let selectedDeviceId = null;
+
+  const setSelectedDevice = (deviceId) => {
+    selectedDeviceId = deviceId;
+    editorContainer.querySelectorAll('.map-editor-sensor').forEach((item) => {
+      item.classList.toggle('is-selected', item.dataset.device === deviceId);
+    });
+    if (!sensorZoneEditor || !selectedSensorLabel || !selectedSensorZone) {
+      return;
+    }
+    if (!deviceId) {
+      sensorZoneEditor.classList.add('d-none');
+      selectedSensorLabel.textContent = '';
+      selectedSensorZone.value = '';
+      return;
+    }
+    const device = editorData.devices.find((item) => item.device_id === deviceId);
+    selectedSensorLabel.textContent = deviceId;
+    selectedSensorZone.value = device ? (device.zone || '') : '';
+    sensorZoneEditor.classList.remove('d-none');
+  };
 
   const renderEditor = (floorId) => {
     editorContainer.innerHTML = '';
     editorContainer.dataset.floor = floorId || '';
+    setSelectedDevice(null);
     const floorImage = editorData.floorPlans[floorId];
     if (floorImage) {
       const img = document.createElement('img');
@@ -782,9 +822,7 @@
       icon.addEventListener('pointerdown', (event) => {
         event.preventDefault();
         const deviceId = icon.dataset.device;
-        editorContainer.querySelectorAll('.map-editor-sensor').forEach((item) => {
-          item.classList.toggle('is-selected', item === icon);
-        });
+        setSelectedDevice(deviceId);
         const containerRect = editorContainer.getBoundingClientRect();
 
         const moveHandler = (moveEvent) => {
@@ -826,6 +864,9 @@
               return;
             }
             editorData.devices = editorData.devices.filter((device) => device.device_id !== deviceId);
+            if (selectedDeviceId === deviceId) {
+              setSelectedDevice(null);
+            }
             renderEditor(editorSelect.value);
             return;
           }
@@ -930,6 +971,39 @@
       });
     });
   };
+
+  if (editorContainer) {
+    editorContainer.addEventListener('click', (event) => {
+      if (event.target.closest('.map-editor-sensor')) {
+        return;
+      }
+      setSelectedDevice(null);
+    });
+  }
+
+  if (saveSensorZoneBtn) {
+    saveSensorZoneBtn.addEventListener('click', async () => {
+      if (!selectedDeviceId) {
+        return;
+      }
+      const zoneValue = (selectedSensorZone.value || '').trim();
+      const response = await fetch(
+        editorData.updateDeviceZoneRoute.replace('__device__', selectedDeviceId),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zone: zoneValue }),
+        }
+      );
+      if (!response.ok) {
+        return;
+      }
+      const device = editorData.devices.find((item) => item.device_id === selectedDeviceId);
+      if (device) {
+        device.zone = zoneValue;
+      }
+    });
+  }
 
   if (editorSelect) {
     const initialFloor = editorSelect.value || editorData.floors[0];
