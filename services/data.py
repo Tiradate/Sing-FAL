@@ -181,6 +181,9 @@ def ingest_milesight_payload(payload, *, conn=None):
     }
     if owns_conn:
         conn = connect(SENSOR_DB)
+    device_rows = conn.execute("SELECT * FROM devices").fetchall()
+    known_devices = {row["device_id"]: row for row in device_rows}
+    allowed_floors = set(settings.get("floor_plans", {}).keys())
 
     try:
         inserted = 0
@@ -194,45 +197,34 @@ def ingest_milesight_payload(payload, *, conn=None):
             if not device_id:
                 device_id = reading.get("device_eui") or reading.get("dev_eui") or ""
                 device_id = str(device_id).strip()
-            if not device_id or not floor_id:
+            if not device_id:
                 continue
+            device_row = known_devices.get(device_id)
+            if not device_row:
+                continue
+            stored_floor_id = (device_row["floor_id"] or "").strip()
+            if not stored_floor_id:
+                continue
+            if allowed_floors and stored_floor_id not in allowed_floors:
+                continue
+            floor_id = stored_floor_id
 
             model = reading.get("model") or "Milesight AM30x"
-            zone = reading.get("zone") or "Unassigned"
-            location_x = reading.get("location_x")
-            location_y = reading.get("location_y")
-            if location_x is None:
-                location_x = 50
-            if location_y is None:
-                location_y = 50
             signal_quality = reading.get("signal_quality")
             if signal_quality is None:
                 signal_quality = 100
             ts = _normalize_timestamp(reading.get("ts") or reading.get("timestamp"))
             conn.execute(
                 """
-                INSERT INTO devices (
-                    device_id, model, floor_id, zone, location_x, location_y, last_seen, signal_quality
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(device_id) DO UPDATE SET
-                    model = excluded.model,
-                    floor_id = excluded.floor_id,
-                    zone = excluded.zone,
-                    location_x = excluded.location_x,
-                    location_y = excluded.location_y,
-                    last_seen = excluded.last_seen,
-                    signal_quality = excluded.signal_quality
+                UPDATE devices
+                SET model = ?, last_seen = ?, signal_quality = ?
+                WHERE device_id = ?
                 """,
                 (
-                    device_id,
                     model,
-                    floor_id,
-                    zone,
-                    location_x,
-                    location_y,
                     ts,
                     signal_quality,
+                    device_id,
                 ),
             )
 

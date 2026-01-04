@@ -222,7 +222,7 @@ def map_full():
 def export_sensor_csv():
     rows = data_service.get_sensor_readings_csv()
     csv_path = os.path.join(BASE_DIR, "sensor_export.csv")
-    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
+    with open(csv_path, "w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.writer(handle)
         writer.writerow(["ts", "device_id", "floor_id", "metric", "value", "unit"])
         for row in rows:
