@@ -57,6 +57,10 @@ Role-based access (Admin only)
 
 Export sensor data to CSV with one click
 
+🔌 Milesight Ingest API
+
+See `docs_milesight_ingest_api.md` for the API contract and Python example for sending Milesight readings into the dashboard.
+
 🧠 Supported Sensor (Milesight AM30x)
 
 The system is designed specifically for Milesight AM30x Indoor Ambience Sensors.
