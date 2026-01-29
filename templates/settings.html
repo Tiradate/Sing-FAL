@@ -45,12 +45,19 @@
             </div>
           </div>
         </div>
-        <div class="col-12">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="show_severity_lines" {% if settings.show_severity_lines %}checked{% endif %}>
-            <label class="form-check-label">Show severity lines on daily/weekly graphs</label>
-          </div>
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="show_severity_lines" {% if settings.show_severity_lines %}checked{% endif %}>
+          <label class="form-check-label">Show severity lines on daily/weekly graphs</label>
         </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">Systems</label>
+        <select class="form-select" id="systemSeveritySelect">
+          <option value="iaq">IAQ</option>
+          <option value="fire">Fire</option>
+        </select>
+      </div>
         <div class="col-12">
           <label class="form-label">Main Page Colors</label>
           <div class="row g-3">
@@ -129,63 +136,121 @@
 
       <hr class="my-4">
 
-      <h6>IAQ Severity Mapping</h6>
-      <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
-        <div class="col-12 col-md-3">Severity</div>
-        <div class="col-6 col-md-2 col-xl-1">Temp (°C)</div>
-        <div class="col-6 col-md-2 col-xl-1">PM2.5</div>
-        <div class="col-6 col-md-2 col-xl-1">PM10</div>
-        <div class="col-6 col-md-2 col-xl-1">Humidity (%)</div>
-        <div class="col-6 col-md-2 col-xl-1">TVOC</div>
-        <div class="col-6 col-md-2 col-xl-1">CO₂ (ppm)</div>
-        <div class="col-12 col-md-2">Critical</div>
-      </div>
-      <div id="severityRows">
-        {% for level in settings.severity_levels %}
-        <div class="row g-2 align-items-center mb-2 severity-row">
-          <div class="col-12 col-md-3">
-            <div class="input-group">
-              <input class="form-control" type="text" name="severity_label" value="{{ level.label }}" placeholder="Label">
-              <span class="input-group-text p-0">
-                <input class="form-control form-control-color border-0" type="color" name="severity_color" value="{{ level.color }}" title="Severity color">
-              </span>
-            </div>
-            <input type="hidden" name="severity_icon" value="{{ level.icon }}">
-          </div>
-          <div class="col-6 col-md-2 col-xl-1">
-            <input class="form-control" type="number" name="severity_temperature" step="0.1" placeholder="°C"
-              value="{{ level.thresholds.temperature if level.thresholds is defined else '' }}">
-          </div>
-          <div class="col-6 col-md-2 col-xl-1">
-            <input class="form-control" type="number" name="severity_pm25" step="1" placeholder="µg/m³"
-              value="{{ level.thresholds.pm25 if level.thresholds is defined else '' }}">
-          </div>
-          <div class="col-6 col-md-2 col-xl-1">
-            <input class="form-control" type="number" name="severity_pm10" step="1" placeholder="µg/m³"
-              value="{{ level.thresholds.pm10 if level.thresholds is defined else '' }}">
-          </div>
-          <div class="col-6 col-md-2 col-xl-1">
-            <input class="form-control" type="number" name="severity_humidity" step="1" placeholder="%"
-              value="{{ level.thresholds.humidity if level.thresholds is defined else '' }}">
-          </div>
-          <div class="col-6 col-md-2 col-xl-1">
-            <input class="form-control" type="number" name="severity_tvoc" step="0.01" placeholder="mg/m³"
-              value="{{ level.thresholds.tvoc if level.thresholds is defined else '' }}">
-          </div>
-          <div class="col-6 col-md-2 col-xl-1">
-            <input class="form-control" type="number" name="severity_co2" step="1" placeholder="ppm"
-              value="{{ level.thresholds.co2 if level.thresholds is defined else '' }}">
-          </div>
-          <div class="col-12 col-md-2">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="critical_levels" value="{{ level.label }}" {% if level.label in settings.critical_levels %}checked{% endif %}>
-              <label class="form-check-label">Critical</label>
-            </div>
-          </div>
+      <div id="fireSeveritySection" class="d-none">
+        <h6>Fire Systems Severity Mapping</h6>
+        <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
+          <div class="col-12 col-md-3">Severity</div>
+          <div class="col-6 col-md-2 col-xl-1">Smoke</div>
+          <div class="col-6 col-md-2 col-xl-1">Heat</div>
+          <div class="col-6 col-md-2 col-xl-1">Flow Switch</div>
+          <div class="col-6 col-md-2 col-xl-1">Supervisory valve</div>
+          <div class="col-6 col-md-2 col-xl-1">Manual</div>
+          <div class="col-6 col-md-2 col-xl-1">Gas</div>
         </div>
-        {% endfor %}
+        <div id="fireSeverityRows">
+          {% set fire_levels = settings.fire_severity_mapping if settings.fire_severity_mapping else [{
+            'label': '',
+            'color': '#dc3545',
+            'smoke': '',
+            'heat': '',
+            'flow_switch': '',
+            'supervisory_valve': '',
+            'manual': '',
+            'gas': ''
+          }] %}
+          {% for level in fire_levels %}
+          <div class="row g-2 align-items-center mb-2 fire-severity-row">
+            <div class="col-12 col-md-3">
+              <div class="input-group">
+                <input class="form-control" type="text" name="fire_severity_label" value="{{ level.label }}" placeholder="Label">
+                <span class="input-group-text p-0">
+                  <input class="form-control form-control-color border-0" type="color" name="fire_severity_color" value="{{ level.color or '#dc3545' }}" title="Severity color">
+                </span>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="text" name="fire_smoke" value="{{ level.smoke }}" placeholder="Text">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="text" name="fire_heat" value="{{ level.heat }}" placeholder="Text">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="text" name="fire_flow_switch" value="{{ level.flow_switch }}" placeholder="Text">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="text" name="fire_supervisory_valve" value="{{ level.supervisory_valve }}" placeholder="Text">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="text" name="fire_manual" value="{{ level.manual }}" placeholder="Text">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="text" name="fire_gas" value="{{ level.gas }}" placeholder="Text">
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="addFireSeverity">Add Fire Severity</button>
       </div>
-      <button type="button" class="btn btn-sm btn-outline-secondary" id="addSeverity">Add Severity</button>
+
+      <div id="iaqSeveritySection">
+        <h6>IAQ Severity Mapping</h6>
+        <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
+          <div class="col-12 col-md-3">Severity</div>
+          <div class="col-6 col-md-2 col-xl-1">Temp (°C)</div>
+          <div class="col-6 col-md-2 col-xl-1">PM2.5</div>
+          <div class="col-6 col-md-2 col-xl-1">PM10</div>
+          <div class="col-6 col-md-2 col-xl-1">Humidity (%)</div>
+          <div class="col-6 col-md-2 col-xl-1">TVOC</div>
+          <div class="col-6 col-md-2 col-xl-1">CO₂ (ppm)</div>
+          <div class="col-12 col-md-2">Critical</div>
+        </div>
+        <div id="severityRows">
+          {% for level in settings.severity_levels %}
+          <div class="row g-2 align-items-center mb-2 severity-row">
+            <div class="col-12 col-md-3">
+              <div class="input-group">
+                <input class="form-control" type="text" name="severity_label" value="{{ level.label }}" placeholder="Label">
+                <span class="input-group-text p-0">
+                  <input class="form-control form-control-color border-0" type="color" name="severity_color" value="{{ level.color }}" title="Severity color">
+                </span>
+              </div>
+              <input type="hidden" name="severity_icon" value="{{ level.icon }}">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="number" name="severity_temperature" step="0.1" placeholder="°C"
+                value="{{ level.thresholds.temperature if level.thresholds is defined else '' }}">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="number" name="severity_pm25" step="1" placeholder="µg/m³"
+                value="{{ level.thresholds.pm25 if level.thresholds is defined else '' }}">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="number" name="severity_pm10" step="1" placeholder="µg/m³"
+                value="{{ level.thresholds.pm10 if level.thresholds is defined else '' }}">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="number" name="severity_humidity" step="1" placeholder="%"
+                value="{{ level.thresholds.humidity if level.thresholds is defined else '' }}">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="number" name="severity_tvoc" step="0.01" placeholder="mg/m³"
+                value="{{ level.thresholds.tvoc if level.thresholds is defined else '' }}">
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <input class="form-control" type="number" name="severity_co2" step="1" placeholder="ppm"
+                value="{{ level.thresholds.co2 if level.thresholds is defined else '' }}">
+            </div>
+            <div class="col-12 col-md-2">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="critical_levels" value="{{ level.label }}" {% if level.label in settings.critical_levels %}checked{% endif %}>
+                <label class="form-check-label">Critical</label>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="addSeverity">Add Severity</button>
+      </div>
 
       <hr class="my-4">
 
@@ -381,6 +446,60 @@
   bindColorToggle('cardHeaderTransparent', 'cardHeaderColor');
   bindColorToggle('cardBodyTransparent', 'cardBodyColor');
   bindColorToggle('pageBackgroundTransparent', 'pageBackgroundColor');
+
+  const systemSelect = document.getElementById('systemSeveritySelect');
+  const fireSeveritySection = document.getElementById('fireSeveritySection');
+  const iaqSeveritySection = document.getElementById('iaqSeveritySection');
+
+  const toggleSeveritySections = () => {
+    const selected = systemSelect ? systemSelect.value : 'iaq';
+    if (fireSeveritySection) {
+      fireSeveritySection.classList.toggle('d-none', selected !== 'fire');
+    }
+    if (iaqSeveritySection) {
+      iaqSeveritySection.classList.toggle('d-none', selected !== 'iaq');
+    }
+  };
+
+  if (systemSelect) {
+    systemSelect.addEventListener('change', toggleSeveritySections);
+    toggleSeveritySections();
+  }
+
+  document.getElementById('addFireSeverity').addEventListener('click', () => {
+    const container = document.getElementById('fireSeverityRows');
+    const row = document.createElement('div');
+    row.className = 'row g-2 align-items-center mb-2 fire-severity-row';
+    row.innerHTML = `
+      <div class="col-12 col-md-3">
+        <div class="input-group">
+          <input class="form-control" type="text" name="fire_severity_label" placeholder="Label">
+          <span class="input-group-text p-0">
+            <input class="form-control form-control-color border-0" type="color" name="fire_severity_color" value="#dc3545" title="Severity color">
+          </span>
+        </div>
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="text" name="fire_smoke" placeholder="Text">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="text" name="fire_heat" placeholder="Text">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="text" name="fire_flow_switch" placeholder="Text">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="text" name="fire_supervisory_valve" placeholder="Text">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="text" name="fire_manual" placeholder="Text">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="text" name="fire_gas" placeholder="Text">
+      </div>
+    `;
+    container.appendChild(row);
+  });
 
   document.getElementById('addSeverity').addEventListener('click', () => {
     const container = document.getElementById('severityRows');

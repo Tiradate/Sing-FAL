@@ -46,6 +46,15 @@ MILESIGHT_METRIC_ALIASES = {
     "tvoc": "tvoc",
 }
 
+FIRE_DETECTOR_FIELDS = [
+    ("smoke", "Smoke"),
+    ("heat", "Heat"),
+    ("flow_switch", "Flow Switch"),
+    ("supervisory_valve", "Supervisory valve"),
+    ("manual", "Manual"),
+    ("gas", "Gas"),
+]
+
 
 def get_metric_label(metric):
     return METRIC_DISPLAY.get(metric, metric.upper())
@@ -145,6 +154,111 @@ def _build_alarm_message(metric, value, threshold, unit):
     return f"{metric_label} {value_label} is above the limit"
 
 
+def _parse_fire_tokens(value):
+    if not value:
+        return []
+    raw_tokens = re.split(r"[,;\n]+", str(value))
+    return [token.strip() for token in raw_tokens if token.strip()]
+
+
+def _extract_fire_text(reading):
+    candidates = []
+    for key in (
+        "alarm_text",
+        "alarm",
+        "event",
+        "message",
+        "status",
+        "raw",
+        "raw_text",
+        "payload",
+        "tag",
+        "zone",
+        "device_id",
+        "device",
+    ):
+        value = reading.get(key)
+        if isinstance(value, str) and value.strip():
+            candidates.append(value)
+    metrics = reading.get("metrics") or reading.get("data") or {}
+    if isinstance(metrics, dict):
+        for value in metrics.values():
+            if isinstance(value, str) and value.strip():
+                candidates.append(value)
+    return " ".join(candidates)
+
+
+def _find_fire_matches(fire_mapping, fire_text):
+    if not fire_mapping or not fire_text:
+        return []
+    matches = []
+    haystack = fire_text.upper()
+    for row in fire_mapping:
+        severity_label = (row.get("label") or row.get("severity") or "").strip()
+        if not severity_label:
+            continue
+        for detector_key, detector_label in FIRE_DETECTOR_FIELDS:
+            tokens = _parse_fire_tokens(row.get(detector_key))
+            for token in tokens:
+                if token.upper() in haystack:
+                    matches.append(
+                        {
+                            "severity": severity_label,
+                            "metric": detector_key,
+                            "message": f"{detector_label}: {token}",
+                        }
+                    )
+                    break
+    return matches
+
+
+def _upsert_alarm_event(conn, *, ts, device_id, floor_id, metric, value, severity, message):
+    existing_alarm = conn.execute(
+        """
+        SELECT id
+        FROM alarm_events
+        WHERE device_id = ? AND metric = ? AND active = 1
+        ORDER BY ts DESC
+        LIMIT 1
+        """,
+        (device_id, metric),
+    ).fetchone()
+    if existing_alarm:
+        conn.execute(
+            """
+            UPDATE alarm_events
+            SET ts = ?, floor_id = ?, value = ?, severity = ?, message = ?
+            WHERE id = ?
+            """,
+            (
+                ts,
+                floor_id,
+                value,
+                severity,
+                message,
+                existing_alarm["id"],
+            ),
+        )
+    else:
+        conn.execute(
+            """
+            INSERT INTO alarm_events (
+                ts, device_id, floor_id, metric, value, severity, message, active
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            """,
+            (
+                ts,
+                device_id,
+                floor_id,
+                metric,
+                value,
+                severity,
+                message,
+            ),
+        )
+
+
 def _normalize_timestamp(value):
     if not value:
         return datetime.now(timezone.utc).isoformat()
@@ -236,6 +350,23 @@ def ingest_milesight_payload(payload, *, conn=None):
                 ),
             )
 
+            fire_text = _extract_fire_text(reading)
+            fire_matches = _find_fire_matches(
+                settings.get("fire_severity_mapping", []),
+                fire_text,
+            )
+            for match in fire_matches:
+                _upsert_alarm_event(
+                    conn,
+                    ts=ts,
+                    device_id=device_id,
+                    floor_id=floor_id,
+                    metric=match["metric"],
+                    value=None,
+                    severity=match["severity"],
+                    message=match["message"],
+                )
+
             topic = (reading.get("topic") or "Live").strip() or "Live"
             metrics = reading.get("metrics") or reading.get("data") or {}
             if isinstance(metrics, dict):
@@ -268,50 +399,16 @@ def ingest_milesight_payload(payload, *, conn=None):
                         message = _build_alarm_message(
                             normalized_metric, round(value, 2), threshold, unit
                         )
-                        existing_alarm = conn.execute(
-                            """
-                            SELECT id
-                            FROM alarm_events
-                            WHERE device_id = ? AND metric = ? AND active = 1
-                            ORDER BY ts DESC
-                            LIMIT 1
-                            """,
-                            (device_id, normalized_metric),
-                        ).fetchone()
-                        if existing_alarm:
-                            conn.execute(
-                                """
-                                UPDATE alarm_events
-                                SET ts = ?, floor_id = ?, value = ?, severity = ?, message = ?
-                                WHERE id = ?
-                                """,
-                                (
-                                    ts,
-                                    floor_id,
-                                    round(value, 2),
-                                    severity_label,
-                                    message,
-                                    existing_alarm["id"],
-                                ),
-                            )
-                        else:
-                            conn.execute(
-                                """
-                                INSERT INTO alarm_events (
-                                    ts, device_id, floor_id, metric, value, severity, message, active
-                                )
-                                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-                                """,
-                                (
-                                    ts,
-                                    device_id,
-                                    floor_id,
-                                    normalized_metric,
-                                    round(value, 2),
-                                    severity_label,
-                                    message,
-                                ),
-                            )
+                        _upsert_alarm_event(
+                            conn,
+                            ts=ts,
+                            device_id=device_id,
+                            floor_id=floor_id,
+                            metric=normalized_metric,
+                            value=round(value, 2),
+                            severity=severity_label,
+                            message=message,
+                        )
                     else:
                         conn.execute(
                             """

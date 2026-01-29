@@ -695,6 +695,58 @@ def settings():
             else page_background_color
         )
 
+        fire_severity_labels = request.form.getlist("fire_severity_label")
+        fire_severity_colors = request.form.getlist("fire_severity_color")
+        fire_smoke_values = request.form.getlist("fire_smoke")
+        fire_heat_values = request.form.getlist("fire_heat")
+        fire_flow_switch_values = request.form.getlist("fire_flow_switch")
+        fire_supervisory_values = request.form.getlist("fire_supervisory_valve")
+        fire_manual_values = request.form.getlist("fire_manual")
+        fire_gas_values = request.form.getlist("fire_gas")
+        fire_severity_mapping = []
+        for (
+            label,
+            color,
+            smoke,
+            heat,
+            flow_switch,
+            supervisory_valve,
+            manual,
+            gas,
+        ) in zip(
+            fire_severity_labels,
+            fire_severity_colors,
+            fire_smoke_values,
+            fire_heat_values,
+            fire_flow_switch_values,
+            fire_supervisory_values,
+            fire_manual_values,
+            fire_gas_values,
+        ):
+            if (
+                label.strip()
+                or color.strip()
+                or smoke.strip()
+                or heat.strip()
+                or flow_switch.strip()
+                or supervisory_valve.strip()
+                or manual.strip()
+                or gas.strip()
+            ):
+                fire_severity_mapping.append(
+                    {
+                        "label": label.strip(),
+                        "color": color.strip(),
+                        "smoke": smoke.strip(),
+                        "heat": heat.strip(),
+                        "flow_switch": flow_switch.strip(),
+                        "supervisory_valve": supervisory_valve.strip(),
+                        "manual": manual.strip(),
+                        "gas": gas.strip(),
+                    }
+                )
+        settings["fire_severity_mapping"] = fire_severity_mapping
+
         severity_labels = request.form.getlist("severity_label")
         severity_colors = request.form.getlist("severity_color")
         severity_icons = request.form.getlist("severity_icon")

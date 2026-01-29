@@ -9,6 +9,7 @@
     "settings": true
   },
   "show_severity_lines": true,
+  "fire_severity_mapping": [],
   "severity_levels": [
     {
       "label": "Good",
