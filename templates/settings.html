@@ -53,10 +53,16 @@
       </div>
       <div class="col-12 col-md-4">
         <label class="form-label">Systems</label>
-        <select class="form-select" id="systemSeveritySelect">
-          <option value="iaq">IAQ</option>
-          <option value="fire">Fire</option>
-        </select>
+        <div class="d-flex gap-3" id="systemSeveritySelect">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="systemSeverityIaq" data-system-toggle="iaq">
+            <label class="form-check-label" for="systemSeverityIaq">IAQ</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="systemSeverityFire" data-system-toggle="fire">
+            <label class="form-check-label" for="systemSeverityFire">Fire</label>
+          </div>
+        </div>
       </div>
         <div class="col-12">
           <label class="form-label">Main Page Colors</label>
@@ -448,11 +454,36 @@
   bindColorToggle('pageBackgroundTransparent', 'pageBackgroundColor');
 
   const systemSelect = document.getElementById('systemSeveritySelect');
+  const systemToggles = systemSelect ? systemSelect.querySelectorAll('[data-system-toggle]') : [];
   const fireSeveritySection = document.getElementById('fireSeveritySection');
   const iaqSeveritySection = document.getElementById('iaqSeveritySection');
+  const systemStorageKey = 'settingsSeveritySystem';
+
+  const getSelectedSystem = () => {
+    const selectedToggle = Array.from(systemToggles).find((toggle) => toggle.checked);
+    return selectedToggle ? selectedToggle.dataset.systemToggle : 'iaq';
+  };
+
+  const setSelectedSystem = (system) => {
+    let targetSystem = system;
+    if (!targetSystem) {
+      targetSystem = 'iaq';
+    }
+    let matched = false;
+    systemToggles.forEach((toggle) => {
+      const isSelected = toggle.dataset.systemToggle === targetSystem;
+      toggle.checked = isSelected;
+      if (isSelected) {
+        matched = true;
+      }
+    });
+    if (!matched && systemToggles.length) {
+      systemToggles[0].checked = true;
+    }
+  };
 
   const toggleSeveritySections = () => {
-    const selected = systemSelect ? systemSelect.value : 'iaq';
+    const selected = getSelectedSystem();
     if (fireSeveritySection) {
       fireSeveritySection.classList.toggle('d-none', selected !== 'fire');
     }
@@ -461,9 +492,23 @@
     }
   };
 
-  if (systemSelect) {
-    systemSelect.addEventListener('change', toggleSeveritySections);
+  if (systemSelect && systemToggles.length) {
+    const savedSystem = window.localStorage ? window.localStorage.getItem(systemStorageKey) : null;
+    setSelectedSystem(savedSystem);
     toggleSeveritySections();
+    systemToggles.forEach((toggle) => {
+      toggle.addEventListener('change', (event) => {
+        if (!event.target.checked) {
+          setSelectedSystem(getSelectedSystem());
+          return;
+        }
+        setSelectedSystem(event.target.dataset.systemToggle);
+        if (window.localStorage) {
+          window.localStorage.setItem(systemStorageKey, event.target.dataset.systemToggle);
+        }
+        toggleSeveritySections();
+      });
+    });
   }
 
   document.getElementById('addFireSeverity').addEventListener('click', () => {
