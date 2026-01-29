@@ -15,6 +15,7 @@ DEFAULT_SETTINGS = {
         "settings": True,
     },
     "show_severity_lines": True,
+    "fire_severity_mapping": [],
     "severity_levels": [
         {
             "label": "Good",
