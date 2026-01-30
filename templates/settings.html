@@ -178,7 +178,7 @@
         </div>
       </div>
 
-      <div data-system-section="iaq">
+      <div data-system-section="iaq,fire">
         <div class="col-12">
           <div class="card shadow-sm h-100">
             <div class="card-header">
@@ -256,7 +256,9 @@
         </div>
 
         <hr class="my-4">
+      </div>
 
+      <div data-system-section="iaq">
         <div id="iaqSeveritySection">
           <h6>IAQ Severity Mapping</h6>
           <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
@@ -323,7 +325,9 @@
         </div>
 
         <hr class="my-4">
+      </div>
 
+      <div data-system-section="iaq,fire">
         <div class="row g-3">
           <div class="col-12 col-md-6">
             <label class="form-label">Floor Plan Upload</label>
@@ -601,17 +605,28 @@
     }
     let hasMatch = false;
     systemSections.forEach((section) => {
-      const isActive = section.dataset.systemSection === systemPageSelect.value;
+      const targets = section.dataset.systemSection
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+      const isActive = targets.includes(systemPageSelect.value);
       section.classList.toggle('d-none', !isActive);
       if (isActive) {
         hasMatch = true;
       }
     });
     if (!hasMatch) {
-      const fallback = systemSections[0].dataset.systemSection;
+      const fallback = systemSections[0].dataset.systemSection
+        .split(',')
+        .map((value) => value.trim())
+        .find(Boolean);
       systemPageSelect.value = fallback;
       systemSections.forEach((section) => {
-        section.classList.toggle('d-none', section.dataset.systemSection !== fallback);
+        const targets = section.dataset.systemSection
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean);
+        section.classList.toggle('d-none', !targets.includes(fallback));
       });
     }
   };
