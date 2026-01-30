@@ -46,7 +46,13 @@
           </div>
         </div>
         <div class="col-12">
-          <label class="form-label">Main Page Systems</label>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="show_severity_lines" {% if settings.show_severity_lines %}checked{% endif %}>
+            <label class="form-check-label">Show severity lines on daily/weekly graphs</label>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Systems</label>
           <div class="d-flex gap-3 flex-wrap">
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="nav_system_iaq" {% if settings.system_navigation.iaq %}checked{% endif %}>
@@ -60,27 +66,12 @@
               <input class="form-check-input" type="checkbox" name="nav_system_waste" {% if settings.system_navigation.waste %}checked{% endif %}>
               <label class="form-check-label">Waste</label>
             </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="nav_system_fire" {% if settings.system_navigation.fire %}checked{% endif %}>
+              <label class="form-check-label">Fire</label>
+            </div>
           </div>
         </div>
-      <div class="col-12">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="show_severity_lines" {% if settings.show_severity_lines %}checked{% endif %}>
-          <label class="form-check-label">Show severity lines on daily/weekly graphs</label>
-        </div>
-      </div>
-      <div class="col-12 col-md-4">
-        <label class="form-label">Systems</label>
-        <div class="d-flex gap-3" id="systemSeveritySelect">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="systemSeverityIaq" data-system-toggle="iaq">
-            <label class="form-check-label" for="systemSeverityIaq">IAQ</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="systemSeverityFire" data-system-toggle="fire">
-            <label class="form-check-label" for="systemSeverityFire">Fire</label>
-          </div>
-        </div>
-      </div>
         <div class="col-12">
           <label class="form-label">Main Page Colors</label>
           <div class="row g-3">
@@ -161,7 +152,7 @@
       {% set top_definition_columns = top_definition.columns if top_definition.columns is defined else {} %}
       {% set top_definition_mode = top_definition.mode if top_definition.mode is defined else 'average' %}
       {% set top_definition_legend = top_definition.legend if top_definition.legend is defined and top_definition.legend else settings.severity_levels %}
-      {% set severity_labels = settings.severity_levels | map(attribute='label') | list %}
+      {% set top_definition_legend_labels = top_definition_legend | map(attribute='label') | list %}
 
       <div class="col-12">
         <div class="card shadow-sm h-100">
@@ -185,11 +176,23 @@
                 <input class="form-control" type="text" name="top_definition_header" value="{{ top_definition.header or 'Average Indoor/Outdoor IAQ' }}">
               </div>
               <div class="col-12 col-md-4">
-                <label class="form-label">Header Column 1</label>
+                <div class="d-flex justify-content-between align-items-center">
+                  <label class="form-label">Header Column 1</label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="top_definition_column_indoor_enabled" {% if top_definition_columns.indoor_enabled is not defined or top_definition_columns.indoor_enabled %}checked{% endif %}>
+                    <label class="form-check-label">Enable</label>
+                  </div>
+                </div>
                 <input class="form-control" type="text" name="top_definition_column_indoor" value="{{ top_definition_columns.indoor or 'Indoor' }}">
               </div>
               <div class="col-12 col-md-4">
-                <label class="form-label">Header Column 2</label>
+                <div class="d-flex justify-content-between align-items-center">
+                  <label class="form-label">Header Column 2</label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="top_definition_column_outdoor_enabled" {% if top_definition_columns.outdoor_enabled is not defined or top_definition_columns.outdoor_enabled %}checked{% endif %}>
+                    <label class="form-check-label">Enable</label>
+                  </div>
+                </div>
                 <input class="form-control" type="text" name="top_definition_column_outdoor" value="{{ top_definition_columns.outdoor or 'Outdoor' }}">
               </div>
               <div class="col-12 col-md-4">
@@ -210,14 +213,7 @@
                 <div class="row g-2 align-items-end mb-2 top-definition-legend-row">
                   <div class="col-12 col-md-5">
                     <label class="form-label">Severity</label>
-                    <select class="form-select" name="top_definition_legend_label">
-                      {% if item.label not in severity_labels %}
-                      <option value="{{ item.label }}" selected>{{ item.label }}</option>
-                      {% endif %}
-                      {% for level in settings.severity_levels %}
-                      <option value="{{ level.label }}" {% if level.label == item.label %}selected{% endif %}>{{ level.label }}</option>
-                      {% endfor %}
-                    </select>
+                    <input class="form-control" type="text" name="top_definition_legend_label" value="{{ item.label }}">
                   </div>
                   <div class="col-6 col-md-3">
                     <label class="form-label">Color</label>
@@ -236,7 +232,7 @@
 
       <hr class="my-4">
 
-      <div id="fireSeveritySection" class="d-none">
+      <div id="fireSeveritySection">
         <h6>Fire Systems Severity Mapping</h6>
         <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
           <div class="col-12 col-md-3">Severity</div>
@@ -309,7 +305,12 @@
           <div class="row g-2 align-items-center mb-2 severity-row">
             <div class="col-12 col-md-3">
               <div class="input-group">
-                <input class="form-control" type="text" name="severity_label" value="{{ level.label }}" placeholder="Label">
+                <select class="form-select" name="severity_label">
+                  <option value="">Select severity</option>
+                  {% for legend_label in top_definition_legend_labels %}
+                  <option value="{{ legend_label }}" {% if legend_label == level.label %}selected{% endif %}>{{ legend_label }}</option>
+                  {% endfor %}
+                </select>
                 <span class="input-group-text p-0">
                   <input class="form-control form-control-color border-0" type="color" name="severity_color" value="{{ level.color }}" title="Severity color">
                 </span>
@@ -547,64 +548,6 @@
   bindColorToggle('cardBodyTransparent', 'cardBodyColor');
   bindColorToggle('pageBackgroundTransparent', 'pageBackgroundColor');
 
-  const systemSelect = document.getElementById('systemSeveritySelect');
-  const systemToggles = systemSelect ? systemSelect.querySelectorAll('[data-system-toggle]') : [];
-  const fireSeveritySection = document.getElementById('fireSeveritySection');
-  const iaqSeveritySection = document.getElementById('iaqSeveritySection');
-  const systemStorageKey = 'settingsSeveritySystem';
-
-  const getSelectedSystem = () => {
-    const selectedToggle = Array.from(systemToggles).find((toggle) => toggle.checked);
-    return selectedToggle ? selectedToggle.dataset.systemToggle : 'iaq';
-  };
-
-  const setSelectedSystem = (system) => {
-    let targetSystem = system;
-    if (!targetSystem) {
-      targetSystem = 'iaq';
-    }
-    let matched = false;
-    systemToggles.forEach((toggle) => {
-      const isSelected = toggle.dataset.systemToggle === targetSystem;
-      toggle.checked = isSelected;
-      if (isSelected) {
-        matched = true;
-      }
-    });
-    if (!matched && systemToggles.length) {
-      systemToggles[0].checked = true;
-    }
-  };
-
-  const toggleSeveritySections = () => {
-    const selected = getSelectedSystem();
-    if (fireSeveritySection) {
-      fireSeveritySection.classList.toggle('d-none', selected !== 'fire');
-    }
-    if (iaqSeveritySection) {
-      iaqSeveritySection.classList.toggle('d-none', selected !== 'iaq');
-    }
-  };
-
-  if (systemSelect && systemToggles.length) {
-    const savedSystem = window.localStorage ? window.localStorage.getItem(systemStorageKey) : null;
-    setSelectedSystem(savedSystem);
-    toggleSeveritySections();
-    systemToggles.forEach((toggle) => {
-      toggle.addEventListener('change', (event) => {
-        if (!event.target.checked) {
-          setSelectedSystem(getSelectedSystem());
-          return;
-        }
-        setSelectedSystem(event.target.dataset.systemToggle);
-        if (window.localStorage) {
-          window.localStorage.setItem(systemStorageKey, event.target.dataset.systemToggle);
-        }
-        toggleSeveritySections();
-      });
-    });
-  }
-
   document.getElementById('addFireSeverity').addEventListener('click', () => {
     const container = document.getElementById('fireSeverityRows');
     const row = document.createElement('div');
@@ -644,10 +587,13 @@
     const container = document.getElementById('severityRows');
     const row = document.createElement('div');
     row.className = 'row g-2 align-items-center mb-2 severity-row';
+    const legendOptions = getLegendOptions('');
     row.innerHTML = `
       <div class="col-12 col-md-3">
         <div class="input-group">
-          <input class="form-control" type="text" name="severity_label" placeholder="Label">
+          <select class="form-select" name="severity_label">
+            ${legendOptions}
+          </select>
           <span class="input-group-text p-0">
             <input class="form-control form-control-color border-0" type="color" name="severity_color" value="#28a745" title="Severity color">
           </span>
@@ -679,47 +625,72 @@
         </div>
       </div>
     `;
-    row.querySelector('input[name="severity_label"]').addEventListener('input', (event) => {
-      row.querySelector('input[name="critical_levels"]').value = event.target.value;
-    });
+    const severitySelect = row.querySelector('select[name="severity_label"]');
+    const criticalInput = row.querySelector('input[name="critical_levels"]');
+    if (severitySelect && criticalInput) {
+      severitySelect.addEventListener('change', (event) => {
+        criticalInput.value = event.target.value;
+      });
+      criticalInput.value = severitySelect.value;
+    }
     container.appendChild(row);
   });
 
   const topDefinitionLegendRows = document.getElementById('topDefinitionLegendRows');
   const addTopDefinitionLegend = document.getElementById('addTopDefinitionLegend');
   const severityLevels = {{ settings.severity_levels | tojson }};
+  const severityRows = document.getElementById('severityRows');
 
-  const getSeverityOptions = (selectedLabel = '') => {
-    return severityLevels
-      .map((level) => {
-        const selected = level.label === selectedLabel ? 'selected' : '';
-        return `<option value="${level.label}" ${selected}>${level.label}</option>`;
-      })
-      .join('');
+  const getLegendLabels = () => {
+    if (!topDefinitionLegendRows) {
+      return [];
+    }
+    return Array.from(
+      topDefinitionLegendRows.querySelectorAll('input[name="top_definition_legend_label"]'),
+    )
+      .map((input) => input.value.trim())
+      .filter(Boolean);
   };
 
-  const applySeverityColor = (select, colorInput) => {
-    if (!select || !colorInput) {
+  const getLegendOptions = (selectedLabel = '') => {
+    const labels = getLegendLabels();
+    const options = labels
+      .map((label) => {
+        const selected = label === selectedLabel ? 'selected' : '';
+        return `<option value="${label}" ${selected}>${label}</option>`;
+      })
+      .join('');
+    return `<option value="">Select severity</option>${options}`;
+  };
+
+  const refreshSeverityOptions = () => {
+    if (!severityRows) {
       return;
     }
-    const match = severityLevels.find((level) => level.label === select.value);
-    if (match) {
-      colorInput.value = match.color;
-    }
+    const labels = getLegendLabels();
+    severityRows.querySelectorAll('select[name="severity_label"]').forEach((select) => {
+      const currentValue = select.value;
+      select.innerHTML = getLegendOptions(currentValue);
+      if (currentValue && !labels.includes(currentValue)) {
+        select.value = '';
+      }
+    });
   };
 
   const bindTopDefinitionLegendRow = (row) => {
     if (!row) {
       return;
     }
-    const select = row.querySelector('select[name="top_definition_legend_label"]');
-    const colorInput = row.querySelector('input[name="top_definition_legend_color"]');
-    if (select && colorInput) {
-      select.addEventListener('change', () => applySeverityColor(select, colorInput));
+    const input = row.querySelector('input[name="top_definition_legend_label"]');
+    if (input) {
+      input.addEventListener('input', refreshSeverityOptions);
     }
     const removeButton = row.querySelector('.remove-top-definition-legend');
     if (removeButton) {
-      removeButton.addEventListener('click', () => row.remove());
+      removeButton.addEventListener('click', () => {
+        row.remove();
+        refreshSeverityOptions();
+      });
     }
   };
 
@@ -729,18 +700,28 @@
       .forEach((row) => bindTopDefinitionLegendRow(row));
   }
 
+  if (severityRows) {
+    severityRows.querySelectorAll('.severity-row').forEach((row) => {
+      const select = row.querySelector('select[name="severity_label"]');
+      const criticalInput = row.querySelector('input[name="critical_levels"]');
+      if (select && criticalInput) {
+        select.addEventListener('change', (event) => {
+          criticalInput.value = event.target.value;
+        });
+        criticalInput.value = select.value;
+      }
+    });
+  }
+
   if (addTopDefinitionLegend && topDefinitionLegendRows) {
     addTopDefinitionLegend.addEventListener('click', () => {
-      const defaultLabel = severityLevels.length ? severityLevels[0].label : '';
       const defaultColor = severityLevels.length ? severityLevels[0].color : '#28a745';
       const row = document.createElement('div');
       row.className = 'row g-2 align-items-end mb-2 top-definition-legend-row';
       row.innerHTML = `
         <div class="col-12 col-md-5">
           <label class="form-label">Severity</label>
-          <select class="form-select" name="top_definition_legend_label">
-            ${getSeverityOptions(defaultLabel)}
-          </select>
+          <input class="form-control" type="text" name="top_definition_legend_label" value="">
         </div>
         <div class="col-6 col-md-3">
           <label class="form-label">Color</label>
@@ -752,8 +733,11 @@
       `;
       topDefinitionLegendRows.appendChild(row);
       bindTopDefinitionLegendRow(row);
+      refreshSeverityOptions();
     });
   }
+
+  refreshSeverityOptions();
 
   const floorPlanButton = document.getElementById('addFloorPlan');
   const floorPlanContainer = document.getElementById('floorPlanRows');

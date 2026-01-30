@@ -7,16 +7,18 @@
   </div>
   <div class="col-12 col-lg-6 mt-2 mt-lg-0 d-flex justify-content-lg-end">
     {% set nav = settings.system_navigation if settings.system_navigation is defined else {'iaq': true} %}
+    {% set nav_items = [
+      {'key': 'iaq', 'label': 'IAQ', 'icon': 'bi-bar-chart'},
+      {'key': 'energy', 'label': 'Energy & Carbon', 'icon': 'bi-lightning'},
+      {'key': 'waste', 'label': 'Waste', 'icon': 'bi-trash'},
+      {'key': 'fire', 'label': 'Fire', 'icon': 'bi-fire'}
+    ] %}
     <ul class="nav nav-pills gap-2 mt-3">
+      {% for item in nav_items if nav.get(item.key) %}
       <li class="nav-item">
-        <a class="nav-link {% if nav.iaq %}active{% else %}disabled{% endif %}" href="#"><i class="bi bi-bar-chart"></i> IAQ</a>
+        <a class="nav-link active" href="#"><i class="bi {{ item.icon }}"></i> {{ item.label }}</a>
       </li>
-      <li class="nav-item">
-        <a class="nav-link {% if not nav.energy %}disabled{% endif %}" href="#"><i class="bi bi-lightning"></i> Energy &amp; Carbon</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link {% if not nav.waste %}disabled{% endif %}" href="#"><i class="bi bi-trash"></i> Waste</a>
-      </li>
+      {% endfor %}
     </ul>
   </div>
   {% set top_definition = settings.modules.top_definition if settings.modules and settings.modules.top_definition is defined else {} %}
@@ -32,6 +34,7 @@
             <div class="small text-uppercase text-muted">{{ top_definition.title or 'Top Definition' }}</div>
             <h6 class="text-muted mb-0">{{ top_definition.header or 'Average Indoor/Outdoor IAQ' }}</h6>
           </div>
+          {% if top_definition_columns.indoor_enabled is not defined or top_definition_columns.indoor_enabled %}
           <div>
             <div class="small text-uppercase text-muted">{{ top_definition_columns.indoor or 'Indoor' }}</div>
             {% if top_definition_mode == 'critical' %}
@@ -40,6 +43,8 @@
             <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.indoor or 0) }} IAQ</div>
             {% endif %}
           </div>
+          {% endif %}
+          {% if top_definition_columns.outdoor_enabled is not defined or top_definition_columns.outdoor_enabled %}
           <div>
             <div class="small text-uppercase text-muted">{{ top_definition_columns.outdoor or 'Outdoor' }}</div>
             {% if top_definition_mode == 'critical' %}
@@ -48,6 +53,7 @@
             <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.outdoor or 0) }} IAQ</div>
             {% endif %}
           </div>
+          {% endif %}
           <div class="flex-grow-1"></div>
           <div class="d-flex gap-3 flex-wrap">
             {% for level in top_definition_legend %}

@@ -19,6 +19,7 @@ DEFAULT_SETTINGS = {
         "iaq": True,
         "energy": False,
         "waste": False,
+        "fire": False,
     },
     "fire_severity_mapping": [],
     "severity_levels": [
@@ -78,7 +79,12 @@ DEFAULT_SETTINGS = {
             "enabled": True,
             "title": "Top Definition",
             "header": "Average Indoor/Outdoor IAQ",
-            "columns": {"indoor": "Indoor", "outdoor": "Outdoor"},
+            "columns": {
+                "indoor": "Indoor",
+                "outdoor": "Outdoor",
+                "indoor_enabled": True,
+                "outdoor_enabled": True,
+            },
             "mode": "average",
             "legend": [
                 {"label": "Good", "color": "#28a745"},
