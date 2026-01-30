@@ -154,369 +154,405 @@
       {% set top_definition_legend = top_definition.legend if top_definition.legend is defined and top_definition.legend else settings.severity_levels %}
       {% set top_definition_legend_labels = top_definition_legend | map(attribute='label') | list %}
 
-      <div class="col-12">
-        <div class="card shadow-sm h-100">
-          <div class="card-header">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-              <h6 class="mb-0">Top Definition</h6>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="top_definition_enabled" {% if top_definition.enabled %}checked{% endif %}>
-                <label class="form-check-label">Enable module</label>
-              </div>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-12 col-md-6">
-                <label class="form-label">Module Title</label>
-                <input class="form-control" type="text" name="top_definition_title" value="{{ top_definition.title or 'Top Definition' }}">
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label">Header Text</label>
-                <input class="form-control" type="text" name="top_definition_header" value="{{ top_definition.header or 'Average Indoor/Outdoor IAQ' }}">
-              </div>
-              <div class="col-12 col-md-4">
-                <div class="d-flex justify-content-between align-items-center">
-                  <label class="form-label">Header Column 1</label>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="top_definition_column_indoor_enabled" {% if top_definition_columns.indoor_enabled is not defined or top_definition_columns.indoor_enabled %}checked{% endif %}>
-                    <label class="form-check-label">Enable</label>
-                  </div>
-                </div>
-                <input class="form-control" type="text" name="top_definition_column_indoor" value="{{ top_definition_columns.indoor or 'Indoor' }}">
-              </div>
-              <div class="col-12 col-md-4">
-                <div class="d-flex justify-content-between align-items-center">
-                  <label class="form-label">Header Column 2</label>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="top_definition_column_outdoor_enabled" {% if top_definition_columns.outdoor_enabled is not defined or top_definition_columns.outdoor_enabled %}checked{% endif %}>
-                    <label class="form-check-label">Enable</label>
-                  </div>
-                </div>
-                <input class="form-control" type="text" name="top_definition_column_outdoor" value="{{ top_definition_columns.outdoor or 'Outdoor' }}">
-              </div>
-              <div class="col-12 col-md-4">
-                <label class="form-label">Mode</label>
-                <select class="form-select" name="top_definition_mode">
-                  <option value="average" {% if top_definition_mode == 'average' %}selected{% endif %}>Average</option>
-                  <option value="critical" {% if top_definition_mode == 'critical' %}selected{% endif %}>Critical</option>
-                </select>
-              </div>
-            </div>
-            <div class="mt-3">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0">Severity Legend</h6>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="addTopDefinitionLegend">+ Add Severity</button>
-              </div>
-              <div id="topDefinitionLegendRows">
-                {% for item in top_definition_legend %}
-                <div class="row g-2 align-items-end mb-2 top-definition-legend-row">
-                  <div class="col-12 col-md-5">
-                    <label class="form-label">Severity</label>
-                    <input class="form-control" type="text" name="top_definition_legend_label" value="{{ item.label }}">
-                  </div>
-                  <div class="col-6 col-md-3">
-                    <label class="form-label">Color</label>
-                    <input class="form-control form-control-color" type="color" name="top_definition_legend_color" value="{{ item.color or '#28a745' }}">
-                  </div>
-                  <div class="col-6 col-md-2">
-                    <button type="button" class="btn btn-outline-danger remove-top-definition-legend">-</button>
-                  </div>
-                </div>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {% set system_options = [
+        {'key': 'iaq', 'label': 'IAQ'},
+        {'key': 'energy', 'label': 'Energy & Carbon'},
+        {'key': 'waste', 'label': 'Waste'},
+        {'key': 'fire', 'label': 'Fire'}
+      ] %}
 
       <hr class="my-4">
 
-      <div id="fireSeveritySection">
-        <h6>Fire Systems Severity Mapping</h6>
-        <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
-          <div class="col-12 col-md-3">Severity</div>
-          <div class="col-6 col-md-2 col-xl-1">Smoke</div>
-          <div class="col-6 col-md-2 col-xl-1">Heat</div>
-          <div class="col-6 col-md-2 col-xl-1">Flow Switch</div>
-          <div class="col-6 col-md-2 col-xl-1">Supervisory valve</div>
-          <div class="col-6 col-md-2 col-xl-1">Manual</div>
-          <div class="col-6 col-md-2 col-xl-1">Gas</div>
+      <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <div>
+          <h6 class="mb-0">Systems Page Design</h6>
+          <small class="text-muted">Select a system to edit its page settings.</small>
         </div>
-        <div id="fireSeverityRows">
-          {% set fire_levels = settings.fire_severity_mapping if settings.fire_severity_mapping else [{
-            'label': '',
-            'color': '#dc3545',
-            'smoke': '',
-            'heat': '',
-            'flow_switch': '',
-            'supervisory_valve': '',
-            'manual': '',
-            'gas': ''
-          }] %}
-          {% for level in fire_levels %}
-          <div class="row g-2 align-items-center mb-2 fire-severity-row">
-            <div class="col-12 col-md-3">
-              <div class="input-group">
-                <select class="form-select" name="fire_severity_label">
-                  <option value="">Select severity</option>
-                  {% for legend_label in top_definition_legend_labels %}
-                  <option value="{{ legend_label }}" {% if legend_label == level.label %}selected{% endif %}>{{ legend_label }}</option>
-                  {% endfor %}
-                  {% if level.label and level.label not in top_definition_legend_labels %}
-                  <option value="{{ level.label }}" selected>{{ level.label }}</option>
-                  {% endif %}
-                </select>
-                <span class="input-group-text p-0">
-                  <input class="form-control form-control-color border-0" type="color" name="fire_severity_color" value="{{ level.color or '#dc3545' }}" title="Severity color">
-                </span>
-              </div>
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="text" name="fire_smoke" value="{{ level.smoke }}" placeholder="Text">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="text" name="fire_heat" value="{{ level.heat }}" placeholder="Text">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="text" name="fire_flow_switch" value="{{ level.flow_switch }}" placeholder="Text">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="text" name="fire_supervisory_valve" value="{{ level.supervisory_valve }}" placeholder="Text">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="text" name="fire_manual" value="{{ level.manual }}" placeholder="Text">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="text" name="fire_gas" value="{{ level.gas }}" placeholder="Text">
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="addFireSeverity">Add Fire Severity</button>
-      </div>
-
-      <div id="iaqSeveritySection">
-        <h6>IAQ Severity Mapping</h6>
-        <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
-          <div class="col-12 col-md-3">Severity</div>
-          <div class="col-6 col-md-2 col-xl-1">Temp (°C)</div>
-          <div class="col-6 col-md-2 col-xl-1">PM2.5</div>
-          <div class="col-6 col-md-2 col-xl-1">PM10</div>
-          <div class="col-6 col-md-2 col-xl-1">Humidity (%)</div>
-          <div class="col-6 col-md-2 col-xl-1">TVOC</div>
-          <div class="col-6 col-md-2 col-xl-1">CO₂ (ppm)</div>
-          <div class="col-12 col-md-2">Critical</div>
-        </div>
-        <div id="severityRows">
-          {% for level in settings.severity_levels %}
-          <div class="row g-2 align-items-center mb-2 severity-row">
-            <div class="col-12 col-md-3">
-              <div class="input-group">
-                <select class="form-select" name="severity_label">
-                  <option value="">Select severity</option>
-                  {% for legend_label in top_definition_legend_labels %}
-                  <option value="{{ legend_label }}" {% if legend_label == level.label %}selected{% endif %}>{{ legend_label }}</option>
-                  {% endfor %}
-                </select>
-                <span class="input-group-text p-0">
-                  <input class="form-control form-control-color border-0" type="color" name="severity_color" value="{{ level.color }}" title="Severity color">
-                </span>
-              </div>
-              <input type="hidden" name="severity_icon" value="{{ level.icon }}">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="number" name="severity_temperature" step="0.1" placeholder="°C"
-                value="{{ level.thresholds.temperature if level.thresholds is defined else '' }}">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="number" name="severity_pm25" step="1" placeholder="µg/m³"
-                value="{{ level.thresholds.pm25 if level.thresholds is defined else '' }}">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="number" name="severity_pm10" step="1" placeholder="µg/m³"
-                value="{{ level.thresholds.pm10 if level.thresholds is defined else '' }}">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="number" name="severity_humidity" step="1" placeholder="%"
-                value="{{ level.thresholds.humidity if level.thresholds is defined else '' }}">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="number" name="severity_tvoc" step="0.01" placeholder="mg/m³"
-                value="{{ level.thresholds.tvoc if level.thresholds is defined else '' }}">
-            </div>
-            <div class="col-6 col-md-2 col-xl-1">
-              <input class="form-control" type="number" name="severity_co2" step="1" placeholder="ppm"
-                value="{{ level.thresholds.co2 if level.thresholds is defined else '' }}">
-            </div>
-            <div class="col-12 col-md-2">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="critical_levels" value="{{ level.label }}" {% if level.label in settings.critical_levels %}checked{% endif %}>
-                <label class="form-check-label">Critical</label>
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="addSeverity">Add Severity</button>
-      </div>
-
-      <hr class="my-4">
-
-      <div class="row g-3">
-        <div class="col-12 col-md-6">
-          <label class="form-label">Floor Plan Upload</label>
-          <div id="floorPlanRows">
-            {% if settings.floor_plans %}
-            {% for floor_id, floor_path in settings.floor_plans.items() %}
-            <div class="row g-2 align-items-end mb-2 floor-plan-row">
-              <div class="col-12 col-md-2">
-                <label class="form-label">Floor ID</label>
-                <input class="form-control" type="text" name="floor_id" value="{{ floor_id }}" placeholder="Floor ID (e.g., F1)">
-              </div>
-              <div class="col-12 col-md-3">
-                <label class="form-label">Floor Name</label>
-                <input class="form-control" type="text" name="floor_name" value="{{ settings.floor_names.get(floor_id, '') if settings.floor_names else '' }}" placeholder="Floor name (e.g., Level 1)">
-              </div>
-              <div class="col-12 col-md-3">
-                <label class="form-label">Upload new file</label>
-                <input class="form-control" type="file" name="floor_plan">
-              </div>
-              <div class="col-12 col-md-3">
-                <label class="form-label">Use saved file</label>
-                <select class="form-select" name="floor_plan_existing">
-                  <option value="">Select saved file</option>
-                  {% for upload in available_uploads %}
-                  <option value="{{ upload }}" {% if upload == floor_path %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="col-12 col-md-1">
-                <label class="form-label d-none d-md-block">&nbsp;</label>
-                <div class="d-grid gap-1">
-                  <button type="button" class="btn btn-sm btn-outline-secondary move-floor-plan-up" aria-label="Move floor plan up">↑</button>
-                  <button type="button" class="btn btn-sm btn-outline-danger remove-floor-plan" aria-label="Remove floor plan">-</button>
-                </div>
-              </div>
-            </div>
-            {% endfor %}
-            {% else %}
-            <div class="row g-2 align-items-end mb-2 floor-plan-row">
-              <div class="col-12 col-md-2">
-                <label class="form-label">Floor ID</label>
-                <input class="form-control" type="text" name="floor_id" placeholder="Floor ID (e.g., F1)">
-              </div>
-              <div class="col-12 col-md-3">
-                <label class="form-label">Floor Name</label>
-                <input class="form-control" type="text" name="floor_name" placeholder="Floor name (e.g., Level 1)">
-              </div>
-              <div class="col-12 col-md-3">
-                <label class="form-label">Upload new file</label>
-                <input class="form-control" type="file" name="floor_plan">
-              </div>
-              <div class="col-12 col-md-3">
-                <label class="form-label">Use saved file</label>
-                <select class="form-select" name="floor_plan_existing">
-                  <option value="">Select saved file</option>
-                  {% for upload in available_uploads %}
-                  <option value="{{ upload }}">{{ upload.split('/')[-1] }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="col-12 col-md-1">
-                <label class="form-label d-none d-md-block">&nbsp;</label>
-                <div class="d-grid gap-1">
-                  <button type="button" class="btn btn-sm btn-outline-secondary move-floor-plan-up" aria-label="Move floor plan up">↑</button>
-                  <button type="button" class="btn btn-sm btn-outline-danger remove-floor-plan" aria-label="Remove floor plan">-</button>
-                </div>
-              </div>
-            </div>
-            {% endif %}
-          </div>
-          <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="addFloorPlan">+ Add Floor Plan</button>
-        </div>
-        <div class="col-12 col-md-6">
-          <label class="form-label">Sensor Icon Upload</label>
-          <input class="form-control" type="file" name="sensor_icon">
-          <label class="form-label mt-2">Use saved file</label>
-          <select class="form-select" name="sensor_icon_existing">
-            <option value="">Select saved file</option>
-            {% for upload in available_uploads %}
-            <option value="{{ upload }}" {% if upload == settings.sensor_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+        <div class="ms-auto">
+          <label class="form-label mb-1" for="systemPageSelect">System</label>
+          <select class="form-select" id="systemPageSelect">
+            {% for item in system_options %}
+            <option value="{{ item.key }}" {% if item.key == 'iaq' %}selected{% endif %}>{{ item.label }}</option>
             {% endfor %}
           </select>
         </div>
-        <div class="col-12 col-md-6">
-          <label class="form-label">Floor Plan Logo Upload</label>
-          <div class="d-flex flex-wrap gap-2">
-            <input class="form-control" type="file" name="floor_logo_icon" id="floorLogoFile">
-            <button type="button" class="btn btn-outline-primary" id="uploadFloorLogoBtn">Upload</button>
-          </div>
-          <label class="form-label mt-2">Use saved file</label>
-          <div class="d-flex flex-wrap gap-2">
-            <select class="form-select" name="floor_logo_icon_existing" id="floorLogoSelect">
-              <option value="" {% if not settings.floor_logo_icon %}selected{% endif %}>Select saved file</option>
-              {% for upload in available_uploads %}
-              <option value="{{ upload }}" {% if upload == settings.floor_logo_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
-              {% endfor %}
-            </select>
-            <button type="button" class="btn btn-outline-danger" id="deleteFloorLogoBtn">Delete</button>
-          </div>
-        </div>
-        <div class="col-12 col-md-6">
-          <label class="form-label">Project Logo Upload</label>
-          <div class="d-flex flex-wrap gap-2">
-            <input class="form-control" type="file" name="project_logo" id="projectLogoFile">
-            <button type="button" class="btn btn-outline-primary" id="uploadProjectLogoBtn">Upload</button>
-          </div>
-          <label class="form-label mt-2">Use saved file</label>
-          <div class="d-flex flex-wrap gap-2">
-            <select class="form-select" name="project_logo_existing" id="projectLogoSelect">
-              <option value="" {% if not settings.project_logo %}selected{% endif %}>No logo</option>
-              {% for upload in available_uploads %}
-              <option value="{{ upload }}" {% if upload == settings.project_logo %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
-              {% endfor %}
-            </select>
-            <button type="button" class="btn btn-outline-danger" id="deleteProjectLogoBtn">Delete</button>
-          </div>
-        </div>
       </div>
 
-      <hr class="my-4">
-
-      <h6>Floor Plan Sensor Layout</h6>
-      <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <label class="form-label mb-0">Floor</label>
-        <select id="floorPlanEditorSelect" class="form-select form-select-sm w-auto">
-          {% for floor in floors %}
-          <option value="{{ floor }}">{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
-          {% endfor %}
-        </select>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="addSensorBtn">+ Add Sensor</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="addLogoBtn">+ Add Logo</button>
-        <button type="button" class="btn btn-sm btn-outline-danger" id="clearSensorsBtn">Clear Sensors</button>
-        <button type="button" class="btn btn-sm btn-outline-warning" id="clearFloorPlanBtn">Clear Floor Plan</button>
-        <span class="text-muted small" id="sensorCountLabel"></span>
-      </div>
-      <div class="map-container map-editor" id="floorPlanEditor">
-        <div class="map-placeholder">Select a floor plan to place sensors</div>
-      </div>
-      <div class="card mt-3 d-none" id="sensorZoneEditor">
-        <div class="card-body p-3">
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <div class="fw-semibold">Selected sensor:</div>
-            <div id="selectedSensorLabel" class="text-muted small"></div>
-            <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
-              <label class="form-label mb-0" for="selectedSensorZone">Zone</label>
-              <input class="form-control form-control-sm" id="selectedSensorZone" type="text" placeholder="Zone">
-              <button class="btn btn-sm btn-outline-primary" type="button" id="saveSensorZoneBtn">Save Zone</button>
+      <div data-system-section="iaq">
+        <div class="col-12">
+          <div class="card shadow-sm h-100">
+            <div class="card-header">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h6 class="mb-0">Top Definition</h6>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="top_definition_enabled" {% if top_definition.enabled %}checked{% endif %}>
+                  <label class="form-check-label">Enable module</label>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Module Title</label>
+                  <input class="form-control" type="text" name="top_definition_title" value="{{ top_definition.title or 'Top Definition' }}">
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Header Text</label>
+                  <input class="form-control" type="text" name="top_definition_header" value="{{ top_definition.header or 'Average Indoor/Outdoor IAQ' }}">
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <label class="form-label">Header Column 1</label>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="top_definition_column_indoor_enabled" {% if top_definition_columns.indoor_enabled is not defined or top_definition_columns.indoor_enabled %}checked{% endif %}>
+                      <label class="form-check-label">Enable</label>
+                    </div>
+                  </div>
+                  <input class="form-control" type="text" name="top_definition_column_indoor" value="{{ top_definition_columns.indoor or 'Indoor' }}">
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <label class="form-label">Header Column 2</label>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="top_definition_column_outdoor_enabled" {% if top_definition_columns.outdoor_enabled is not defined or top_definition_columns.outdoor_enabled %}checked{% endif %}>
+                      <label class="form-check-label">Enable</label>
+                    </div>
+                  </div>
+                  <input class="form-control" type="text" name="top_definition_column_outdoor" value="{{ top_definition_columns.outdoor or 'Outdoor' }}">
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label">Mode</label>
+                  <select class="form-select" name="top_definition_mode">
+                    <option value="average" {% if top_definition_mode == 'average' %}selected{% endif %}>Average</option>
+                    <option value="critical" {% if top_definition_mode == 'critical' %}selected{% endif %}>Critical</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="mb-0">Severity Legend</h6>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="addTopDefinitionLegend">+ Add Severity</button>
+                </div>
+                <div id="topDefinitionLegendRows">
+                  {% for item in top_definition_legend %}
+                  <div class="row g-2 align-items-end mb-2 top-definition-legend-row">
+                    <div class="col-12 col-md-5">
+                      <label class="form-label">Severity</label>
+                      <input class="form-control" type="text" name="top_definition_legend_label" value="{{ item.label }}">
+                    </div>
+                    <div class="col-6 col-md-3">
+                      <label class="form-label">Color</label>
+                      <input class="form-control form-control-color" type="color" name="top_definition_legend_color" value="{{ item.color or '#28a745' }}">
+                    </div>
+                    <div class="col-6 col-md-2">
+                      <button type="button" class="btn btn-outline-danger remove-top-definition-legend">-</button>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        <hr class="my-4">
+
+        <div id="iaqSeveritySection">
+          <h6>IAQ Severity Mapping</h6>
+          <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
+            <div class="col-12 col-md-3">Severity</div>
+            <div class="col-6 col-md-2 col-xl-1">Temp (°C)</div>
+            <div class="col-6 col-md-2 col-xl-1">PM2.5</div>
+            <div class="col-6 col-md-2 col-xl-1">PM10</div>
+            <div class="col-6 col-md-2 col-xl-1">Humidity (%)</div>
+            <div class="col-6 col-md-2 col-xl-1">TVOC</div>
+            <div class="col-6 col-md-2 col-xl-1">CO₂ (ppm)</div>
+            <div class="col-12 col-md-2">Critical</div>
+          </div>
+          <div id="severityRows">
+            {% for level in settings.severity_levels %}
+            <div class="row g-2 align-items-center mb-2 severity-row">
+              <div class="col-12 col-md-3">
+                <div class="input-group">
+                  <select class="form-select" name="severity_label">
+                    <option value="">Select severity</option>
+                    {% for legend_label in top_definition_legend_labels %}
+                    <option value="{{ legend_label }}" {% if legend_label == level.label %}selected{% endif %}>{{ legend_label }}</option>
+                    {% endfor %}
+                  </select>
+                  <span class="input-group-text p-0">
+                    <input class="form-control form-control-color border-0" type="color" name="severity_color" value="{{ level.color }}" title="Severity color">
+                  </span>
+                </div>
+                <input type="hidden" name="severity_icon" value="{{ level.icon }}">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="number" name="severity_temperature" step="0.1" placeholder="°C"
+                  value="{{ level.thresholds.temperature if level.thresholds is defined else '' }}">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="number" name="severity_pm25" step="1" placeholder="µg/m³"
+                  value="{{ level.thresholds.pm25 if level.thresholds is defined else '' }}">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="number" name="severity_pm10" step="1" placeholder="µg/m³"
+                  value="{{ level.thresholds.pm10 if level.thresholds is defined else '' }}">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="number" name="severity_humidity" step="1" placeholder="%"
+                  value="{{ level.thresholds.humidity if level.thresholds is defined else '' }}">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="number" name="severity_tvoc" step="0.01" placeholder="mg/m³"
+                  value="{{ level.thresholds.tvoc if level.thresholds is defined else '' }}">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="number" name="severity_co2" step="1" placeholder="ppm"
+                  value="{{ level.thresholds.co2 if level.thresholds is defined else '' }}">
+              </div>
+              <div class="col-12 col-md-2">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="critical_levels" value="{{ level.label }}" {% if level.label in settings.critical_levels %}checked{% endif %}>
+                  <label class="form-check-label">Critical</label>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="addSeverity">Add Severity</button>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <label class="form-label">Floor Plan Upload</label>
+            <div id="floorPlanRows">
+              {% if settings.floor_plans %}
+              {% for floor_id, floor_path in settings.floor_plans.items() %}
+              <div class="row g-2 align-items-end mb-2 floor-plan-row">
+                <div class="col-12 col-md-2">
+                  <label class="form-label">Floor ID</label>
+                  <input class="form-control" type="text" name="floor_id" value="{{ floor_id }}" placeholder="Floor ID (e.g., F1)">
+                </div>
+                <div class="col-12 col-md-3">
+                  <label class="form-label">Floor Name</label>
+                  <input class="form-control" type="text" name="floor_name" value="{{ settings.floor_names.get(floor_id, '') if settings.floor_names else '' }}" placeholder="Floor name (e.g., Level 1)">
+                </div>
+                <div class="col-12 col-md-3">
+                  <label class="form-label">Upload new file</label>
+                  <input class="form-control" type="file" name="floor_plan">
+                </div>
+                <div class="col-12 col-md-3">
+                  <label class="form-label">Use saved file</label>
+                  <select class="form-select" name="floor_plan_existing">
+                    <option value="">Select saved file</option>
+                    {% for upload in available_uploads %}
+                    <option value="{{ upload }}" {% if upload == floor_path %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-12 col-md-1">
+                  <label class="form-label d-none d-md-block">&nbsp;</label>
+                  <div class="d-grid gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary move-floor-plan-up" aria-label="Move floor plan up">↑</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-floor-plan" aria-label="Remove floor plan">-</button>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+              {% else %}
+              <div class="row g-2 align-items-end mb-2 floor-plan-row">
+                <div class="col-12 col-md-2">
+                  <label class="form-label">Floor ID</label>
+                  <input class="form-control" type="text" name="floor_id" placeholder="Floor ID (e.g., F1)">
+                </div>
+                <div class="col-12 col-md-3">
+                  <label class="form-label">Floor Name</label>
+                  <input class="form-control" type="text" name="floor_name" placeholder="Floor name (e.g., Level 1)">
+                </div>
+                <div class="col-12 col-md-3">
+                  <label class="form-label">Upload new file</label>
+                  <input class="form-control" type="file" name="floor_plan">
+                </div>
+                <div class="col-12 col-md-3">
+                  <label class="form-label">Use saved file</label>
+                  <select class="form-select" name="floor_plan_existing">
+                    <option value="">Select saved file</option>
+                    {% for upload in available_uploads %}
+                    <option value="{{ upload }}">{{ upload.split('/')[-1] }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-12 col-md-1">
+                  <label class="form-label d-none d-md-block">&nbsp;</label>
+                  <div class="d-grid gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary move-floor-plan-up" aria-label="Move floor plan up">↑</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-floor-plan" aria-label="Remove floor plan">-</button>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="addFloorPlan">+ Add Floor Plan</button>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Sensor Icon Upload</label>
+            <input class="form-control" type="file" name="sensor_icon">
+            <label class="form-label mt-2">Use saved file</label>
+            <select class="form-select" name="sensor_icon_existing">
+              <option value="">Select saved file</option>
+              {% for upload in available_uploads %}
+              <option value="{{ upload }}" {% if upload == settings.sensor_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Floor Plan Logo Upload</label>
+            <div class="d-flex flex-wrap gap-2">
+              <input class="form-control" type="file" name="floor_logo_icon" id="floorLogoFile">
+              <button type="button" class="btn btn-outline-primary" id="uploadFloorLogoBtn">Upload</button>
+            </div>
+            <label class="form-label mt-2">Use saved file</label>
+            <div class="d-flex flex-wrap gap-2">
+              <select class="form-select" name="floor_logo_icon_existing" id="floorLogoSelect">
+                <option value="" {% if not settings.floor_logo_icon %}selected{% endif %}>Select saved file</option>
+                {% for upload in available_uploads %}
+                <option value="{{ upload }}" {% if upload == settings.floor_logo_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+                {% endfor %}
+              </select>
+              <button type="button" class="btn btn-outline-danger" id="deleteFloorLogoBtn">Delete</button>
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Project Logo Upload</label>
+            <div class="d-flex flex-wrap gap-2">
+              <input class="form-control" type="file" name="project_logo" id="projectLogoFile">
+              <button type="button" class="btn btn-outline-primary" id="uploadProjectLogoBtn">Upload</button>
+            </div>
+            <label class="form-label mt-2">Use saved file</label>
+            <div class="d-flex flex-wrap gap-2">
+              <select class="form-select" name="project_logo_existing" id="projectLogoSelect">
+                <option value="" {% if not settings.project_logo %}selected{% endif %}>No logo</option>
+                {% for upload in available_uploads %}
+                <option value="{{ upload }}" {% if upload == settings.project_logo %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
+                {% endfor %}
+              </select>
+              <button type="button" class="btn btn-outline-danger" id="deleteProjectLogoBtn">Delete</button>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-4">
+
+        <h6>Floor Plan Sensor Layout</h6>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <label class="form-label mb-0">Floor</label>
+          <select id="floorPlanEditorSelect" class="form-select form-select-sm w-auto">
+            {% for floor in floors %}
+            <option value="{{ floor }}">{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="addSensorBtn">+ Add Sensor</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="addLogoBtn">+ Add Logo</button>
+          <button type="button" class="btn btn-sm btn-outline-danger" id="clearSensorsBtn">Clear Sensors</button>
+          <button type="button" class="btn btn-sm btn-outline-warning" id="clearFloorPlanBtn">Clear Floor Plan</button>
+          <span class="text-muted small" id="sensorCountLabel"></span>
+        </div>
+        <div class="map-container map-editor" id="floorPlanEditor">
+          <div class="map-placeholder">Select a floor plan to place sensors</div>
+        </div>
+        <div class="card mt-3 d-none" id="sensorZoneEditor">
+          <div class="card-body p-3">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <div class="fw-semibold">Selected sensor:</div>
+              <div id="selectedSensorLabel" class="text-muted small"></div>
+              <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
+                <label class="form-label mb-0" for="selectedSensorZone">Zone</label>
+                <input class="form-control form-control-sm" id="selectedSensorZone" type="text" placeholder="Zone">
+                <button class="btn btn-sm btn-outline-primary" type="button" id="saveSensorZoneBtn">Save Zone</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="map-editor-bin mt-2" id="sensorDeleteBin">
+          <i class="bi bi-trash"></i>
+          <span>Drag sensor or logo here to remove</span>
+        </div>
       </div>
-      <div class="map-editor-bin mt-2" id="sensorDeleteBin">
-        <i class="bi bi-trash"></i>
-        <span>Drag sensor or logo here to remove</span>
+
+      <div class="d-none" data-system-section="energy">
+        <div class="alert alert-light border">No Energy &amp; Carbon settings available yet.</div>
+      </div>
+
+      <div class="d-none" data-system-section="waste">
+        <div class="alert alert-light border">No Waste settings available yet.</div>
+      </div>
+
+      <div class="d-none" data-system-section="fire">
+        <div id="fireSeveritySection">
+          <h6>Fire Systems Severity Mapping</h6>
+          <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
+            <div class="col-12 col-md-3">Severity</div>
+            <div class="col-6 col-md-2 col-xl-1">Smoke</div>
+            <div class="col-6 col-md-2 col-xl-1">Heat</div>
+            <div class="col-6 col-md-2 col-xl-1">Flow Switch</div>
+            <div class="col-6 col-md-2 col-xl-1">Supervisory valve</div>
+            <div class="col-6 col-md-2 col-xl-1">Manual</div>
+            <div class="col-6 col-md-2 col-xl-1">Gas</div>
+          </div>
+          <div id="fireSeverityRows">
+            {% set fire_levels = settings.fire_severity_mapping if settings.fire_severity_mapping else [{
+              'label': '',
+              'color': '#dc3545',
+              'smoke': '',
+              'heat': '',
+              'flow_switch': '',
+              'supervisory_valve': '',
+              'manual': '',
+              'gas': ''
+            }] %}
+            {% for level in fire_levels %}
+            <div class="row g-2 align-items-center mb-2 fire-severity-row">
+              <div class="col-12 col-md-3">
+                <div class="input-group">
+                  <select class="form-select" name="fire_severity_label">
+                    <option value="">Select severity</option>
+                    {% for legend_label in top_definition_legend_labels %}
+                    <option value="{{ legend_label }}" {% if legend_label == level.label %}selected{% endif %}>{{ legend_label }}</option>
+                    {% endfor %}
+                    {% if level.label and level.label not in top_definition_legend_labels %}
+                    <option value="{{ level.label }}" selected>{{ level.label }}</option>
+                    {% endif %}
+                  </select>
+                  <span class="input-group-text p-0">
+                    <input class="form-control form-control-color border-0" type="color" name="fire_severity_color" value="{{ level.color or '#dc3545' }}" title="Severity color">
+                  </span>
+                </div>
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="text" name="fire_smoke" value="{{ level.smoke }}" placeholder="Text">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="text" name="fire_heat" value="{{ level.heat }}" placeholder="Text">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="text" name="fire_flow_switch" value="{{ level.flow_switch }}" placeholder="Text">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="text" name="fire_supervisory_valve" value="{{ level.supervisory_valve }}" placeholder="Text">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="text" name="fire_manual" value="{{ level.manual }}" placeholder="Text">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="text" name="fire_gas" value="{{ level.gas }}" placeholder="Text">
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="addFireSeverity">Add Fire Severity</button>
+        </div>
       </div>
 
       <div class="mt-4">
@@ -555,6 +591,35 @@
   bindColorToggle('cardHeaderTransparent', 'cardHeaderColor');
   bindColorToggle('cardBodyTransparent', 'cardBodyColor');
   bindColorToggle('pageBackgroundTransparent', 'pageBackgroundColor');
+
+  const systemPageSelect = document.getElementById('systemPageSelect');
+  const systemSections = document.querySelectorAll('[data-system-section]');
+
+  const updateSystemSections = () => {
+    if (!systemPageSelect || !systemSections.length) {
+      return;
+    }
+    let hasMatch = false;
+    systemSections.forEach((section) => {
+      const isActive = section.dataset.systemSection === systemPageSelect.value;
+      section.classList.toggle('d-none', !isActive);
+      if (isActive) {
+        hasMatch = true;
+      }
+    });
+    if (!hasMatch) {
+      const fallback = systemSections[0].dataset.systemSection;
+      systemPageSelect.value = fallback;
+      systemSections.forEach((section) => {
+        section.classList.toggle('d-none', section.dataset.systemSection !== fallback);
+      });
+    }
+  };
+
+  if (systemPageSelect) {
+    systemPageSelect.addEventListener('change', updateSystemSections);
+    updateSystemSections();
+  }
 
   document.getElementById('addFireSeverity').addEventListener('click', () => {
     const container = document.getElementById('fireSeverityRows');
