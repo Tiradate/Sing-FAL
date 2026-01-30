@@ -703,6 +703,7 @@ def settings():
             "iaq": bool(request.form.get("nav_system_iaq")),
             "energy": bool(request.form.get("nav_system_energy")),
             "waste": bool(request.form.get("nav_system_waste")),
+            "fire": bool(request.form.get("nav_system_fire")),
         }
         card_header_color = request.form.get("card_header_color", settings["card_header_color"])
         card_body_color = request.form.get("card_body_color", settings["card_body_color"])
@@ -744,6 +745,8 @@ def settings():
                 or "Indoor",
                 "outdoor": request.form.get("top_definition_column_outdoor", "Outdoor").strip()
                 or "Outdoor",
+                "indoor_enabled": bool(request.form.get("top_definition_column_indoor_enabled")),
+                "outdoor_enabled": bool(request.form.get("top_definition_column_outdoor_enabled")),
             },
             "mode": top_definition_mode,
             "legend": top_definition_legend,

@@ -12,7 +12,8 @@
   "system_navigation": {
     "iaq": true,
     "energy": false,
-    "waste": false
+    "waste": false,
+    "fire": false
   },
   "fire_severity_mapping": [],
   "severity_levels": [
@@ -74,7 +75,9 @@
       "header": "Average Indoor/Outdoor IAQ",
       "columns": {
         "indoor": "Indoor",
-        "outdoor": "Outdoor"
+        "outdoor": "Outdoor",
+        "indoor_enabled": true,
+        "outdoor_enabled": true
       },
       "mode": "average",
       "legend": [
