@@ -258,7 +258,15 @@
           <div class="row g-2 align-items-center mb-2 fire-severity-row">
             <div class="col-12 col-md-3">
               <div class="input-group">
-                <input class="form-control" type="text" name="fire_severity_label" value="{{ level.label }}" placeholder="Label">
+                <select class="form-select" name="fire_severity_label">
+                  <option value="">Select severity</option>
+                  {% for legend_label in top_definition_legend_labels %}
+                  <option value="{{ legend_label }}" {% if legend_label == level.label %}selected{% endif %}>{{ legend_label }}</option>
+                  {% endfor %}
+                  {% if level.label and level.label not in top_definition_legend_labels %}
+                  <option value="{{ level.label }}" selected>{{ level.label }}</option>
+                  {% endif %}
+                </select>
                 <span class="input-group-text p-0">
                   <input class="form-control form-control-color border-0" type="color" name="fire_severity_color" value="{{ level.color or '#dc3545' }}" title="Severity color">
                 </span>
@@ -552,10 +560,13 @@
     const container = document.getElementById('fireSeverityRows');
     const row = document.createElement('div');
     row.className = 'row g-2 align-items-center mb-2 fire-severity-row';
+    const legendOptions = getLegendOptions('');
     row.innerHTML = `
       <div class="col-12 col-md-3">
         <div class="input-group">
-          <input class="form-control" type="text" name="fire_severity_label" placeholder="Label">
+          <select class="form-select" name="fire_severity_label">
+            ${legendOptions}
+          </select>
           <span class="input-group-text p-0">
             <input class="form-control form-control-color border-0" type="color" name="fire_severity_color" value="#dc3545" title="Severity color">
           </span>
@@ -640,6 +651,7 @@
   const addTopDefinitionLegend = document.getElementById('addTopDefinitionLegend');
   const severityLevels = {{ settings.severity_levels | tojson }};
   const severityRows = document.getElementById('severityRows');
+  const fireSeverityRows = document.getElementById('fireSeverityRows');
 
   const getLegendLabels = () => {
     if (!topDefinitionLegendRows) {
@@ -677,19 +689,37 @@
     });
   };
 
+  const refreshFireSeverityOptions = () => {
+    if (!fireSeverityRows) {
+      return;
+    }
+    const labels = getLegendLabels();
+    fireSeverityRows.querySelectorAll('select[name="fire_severity_label"]').forEach((select) => {
+      const currentValue = select.value;
+      select.innerHTML = getLegendOptions(currentValue);
+      if (currentValue && !labels.includes(currentValue)) {
+        select.value = '';
+      }
+    });
+  };
+
   const bindTopDefinitionLegendRow = (row) => {
     if (!row) {
       return;
     }
     const input = row.querySelector('input[name="top_definition_legend_label"]');
     if (input) {
-      input.addEventListener('input', refreshSeverityOptions);
+      input.addEventListener('input', () => {
+        refreshSeverityOptions();
+        refreshFireSeverityOptions();
+      });
     }
     const removeButton = row.querySelector('.remove-top-definition-legend');
     if (removeButton) {
       removeButton.addEventListener('click', () => {
         row.remove();
         refreshSeverityOptions();
+        refreshFireSeverityOptions();
       });
     }
   };
@@ -734,10 +764,12 @@
       topDefinitionLegendRows.appendChild(row);
       bindTopDefinitionLegendRow(row);
       refreshSeverityOptions();
+      refreshFireSeverityOptions();
     });
   }
 
   refreshSeverityOptions();
+  refreshFireSeverityOptions();
 
   const floorPlanButton = document.getElementById('addFloorPlan');
   const floorPlanContainer = document.getElementById('floorPlanRows');
