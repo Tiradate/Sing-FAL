@@ -6,36 +6,51 @@
     <h4 class="fw-bold mb-0">{{ settings.project_name or 'Indoor Air Quality (IAQ)' }}</h4>
   </div>
   <div class="col-12 col-lg-6 mt-2 mt-lg-0 d-flex justify-content-lg-end">
+    {% set nav = settings.system_navigation if settings.system_navigation is defined else {'iaq': true} %}
     <ul class="nav nav-pills gap-2 mt-3">
       <li class="nav-item">
-        <a class="nav-link active" href="#"><i class="bi bi-bar-chart"></i> IAQ</a>
+        <a class="nav-link {% if nav.iaq %}active{% else %}disabled{% endif %}" href="#"><i class="bi bi-bar-chart"></i> IAQ</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link disabled" href="#"><i class="bi bi-lightning"></i> Energy &amp; Carbon</a>
+        <a class="nav-link {% if not nav.energy %}disabled{% endif %}" href="#"><i class="bi bi-lightning"></i> Energy &amp; Carbon</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link disabled" href="#"><i class="bi bi-trash"></i> Waste</a>
+        <a class="nav-link {% if not nav.waste %}disabled{% endif %}" href="#"><i class="bi bi-trash"></i> Waste</a>
       </li>
     </ul>
   </div>
+  {% set top_definition = settings.modules.top_definition if settings.modules and settings.modules.top_definition is defined else {} %}
+  {% set top_definition_columns = top_definition.columns if top_definition.columns is defined else {} %}
+  {% set top_definition_mode = top_definition.mode if top_definition.mode is defined else 'average' %}
+  {% set top_definition_legend = top_definition.legend if top_definition.legend is defined and top_definition.legend else settings.severity_levels %}
+  {% if top_definition.enabled %}
   <div class="col-12 col-lg-6 w-100">
     <div class="card shadow-sm h-100">
       <div class="card-body dashboard-card-body">
         <div class="d-flex align-items-center flex-wrap gap-4">
           <div>
-            <h6 class="text-muted mb-0">Average Indoor/Outdoor IAQ</h6>
+            <div class="small text-uppercase text-muted">{{ top_definition.title or 'Top Definition' }}</div>
+            <h6 class="text-muted mb-0">{{ top_definition.header or 'Average Indoor/Outdoor IAQ' }}</h6>
           </div>
           <div>
-            <div class="small text-uppercase text-muted">Indoor</div>
+            <div class="small text-uppercase text-muted">{{ top_definition_columns.indoor or 'Indoor' }}</div>
+            {% if top_definition_mode == 'critical' %}
+            <div class="fw-semibold">{{ indoor_critical_count }} Critical</div>
+            {% else %}
             <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.indoor or 0) }} IAQ</div>
+            {% endif %}
           </div>
           <div>
-            <div class="small text-uppercase text-muted">Outdoor</div>
+            <div class="small text-uppercase text-muted">{{ top_definition_columns.outdoor or 'Outdoor' }}</div>
+            {% if top_definition_mode == 'critical' %}
+            <div class="fw-semibold">{{ outdoor_critical_count }} Critical</div>
+            {% else %}
             <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.outdoor or 0) }} IAQ</div>
+            {% endif %}
           </div>
           <div class="flex-grow-1"></div>
           <div class="d-flex gap-3 flex-wrap">
-            {% for level in settings.severity_levels %}
+            {% for level in top_definition_legend %}
             <div class="d-flex align-items-center gap-2">
               <span class="legend-dot" style="background: {{ level.color }}"></span>
               <small>{{ level.label }}</small>
@@ -46,6 +61,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
 </div>
 
 <div class="row g-3">

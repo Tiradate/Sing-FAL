@@ -140,6 +140,25 @@ def index():
     device_severity = derive_device_severity(
         devices, device_metric_severity, alarm_severity, settings
     )
+    critical_levels = set(settings.get("critical_levels", []))
+
+    def is_outdoor_zone(zone):
+        if not zone:
+            return False
+        zone_value = zone.lower()
+        return "outdoor" in zone_value or "outside" in zone_value
+
+    indoor_critical_count = 0
+    outdoor_critical_count = 0
+    for device in devices:
+        device_id = device["device_id"]
+        severity = device_severity.get(device_id)
+        if severity not in critical_levels:
+            continue
+        if is_outdoor_zone(device.get("zone", "")):
+            outdoor_critical_count += 1
+        else:
+            indoor_critical_count += 1
 
     default_view_device = devices[0]["device_id"] if devices else None
     daily_view_end = datetime.now()
@@ -173,6 +192,8 @@ def index():
         metric_option_map=metric_option_map,
         device_metric_severity=device_metric_severity,
         device_severity=device_severity,
+        indoor_critical_count=indoor_critical_count,
+        outdoor_critical_count=outdoor_critical_count,
         now=datetime.now(),
         default_view_device=default_view_device,
         daily_view_start=daily_view_start.strftime("%Y-%m-%dT%H:%M"),
@@ -678,6 +699,11 @@ def settings():
             "settings": True,
         }
         settings["show_severity_lines"] = bool(request.form.get("show_severity_lines"))
+        settings["system_navigation"] = {
+            "iaq": bool(request.form.get("nav_system_iaq")),
+            "energy": bool(request.form.get("nav_system_energy")),
+            "waste": bool(request.form.get("nav_system_waste")),
+        }
         card_header_color = request.form.get("card_header_color", settings["card_header_color"])
         card_body_color = request.form.get("card_body_color", settings["card_body_color"])
         page_background_color = request.form.get(
@@ -694,6 +720,35 @@ def settings():
             if request.form.get("page_background_transparent")
             else page_background_color
         )
+
+        top_definition_labels = request.form.getlist("top_definition_legend_label")
+        top_definition_colors = request.form.getlist("top_definition_legend_color")
+        top_definition_legend = []
+        for label, color in zip(top_definition_labels, top_definition_colors):
+            if label.strip() or color.strip():
+                top_definition_legend.append(
+                    {"label": label.strip(), "color": color.strip() or "#28a745"}
+                )
+        top_definition_mode = request.form.get("top_definition_mode", "average")
+        if top_definition_mode not in ("average", "critical"):
+            top_definition_mode = "average"
+        modules = settings.get("modules", {})
+        modules["top_definition"] = {
+            "enabled": bool(request.form.get("top_definition_enabled")),
+            "title": request.form.get("top_definition_title", "Top Definition").strip()
+            or "Top Definition",
+            "header": request.form.get("top_definition_header", "").strip()
+            or "Average Indoor/Outdoor IAQ",
+            "columns": {
+                "indoor": request.form.get("top_definition_column_indoor", "Indoor").strip()
+                or "Indoor",
+                "outdoor": request.form.get("top_definition_column_outdoor", "Outdoor").strip()
+                or "Outdoor",
+            },
+            "mode": top_definition_mode,
+            "legend": top_definition_legend,
+        }
+        settings["modules"] = modules
 
         fire_severity_labels = request.form.getlist("fire_severity_label")
         fire_severity_colors = request.form.getlist("fire_severity_color")
