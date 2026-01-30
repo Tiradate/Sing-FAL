@@ -1,8 +1,29 @@
+import copy
 import json
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SETTINGS_PATH = os.path.join(BASE_DIR, "settings.json")
+
+SYSTEM_KEYS = ("iaq", "energy", "waste", "fire")
+
+DEFAULT_TOP_DEFINITION = {
+    "enabled": True,
+    "title": "Top Definition",
+    "header": "Average Indoor/Outdoor IAQ",
+    "columns": {
+        "indoor": "Indoor",
+        "outdoor": "Outdoor",
+        "indoor_enabled": True,
+        "outdoor_enabled": True,
+    },
+    "mode": "average",
+    "legend": [
+        {"label": "Good", "color": "#28a745"},
+        {"label": "Moderate", "color": "#fd7e14"},
+        {"label": "Unhealthy", "color": "#dc3545"},
+    ],
+}
 
 DEFAULT_SETTINGS = {
     "project_name": "ICONSIAM",
@@ -76,21 +97,21 @@ DEFAULT_SETTINGS = {
     "page_background_color": "#f8f9fa",
     "modules": {
         "top_definition": {
-            "enabled": True,
-            "title": "Top Definition",
-            "header": "Average Indoor/Outdoor IAQ",
-            "columns": {
-                "indoor": "Indoor",
-                "outdoor": "Outdoor",
-                "indoor_enabled": True,
-                "outdoor_enabled": True,
+            "iaq": DEFAULT_TOP_DEFINITION,
+            "energy": {
+                **DEFAULT_TOP_DEFINITION,
+                "enabled": False,
+                "header": "Energy & Carbon Overview",
             },
-            "mode": "average",
-            "legend": [
-                {"label": "Good", "color": "#28a745"},
-                {"label": "Moderate", "color": "#fd7e14"},
-                {"label": "Unhealthy", "color": "#dc3545"},
-            ],
+            "waste": {
+                **DEFAULT_TOP_DEFINITION,
+                "enabled": False,
+                "header": "Waste Overview",
+            },
+            "fire": {
+                **DEFAULT_TOP_DEFINITION,
+                "header": "Average Indoor/Outdoor Fire Status",
+            },
         }
     },
     "admin_username": "admin",
@@ -116,9 +137,53 @@ def load_settings():
     with open(SETTINGS_PATH, "r", encoding="utf-8") as handle:
         settings = json.load(handle)
 
-    if _merge_defaults(settings, DEFAULT_SETTINGS):
+    updated = _merge_defaults(settings, DEFAULT_SETTINGS)
+    updated = normalize_top_definition(settings) or updated
+    if updated:
         save_settings(settings)
     return settings
+
+
+def normalize_top_definition(settings):
+    modules = settings.setdefault("modules", {})
+    top_definition = modules.get("top_definition", {})
+    default_map = DEFAULT_SETTINGS["modules"]["top_definition"]
+    updated = False
+
+    if not isinstance(top_definition, dict):
+        modules["top_definition"] = default_map
+        return True
+
+    legacy_keys = {"enabled", "title", "header", "columns", "mode", "legend"}
+    if legacy_keys.intersection(top_definition.keys()):
+        normalized = {key: copy.deepcopy(default_map[key]) for key in SYSTEM_KEYS}
+        for key in ("iaq", "fire"):
+            normalized[key] = {
+                **copy.deepcopy(default_map[key]),
+                **top_definition,
+            }
+        modules["top_definition"] = normalized
+        return True
+
+    normalized = {}
+    for key in SYSTEM_KEYS:
+        current = top_definition.get(key, {})
+        merged = copy.deepcopy(default_map.get(key, DEFAULT_TOP_DEFINITION))
+        if isinstance(current, dict):
+            merged.update(current)
+            if "columns" in merged and isinstance(current.get("columns"), dict):
+                merged["columns"] = {
+                    **merged.get("columns", {}),
+                    **current.get("columns", {}),
+                }
+        normalized[key] = merged
+        if current != merged:
+            updated = True
+    if updated or top_definition != normalized:
+        modules["top_definition"] = normalized
+        updated = True
+
+    return updated
 
 
 def save_settings(settings):

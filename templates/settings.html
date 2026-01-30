@@ -148,11 +148,13 @@
         </div>
       </div>
 
-      {% set top_definition = settings.modules.top_definition if settings.modules and settings.modules.top_definition is defined else {} %}
-      {% set top_definition_columns = top_definition.columns if top_definition.columns is defined else {} %}
-      {% set top_definition_mode = top_definition.mode if top_definition.mode is defined else 'average' %}
-      {% set top_definition_legend = top_definition.legend if top_definition.legend is defined and top_definition.legend else settings.severity_levels %}
-      {% set top_definition_legend_labels = top_definition_legend | map(attribute='label') | list %}
+      {% set top_definition_by_system = settings.modules.top_definition if settings.modules and settings.modules.top_definition is defined else {} %}
+      {% set iaq_top_definition = top_definition_by_system.get('iaq', {}) %}
+      {% set iaq_top_definition_legend = iaq_top_definition.legend if iaq_top_definition.legend is defined and iaq_top_definition.legend else settings.severity_levels %}
+      {% set iaq_top_definition_legend_labels = iaq_top_definition_legend | map(attribute='label') | list %}
+      {% set fire_top_definition = top_definition_by_system.get('fire', {}) %}
+      {% set fire_top_definition_legend = fire_top_definition.legend if fire_top_definition.legend is defined and fire_top_definition.legend else settings.severity_levels %}
+      {% set fire_top_definition_legend_labels = fire_top_definition_legend | map(attribute='label') | list %}
 
       {% set system_options = [
         {'key': 'iaq', 'label': 'IAQ'},
@@ -178,14 +180,19 @@
         </div>
       </div>
 
-      <div data-system-section="iaq,fire">
+      {% for system in system_options %}
+      {% set top_definition = top_definition_by_system.get(system.key, {}) %}
+      {% set top_definition_columns = top_definition.columns if top_definition.columns is defined else {} %}
+      {% set top_definition_mode = top_definition.mode if top_definition.mode is defined else 'average' %}
+      {% set top_definition_legend = top_definition.legend if top_definition.legend is defined and top_definition.legend else settings.severity_levels %}
+      <div data-system-section="{{ system.key }}"{% if system.key != 'iaq' %} class="d-none"{% endif %}>
         <div class="col-12">
-          <div class="card shadow-sm h-100">
+          <div class="card shadow-sm h-100" data-top-definition-key="{{ system.key }}">
             <div class="card-header">
               <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h6 class="mb-0">Top Definition</h6>
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="top_definition_enabled" {% if top_definition.enabled %}checked{% endif %}>
+                  <input class="form-check-input" type="checkbox" name="top_definition_enabled_{{ system.key }}" {% if top_definition.enabled %}checked{% endif %}>
                   <label class="form-check-label">Enable module</label>
                 </div>
               </div>
@@ -194,35 +201,35 @@
               <div class="row g-3">
                 <div class="col-12 col-md-6">
                   <label class="form-label">Module Title</label>
-                  <input class="form-control" type="text" name="top_definition_title" value="{{ top_definition.title or 'Top Definition' }}">
+                  <input class="form-control" type="text" name="top_definition_title_{{ system.key }}" value="{{ top_definition.title or 'Top Definition' }}">
                 </div>
                 <div class="col-12 col-md-6">
                   <label class="form-label">Header Text</label>
-                  <input class="form-control" type="text" name="top_definition_header" value="{{ top_definition.header or 'Average Indoor/Outdoor IAQ' }}">
+                  <input class="form-control" type="text" name="top_definition_header_{{ system.key }}" value="{{ top_definition.header or 'Average Indoor/Outdoor IAQ' }}">
                 </div>
                 <div class="col-12 col-md-4">
                   <div class="d-flex justify-content-between align-items-center">
                     <label class="form-label">Header Column 1</label>
                     <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="top_definition_column_indoor_enabled" {% if top_definition_columns.indoor_enabled is not defined or top_definition_columns.indoor_enabled %}checked{% endif %}>
+                      <input class="form-check-input" type="checkbox" name="top_definition_column_indoor_enabled_{{ system.key }}" {% if top_definition_columns.indoor_enabled is not defined or top_definition_columns.indoor_enabled %}checked{% endif %}>
                       <label class="form-check-label">Enable</label>
                     </div>
                   </div>
-                  <input class="form-control" type="text" name="top_definition_column_indoor" value="{{ top_definition_columns.indoor or 'Indoor' }}">
+                  <input class="form-control" type="text" name="top_definition_column_indoor_{{ system.key }}" value="{{ top_definition_columns.indoor or 'Indoor' }}">
                 </div>
                 <div class="col-12 col-md-4">
                   <div class="d-flex justify-content-between align-items-center">
                     <label class="form-label">Header Column 2</label>
                     <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="top_definition_column_outdoor_enabled" {% if top_definition_columns.outdoor_enabled is not defined or top_definition_columns.outdoor_enabled %}checked{% endif %}>
+                      <input class="form-check-input" type="checkbox" name="top_definition_column_outdoor_enabled_{{ system.key }}" {% if top_definition_columns.outdoor_enabled is not defined or top_definition_columns.outdoor_enabled %}checked{% endif %}>
                       <label class="form-check-label">Enable</label>
                     </div>
                   </div>
-                  <input class="form-control" type="text" name="top_definition_column_outdoor" value="{{ top_definition_columns.outdoor or 'Outdoor' }}">
+                  <input class="form-control" type="text" name="top_definition_column_outdoor_{{ system.key }}" value="{{ top_definition_columns.outdoor or 'Outdoor' }}">
                 </div>
                 <div class="col-12 col-md-4">
                   <label class="form-label">Mode</label>
-                  <select class="form-select" name="top_definition_mode">
+                  <select class="form-select" name="top_definition_mode_{{ system.key }}">
                     <option value="average" {% if top_definition_mode == 'average' %}selected{% endif %}>Average</option>
                     <option value="critical" {% if top_definition_mode == 'critical' %}selected{% endif %}>Critical</option>
                   </select>
@@ -231,18 +238,18 @@
               <div class="mt-3">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <h6 class="mb-0">Severity Legend</h6>
-                  <button type="button" class="btn btn-sm btn-outline-secondary" id="addTopDefinitionLegend">+ Add Severity</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-top-definition-add="{{ system.key }}">+ Add Severity</button>
                 </div>
-                <div id="topDefinitionLegendRows">
+                <div data-top-definition-rows="{{ system.key }}">
                   {% for item in top_definition_legend %}
                   <div class="row g-2 align-items-end mb-2 top-definition-legend-row">
                     <div class="col-12 col-md-5">
                       <label class="form-label">Severity</label>
-                      <input class="form-control" type="text" name="top_definition_legend_label" value="{{ item.label }}">
+                      <input class="form-control" type="text" name="top_definition_legend_label_{{ system.key }}" value="{{ item.label }}">
                     </div>
                     <div class="col-6 col-md-3">
                       <label class="form-label">Color</label>
-                      <input class="form-control form-control-color" type="color" name="top_definition_legend_color" value="{{ item.color or '#28a745' }}">
+                      <input class="form-control form-control-color" type="color" name="top_definition_legend_color_{{ system.key }}" value="{{ item.color or '#28a745' }}">
                     </div>
                     <div class="col-6 col-md-2">
                       <button type="button" class="btn btn-outline-danger remove-top-definition-legend">-</button>
@@ -257,6 +264,7 @@
 
         <hr class="my-4">
       </div>
+      {% endfor %}
 
       <div data-system-section="iaq">
         <div id="iaqSeveritySection">
@@ -271,14 +279,14 @@
             <div class="col-6 col-md-2 col-xl-1">CO₂ (ppm)</div>
             <div class="col-12 col-md-2">Critical</div>
           </div>
-          <div id="severityRows">
+          <div id="severityRows" data-severity-rows="iaq">
             {% for level in settings.severity_levels %}
             <div class="row g-2 align-items-center mb-2 severity-row">
               <div class="col-12 col-md-3">
                 <div class="input-group">
                   <select class="form-select" name="severity_label">
                     <option value="">Select severity</option>
-                    {% for legend_label in top_definition_legend_labels %}
+                    {% for legend_label in iaq_top_definition_legend_labels %}
                     <option value="{{ legend_label }}" {% if legend_label == level.label %}selected{% endif %}>{{ legend_label }}</option>
                     {% endfor %}
                   </select>
@@ -486,11 +494,11 @@
       </div>
 
       <div class="d-none" data-system-section="energy">
-        <div class="alert alert-light border">No Energy &amp; Carbon settings available yet.</div>
+        <div class="alert alert-light border">No additional Energy &amp; Carbon settings available yet.</div>
       </div>
 
       <div class="d-none" data-system-section="waste">
-        <div class="alert alert-light border">No Waste settings available yet.</div>
+        <div class="alert alert-light border">No additional Waste settings available yet.</div>
       </div>
 
       <div class="d-none" data-system-section="fire">
@@ -505,7 +513,7 @@
             <div class="col-6 col-md-2 col-xl-1">Manual</div>
             <div class="col-6 col-md-2 col-xl-1">Gas</div>
           </div>
-          <div id="fireSeverityRows">
+          <div id="fireSeverityRows" data-severity-rows="fire">
             {% set fire_levels = settings.fire_severity_mapping if settings.fire_severity_mapping else [{
               'label': '',
               'color': '#dc3545',
@@ -522,10 +530,10 @@
                 <div class="input-group">
                   <select class="form-select" name="fire_severity_label">
                     <option value="">Select severity</option>
-                    {% for legend_label in top_definition_legend_labels %}
+                    {% for legend_label in fire_top_definition_legend_labels %}
                     <option value="{{ legend_label }}" {% if legend_label == level.label %}selected{% endif %}>{{ legend_label }}</option>
                     {% endfor %}
-                    {% if level.label and level.label not in top_definition_legend_labels %}
+                    {% if level.label and level.label not in fire_top_definition_legend_labels %}
                     <option value="{{ level.label }}" selected>{{ level.label }}</option>
                     {% endif %}
                   </select>
@@ -640,7 +648,9 @@
     const container = document.getElementById('fireSeverityRows');
     const row = document.createElement('div');
     row.className = 'row g-2 align-items-center mb-2 fire-severity-row';
-    const legendOptions = getLegendOptions('');
+    const legendOptions = legendHelpers.fire
+      ? legendHelpers.fire.getLegendOptions('')
+      : '<option value="">Select severity</option>';
     row.innerHTML = `
       <div class="col-12 col-md-3">
         <div class="input-group">
@@ -678,7 +688,9 @@
     const container = document.getElementById('severityRows');
     const row = document.createElement('div');
     row.className = 'row g-2 align-items-center mb-2 severity-row';
-    const legendOptions = getLegendOptions('');
+    const legendOptions = legendHelpers.iaq
+      ? legendHelpers.iaq.getLegendOptions('')
+      : '<option value="">Select severity</option>';
     row.innerHTML = `
       <div class="col-12 col-md-3">
         <div class="input-group">
@@ -727,88 +739,110 @@
     container.appendChild(row);
   });
 
-  const topDefinitionLegendRows = document.getElementById('topDefinitionLegendRows');
-  const addTopDefinitionLegend = document.getElementById('addTopDefinitionLegend');
   const severityLevels = {{ settings.severity_levels | tojson }};
   const severityRows = document.getElementById('severityRows');
   const fireSeverityRows = document.getElementById('fireSeverityRows');
+  const topDefinitionSections = document.querySelectorAll('[data-top-definition-key]');
+  const legendHelpers = {};
 
-  const getLegendLabels = () => {
-    if (!topDefinitionLegendRows) {
-      return [];
-    }
-    return Array.from(
-      topDefinitionLegendRows.querySelectorAll('input[name="top_definition_legend_label"]'),
-    )
-      .map((input) => input.value.trim())
-      .filter(Boolean);
-  };
+  topDefinitionSections.forEach((section) => {
+    const systemKey = section.dataset.topDefinitionKey;
+    const legendRows = section.querySelector(`[data-top-definition-rows="${systemKey}"]`);
+    const addButton = section.querySelector(`[data-top-definition-add="${systemKey}"]`);
+    const severityContainer = document.querySelector(`[data-severity-rows="${systemKey}"]`);
+    const selectName = systemKey === 'fire' ? 'fire_severity_label' : 'severity_label';
 
-  const getLegendOptions = (selectedLabel = '') => {
-    const labels = getLegendLabels();
-    const options = labels
-      .map((label) => {
-        const selected = label === selectedLabel ? 'selected' : '';
-        return `<option value="${label}" ${selected}>${label}</option>`;
-      })
-      .join('');
-    return `<option value="">Select severity</option>${options}`;
-  };
-
-  const refreshSeverityOptions = () => {
-    if (!severityRows) {
-      return;
-    }
-    const labels = getLegendLabels();
-    severityRows.querySelectorAll('select[name="severity_label"]').forEach((select) => {
-      const currentValue = select.value;
-      select.innerHTML = getLegendOptions(currentValue);
-      if (currentValue && !labels.includes(currentValue)) {
-        select.value = '';
+    const getLegendLabels = () => {
+      if (!legendRows) {
+        return [];
       }
-    });
-  };
+      return Array.from(
+        legendRows.querySelectorAll(`input[name="top_definition_legend_label_${systemKey}"]`),
+      )
+        .map((input) => input.value.trim())
+        .filter(Boolean);
+    };
 
-  const refreshFireSeverityOptions = () => {
-    if (!fireSeverityRows) {
-      return;
-    }
-    const labels = getLegendLabels();
-    fireSeverityRows.querySelectorAll('select[name="fire_severity_label"]').forEach((select) => {
-      const currentValue = select.value;
-      select.innerHTML = getLegendOptions(currentValue);
-      if (currentValue && !labels.includes(currentValue)) {
-        select.value = '';
+    const getLegendOptions = (selectedLabel = '') => {
+      const labels = getLegendLabels();
+      const options = labels
+        .map((label) => {
+          const selected = label === selectedLabel ? 'selected' : '';
+          return `<option value="${label}" ${selected}>${label}</option>`;
+        })
+        .join('');
+      return `<option value="">Select severity</option>${options}`;
+    };
+
+    const refreshSeverityOptions = () => {
+      if (!severityContainer) {
+        return;
       }
-    });
-  };
+      const labels = getLegendLabels();
+      severityContainer.querySelectorAll(`select[name="${selectName}"]`).forEach((select) => {
+        const currentValue = select.value;
+        select.innerHTML = getLegendOptions(currentValue);
+        if (currentValue && !labels.includes(currentValue)) {
+          select.value = '';
+        }
+      });
+    };
 
-  const bindTopDefinitionLegendRow = (row) => {
-    if (!row) {
-      return;
+    const bindTopDefinitionLegendRow = (row) => {
+      if (!row) {
+        return;
+      }
+      const input = row.querySelector(`input[name="top_definition_legend_label_${systemKey}"]`);
+      if (input) {
+        input.addEventListener('input', () => {
+          refreshSeverityOptions();
+        });
+      }
+      const removeButton = row.querySelector('.remove-top-definition-legend');
+      if (removeButton) {
+        removeButton.addEventListener('click', () => {
+          row.remove();
+          refreshSeverityOptions();
+        });
+      }
+    };
+
+    if (legendRows) {
+      legendRows
+        .querySelectorAll('.top-definition-legend-row')
+        .forEach((row) => bindTopDefinitionLegendRow(row));
     }
-    const input = row.querySelector('input[name="top_definition_legend_label"]');
-    if (input) {
-      input.addEventListener('input', () => {
+
+    if (addButton && legendRows) {
+      addButton.addEventListener('click', () => {
+        const defaultColor = severityLevels.length ? severityLevels[0].color : '#28a745';
+        const row = document.createElement('div');
+        row.className = 'row g-2 align-items-end mb-2 top-definition-legend-row';
+        row.innerHTML = `
+          <div class="col-12 col-md-5">
+            <label class="form-label">Severity</label>
+            <input class="form-control" type="text" name="top_definition_legend_label_${systemKey}" value="">
+          </div>
+          <div class="col-6 col-md-3">
+            <label class="form-label">Color</label>
+            <input class="form-control form-control-color" type="color" name="top_definition_legend_color_${systemKey}" value="${defaultColor}">
+          </div>
+          <div class="col-6 col-md-2">
+            <button type="button" class="btn btn-outline-danger remove-top-definition-legend">-</button>
+          </div>
+        `;
+        legendRows.appendChild(row);
+        bindTopDefinitionLegendRow(row);
         refreshSeverityOptions();
-        refreshFireSeverityOptions();
       });
     }
-    const removeButton = row.querySelector('.remove-top-definition-legend');
-    if (removeButton) {
-      removeButton.addEventListener('click', () => {
-        row.remove();
-        refreshSeverityOptions();
-        refreshFireSeverityOptions();
-      });
-    }
-  };
 
-  if (topDefinitionLegendRows) {
-    topDefinitionLegendRows
-      .querySelectorAll('.top-definition-legend-row')
-      .forEach((row) => bindTopDefinitionLegendRow(row));
-  }
+    legendHelpers[systemKey] = {
+      getLegendOptions,
+      refreshSeverityOptions,
+    };
+    refreshSeverityOptions();
+  });
 
   if (severityRows) {
     severityRows.querySelectorAll('.severity-row').forEach((row) => {
@@ -823,33 +857,25 @@
     });
   }
 
-  if (addTopDefinitionLegend && topDefinitionLegendRows) {
-    addTopDefinitionLegend.addEventListener('click', () => {
-      const defaultColor = severityLevels.length ? severityLevels[0].color : '#28a745';
-      const row = document.createElement('div');
-      row.className = 'row g-2 align-items-end mb-2 top-definition-legend-row';
-      row.innerHTML = `
-        <div class="col-12 col-md-5">
-          <label class="form-label">Severity</label>
-          <input class="form-control" type="text" name="top_definition_legend_label" value="">
-        </div>
-        <div class="col-6 col-md-3">
-          <label class="form-label">Color</label>
-          <input class="form-control form-control-color" type="color" name="top_definition_legend_color" value="${defaultColor}">
-        </div>
-        <div class="col-6 col-md-2">
-          <button type="button" class="btn btn-outline-danger remove-top-definition-legend">-</button>
-        </div>
-      `;
-      topDefinitionLegendRows.appendChild(row);
-      bindTopDefinitionLegendRow(row);
-      refreshSeverityOptions();
-      refreshFireSeverityOptions();
+  if (severityRows) {
+    const iaqLegendHelper = legendHelpers.iaq;
+    severityRows.querySelectorAll('select[name="severity_label"]').forEach((select) => {
+      const currentValue = select.value;
+      if (iaqLegendHelper) {
+        select.innerHTML = iaqLegendHelper.getLegendOptions(currentValue);
+      }
     });
   }
 
-  refreshSeverityOptions();
-  refreshFireSeverityOptions();
+  if (fireSeverityRows) {
+    const fireLegendHelper = legendHelpers.fire;
+    fireSeverityRows.querySelectorAll('select[name="fire_severity_label"]').forEach((select) => {
+      const currentValue = select.value;
+      if (fireLegendHelper) {
+        select.innerHTML = fireLegendHelper.getLegendOptions(currentValue);
+      }
+    });
+  }
 
   const floorPlanButton = document.getElementById('addFloorPlan');
   const floorPlanContainer = document.getElementById('floorPlanRows');
