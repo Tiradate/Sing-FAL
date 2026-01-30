@@ -109,6 +109,9 @@ def inject_globals():
 @app.route("/")
 def index():
     settings = settings_service.load_settings()
+    active_system = request.args.get("system", "iaq")
+    if active_system not in settings_service.SYSTEM_KEYS:
+        active_system = "iaq"
     floors = data_service.get_floor_list()
     floor_id = request.args.get("floor") or (floors[0] if floors else None)
     devices = data_service.get_devices()
@@ -172,6 +175,7 @@ def index():
 
     return render_template(
         "index.html",
+        active_system=active_system,
         floors=floors,
         active_floor=floor_id,
         devices=devices,
@@ -722,35 +726,64 @@ def settings():
             else page_background_color
         )
 
-        top_definition_labels = request.form.getlist("top_definition_legend_label")
-        top_definition_colors = request.form.getlist("top_definition_legend_color")
-        top_definition_legend = []
-        for label, color in zip(top_definition_labels, top_definition_colors):
-            if label.strip() or color.strip():
-                top_definition_legend.append(
-                    {"label": label.strip(), "color": color.strip() or "#28a745"}
-                )
-        top_definition_mode = request.form.get("top_definition_mode", "average")
-        if top_definition_mode not in ("average", "critical"):
-            top_definition_mode = "average"
         modules = settings.get("modules", {})
-        modules["top_definition"] = {
-            "enabled": bool(request.form.get("top_definition_enabled")),
-            "title": request.form.get("top_definition_title", "Top Definition").strip()
-            or "Top Definition",
-            "header": request.form.get("top_definition_header", "").strip()
-            or "Average Indoor/Outdoor IAQ",
-            "columns": {
-                "indoor": request.form.get("top_definition_column_indoor", "Indoor").strip()
-                or "Indoor",
-                "outdoor": request.form.get("top_definition_column_outdoor", "Outdoor").strip()
-                or "Outdoor",
-                "indoor_enabled": bool(request.form.get("top_definition_column_indoor_enabled")),
-                "outdoor_enabled": bool(request.form.get("top_definition_column_outdoor_enabled")),
-            },
-            "mode": top_definition_mode,
-            "legend": top_definition_legend,
-        }
+        existing_top_definition = modules.get("top_definition", {})
+        updated_top_definition = {}
+        for system_key in settings_service.SYSTEM_KEYS:
+            system_defaults = existing_top_definition.get(system_key, {})
+            default_columns = system_defaults.get("columns", {})
+            labels = request.form.getlist(f"top_definition_legend_label_{system_key}")
+            colors = request.form.getlist(f"top_definition_legend_color_{system_key}")
+            legend = []
+            for label, color in zip(labels, colors):
+                if label.strip() or color.strip():
+                    legend.append(
+                        {"label": label.strip(), "color": color.strip() or "#28a745"}
+                    )
+            top_definition_mode = request.form.get(
+                f"top_definition_mode_{system_key}",
+                system_defaults.get("mode", "average"),
+            )
+            if top_definition_mode not in ("average", "critical"):
+                top_definition_mode = "average"
+            updated_top_definition[system_key] = {
+                "enabled": bool(request.form.get(f"top_definition_enabled_{system_key}")),
+                "title": request.form.get(
+                    f"top_definition_title_{system_key}",
+                    system_defaults.get("title", "Top Definition"),
+                ).strip()
+                or "Top Definition",
+                "header": request.form.get(
+                    f"top_definition_header_{system_key}",
+                    system_defaults.get("header", "Average Indoor/Outdoor IAQ"),
+                ).strip()
+                or system_defaults.get("header", "Average Indoor/Outdoor IAQ"),
+                "columns": {
+                    "indoor": request.form.get(
+                        f"top_definition_column_indoor_{system_key}",
+                        default_columns.get("indoor", "Indoor"),
+                    ).strip()
+                    or default_columns.get("indoor", "Indoor"),
+                    "outdoor": request.form.get(
+                        f"top_definition_column_outdoor_{system_key}",
+                        default_columns.get("outdoor", "Outdoor"),
+                    ).strip()
+                    or default_columns.get("outdoor", "Outdoor"),
+                    "indoor_enabled": bool(
+                        request.form.get(
+                            f"top_definition_column_indoor_enabled_{system_key}"
+                        )
+                    ),
+                    "outdoor_enabled": bool(
+                        request.form.get(
+                            f"top_definition_column_outdoor_enabled_{system_key}"
+                        )
+                    ),
+                },
+                "mode": top_definition_mode,
+                "legend": legend,
+            }
+        modules["top_definition"] = updated_top_definition
         settings["modules"] = modules
 
         fire_severity_labels = request.form.getlist("fire_severity_label")
