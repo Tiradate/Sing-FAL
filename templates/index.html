@@ -16,7 +16,12 @@
     <ul class="nav nav-pills gap-2 mt-3">
       {% for item in nav_items if nav.get(item.key) %}
       <li class="nav-item">
-        <a class="nav-link active" href="#"><i class="bi {{ item.icon }}"></i> {{ item.label }}</a>
+        <a
+          class="nav-link{% if active_system == item.key %} active{% endif %}"
+          href="{{ url_for('index', system=item.key) }}"
+        >
+          <i class="bi {{ item.icon }}"></i> {{ item.label }}
+        </a>
       </li>
       {% endfor %}
     </ul>
