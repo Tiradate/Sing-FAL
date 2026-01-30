@@ -15,6 +15,11 @@ DEFAULT_SETTINGS = {
         "settings": True,
     },
     "show_severity_lines": True,
+    "system_navigation": {
+        "iaq": True,
+        "energy": False,
+        "waste": False,
+    },
     "fire_severity_mapping": [],
     "severity_levels": [
         {
@@ -68,9 +73,35 @@ DEFAULT_SETTINGS = {
     "card_header_color": "#ffffff",
     "card_body_color": "#ffffff",
     "page_background_color": "#f8f9fa",
+    "modules": {
+        "top_definition": {
+            "enabled": True,
+            "title": "Top Definition",
+            "header": "Average Indoor/Outdoor IAQ",
+            "columns": {"indoor": "Indoor", "outdoor": "Outdoor"},
+            "mode": "average",
+            "legend": [
+                {"label": "Good", "color": "#28a745"},
+                {"label": "Moderate", "color": "#fd7e14"},
+                {"label": "Unhealthy", "color": "#dc3545"},
+            ],
+        }
+    },
     "admin_username": "admin",
     "admin_password": "admin123",
 }
+
+
+def _merge_defaults(target, defaults, parent_key=""):
+    updated = False
+    for key, value in defaults.items():
+        if key not in target:
+            target[key] = value
+            updated = True
+        elif isinstance(value, dict) and isinstance(target.get(key), dict) and key != "floor_plans":
+            nested_updated = _merge_defaults(target[key], value, key)
+            updated = updated or nested_updated
+    return updated
 
 
 def load_settings():
@@ -79,18 +110,7 @@ def load_settings():
     with open(SETTINGS_PATH, "r", encoding="utf-8") as handle:
         settings = json.load(handle)
 
-    updated = False
-    for key, value in DEFAULT_SETTINGS.items():
-        if key not in settings:
-            settings[key] = value
-            updated = True
-        elif isinstance(value, dict) and key != "floor_plans":
-            for subkey, subvalue in value.items():
-                if subkey not in settings[key]:
-                    settings[key][subkey] = subvalue
-                    updated = True
-
-    if updated:
+    if _merge_defaults(settings, DEFAULT_SETTINGS):
         save_settings(settings)
     return settings
 

@@ -9,6 +9,11 @@
     "settings": true
   },
   "show_severity_lines": true,
+  "system_navigation": {
+    "iaq": true,
+    "energy": false,
+    "waste": false
+  },
   "fire_severity_mapping": [],
   "severity_levels": [
     {
@@ -62,6 +67,32 @@
   "card_header_color": "#ffffff",
   "card_body_color": "#ffffff",
   "page_background_color": "#f8f9fa",
+  "modules": {
+    "top_definition": {
+      "enabled": true,
+      "title": "Top Definition",
+      "header": "Average Indoor/Outdoor IAQ",
+      "columns": {
+        "indoor": "Indoor",
+        "outdoor": "Outdoor"
+      },
+      "mode": "average",
+      "legend": [
+        {
+          "label": "Good",
+          "color": "#28a745"
+        },
+        {
+          "label": "Moderate",
+          "color": "#fd7e14"
+        },
+        {
+          "label": "Unhealthy",
+          "color": "#dc3545"
+        }
+      ]
+    }
+  },
   "admin_username": "admin",
   "admin_password": "admin123"
 }
