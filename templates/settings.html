@@ -165,16 +165,18 @@
 
       <hr class="my-4">
 
+      {% set default_system_key = default_system if default_system is defined else 'iaq' %}
+
       <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
         <div>
           <h6 class="mb-0">Systems Page Design</h6>
-          <small class="text-muted">Select a system to edit its page settings.</small>
+          <small class="text-muted">Select a system to edit its page settings (defaults to the first enabled system).</small>
         </div>
         <div class="ms-auto">
           <label class="form-label mb-1" for="systemPageSelect">System</label>
           <select class="form-select" id="systemPageSelect">
             {% for item in system_options %}
-            <option value="{{ item.key }}" {% if item.key == 'iaq' %}selected{% endif %}>{{ item.label }}</option>
+            <option value="{{ item.key }}" {% if item.key == default_system_key %}selected{% endif %}>{{ item.label }}</option>
             {% endfor %}
           </select>
         </div>
@@ -185,7 +187,7 @@
       {% set top_definition_columns = top_definition.columns if top_definition.columns is defined else {} %}
       {% set top_definition_mode = top_definition.mode if top_definition.mode is defined else 'average' %}
       {% set top_definition_legend = top_definition.legend if top_definition.legend is defined and top_definition.legend else settings.severity_levels %}
-      <div data-system-section="{{ system.key }}"{% if system.key != 'iaq' %} class="d-none"{% endif %}>
+      <div data-system-section="{{ system.key }}"{% if system.key != default_system_key %} class="d-none"{% endif %}>
         <div class="col-12">
           <div class="card shadow-sm h-100" data-top-definition-key="{{ system.key }}">
             <div class="card-header">
