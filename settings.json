@@ -11,9 +11,9 @@
   "show_severity_lines": true,
   "system_navigation": {
     "iaq": true,
-    "energy": false,
-    "waste": false,
-    "fire": false
+    "energy": true,
+    "waste": true,
+    "fire": true
   },
   "fire_severity_mapping": [],
   "severity_levels": [
