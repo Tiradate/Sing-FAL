@@ -38,9 +38,9 @@ DEFAULT_SETTINGS = {
     "show_severity_lines": True,
     "system_navigation": {
         "iaq": True,
-        "energy": False,
-        "waste": False,
-        "fire": False,
+        "energy": True,
+        "waste": True,
+        "fire": True,
     },
     "fire_severity_mapping": [],
     "severity_levels": [
