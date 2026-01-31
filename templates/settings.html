@@ -412,14 +412,20 @@
           </div>
           <div class="col-12 col-md-6">
             <label class="form-label">Sensor Icon Upload</label>
-            <input class="form-control" type="file" name="sensor_icon">
+            <div class="d-flex flex-wrap gap-2">
+              <input class="form-control" type="file" name="sensor_icon" id="sensorIconFile">
+              <button type="button" class="btn btn-outline-primary" id="uploadSensorIconBtn">Upload</button>
+            </div>
             <label class="form-label mt-2">Use saved file</label>
-            <select class="form-select" name="sensor_icon_existing">
-              <option value="">Select saved file</option>
+            <div class="d-flex flex-wrap gap-2">
+              <select class="form-select" name="sensor_icon_existing" id="sensorIconSelect">
+                <option value="" {% if not settings.sensor_icon %}selected{% endif %}>Select saved file</option>
               {% for upload in available_uploads %}
               <option value="{{ upload }}" {% if upload == settings.sensor_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
               {% endfor %}
-            </select>
+              </select>
+              <button type="button" class="btn btn-outline-danger" id="deleteSensorIconBtn">Delete</button>
+            </div>
           </div>
           <div class="col-12 col-md-6">
             <label class="form-label">Floor Plan Logo Upload</label>
@@ -907,12 +913,16 @@
 
   const floorLogoSelect = document.getElementById('floorLogoSelect');
   const projectLogoSelect = document.getElementById('projectLogoSelect');
+  const sensorIconSelect = document.getElementById('sensorIconSelect');
   const floorLogoFile = document.getElementById('floorLogoFile');
   const projectLogoFile = document.getElementById('projectLogoFile');
+  const sensorIconFile = document.getElementById('sensorIconFile');
   const uploadFloorLogoBtn = document.getElementById('uploadFloorLogoBtn');
   const uploadProjectLogoBtn = document.getElementById('uploadProjectLogoBtn');
+  const uploadSensorIconBtn = document.getElementById('uploadSensorIconBtn');
   const deleteFloorLogoBtn = document.getElementById('deleteFloorLogoBtn');
   const deleteProjectLogoBtn = document.getElementById('deleteProjectLogoBtn');
+  const deleteSensorIconBtn = document.getElementById('deleteSensorIconBtn');
 
   const ensureUploadOption = (select, path, shouldSelect = true) => {
     if (!select || !path) {
@@ -943,7 +953,12 @@
     }
   };
 
-  const uploadSettingsFile = async (fileInput, targetSelect, otherSelects = []) => {
+  const uploadSettingsFile = async (
+    fileInput,
+    targetSelect,
+    otherSelects = [],
+    onUpload = null
+  ) => {
     if (!fileInput || !fileInput.files.length) {
       alert('Choose a file to upload.');
       return;
@@ -965,9 +980,12 @@
     if (targetSelect === floorLogoSelect) {
       editorData.logoIconSelected = data.path;
     }
+    if (typeof onUpload === 'function') {
+      onUpload(data.path);
+    }
   };
 
-  const deleteSettingsFile = async (selects) => {
+  const deleteSettingsFile = async (selects, onDelete = null) => {
     const targetSelect = selects.find(Boolean);
     const selected = targetSelect ? targetSelect.value : '';
     if (!selected) {
@@ -996,35 +1014,76 @@
       }
       editorData.logoIconSelected = '';
     }
+    if (typeof onDelete === 'function') {
+      onDelete(deletedPath);
+    }
   };
 
   if (uploadFloorLogoBtn) {
     uploadFloorLogoBtn.addEventListener('click', () => {
-      uploadSettingsFile(floorLogoFile, floorLogoSelect, [projectLogoSelect]);
+      uploadSettingsFile(floorLogoFile, floorLogoSelect, [projectLogoSelect, sensorIconSelect]);
     });
   }
 
   if (uploadProjectLogoBtn) {
     uploadProjectLogoBtn.addEventListener('click', () => {
-      uploadSettingsFile(projectLogoFile, projectLogoSelect, [floorLogoSelect]);
+      uploadSettingsFile(projectLogoFile, projectLogoSelect, [floorLogoSelect, sensorIconSelect]);
+    });
+  }
+
+  if (uploadSensorIconBtn) {
+    uploadSensorIconBtn.addEventListener('click', () => {
+      uploadSettingsFile(
+        sensorIconFile,
+        sensorIconSelect,
+        [floorLogoSelect, projectLogoSelect],
+        (path) => {
+          editorData.sensorIcon = path || '';
+          if (editorSelect) {
+            renderEditor(editorSelect.value);
+          }
+        }
+      );
     });
   }
 
   if (deleteFloorLogoBtn) {
     deleteFloorLogoBtn.addEventListener('click', () => {
-      deleteSettingsFile([floorLogoSelect, projectLogoSelect]);
+      deleteSettingsFile([floorLogoSelect, projectLogoSelect, sensorIconSelect]);
     });
   }
 
   if (deleteProjectLogoBtn) {
     deleteProjectLogoBtn.addEventListener('click', () => {
-      deleteSettingsFile([projectLogoSelect, floorLogoSelect]);
+      deleteSettingsFile([projectLogoSelect, floorLogoSelect, sensorIconSelect]);
+    });
+  }
+
+  if (deleteSensorIconBtn) {
+    deleteSensorIconBtn.addEventListener('click', () => {
+      deleteSettingsFile([sensorIconSelect, floorLogoSelect, projectLogoSelect], (deletedPath) => {
+        if (editorData.sensorIcon === deletedPath) {
+          editorData.sensorIcon = '';
+          if (editorSelect) {
+            renderEditor(editorSelect.value);
+          }
+        }
+      });
     });
   }
 
   if (floorLogoSelect) {
     floorLogoSelect.addEventListener('change', (event) => {
       editorData.logoIconSelected = event.target.value || '';
+    });
+  }
+
+  if (sensorIconSelect) {
+    sensorIconSelect.addEventListener('change', (event) => {
+      editorData.sensorIcon = event.target.value || '';
+      if (editorSelect) {
+        renderEditor(editorSelect.value);
+      }
     });
   }
 
