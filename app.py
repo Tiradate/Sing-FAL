@@ -57,6 +57,17 @@ def parse_date_range(start_str, end_str, default_tz):
     return start_dt, end_dt
 
 
+def resolve_active_system(settings):
+    requested = request.args.get("system")
+    if requested in settings_service.SYSTEM_KEYS:
+        return requested
+    system_navigation = settings.get("system_navigation", {})
+    for key in settings_service.SYSTEM_KEYS:
+        if system_navigation.get(key):
+            return key
+    return settings_service.SYSTEM_KEYS[0]
+
+
 def derive_device_severity(devices, device_metric_severity, alarm_severity, settings):
     levels = settings.get("severity_levels", [])
     severity_rank = {level["label"]: index for index, level in enumerate(levels)}
@@ -103,15 +114,14 @@ def inject_globals():
         "calendar_value": data_service.get_calendar_value(),
         "avg_signal": data_service.get_avg_signal_quality(),
         "has_critical": any(alarm["severity"] in critical_levels for alarm in active_alarms),
+        "current_system": resolve_active_system(settings),
     }
 
 
 @app.route("/")
 def index():
     settings = settings_service.load_settings()
-    active_system = request.args.get("system", "iaq")
-    if active_system not in settings_service.SYSTEM_KEYS:
-        active_system = "iaq"
+    active_system = resolve_active_system(settings)
     floors = data_service.get_floor_list()
     floor_id = request.args.get("floor") or (floors[0] if floors else None)
     devices = data_service.get_devices()

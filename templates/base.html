@@ -30,7 +30,7 @@
           {% endif %}
         </div>
         <div class="d-flex align-items-center gap-3">
-          <a class="header-icon" href="{{ url_for('index') }}" aria-label="Home">
+          <a class="header-icon" href="{% if current_system is defined %}{{ url_for('index', system=current_system) }}{% else %}{{ url_for('index') }}{% endif %}" aria-label="Home">
             <i class="bi bi-house"></i>
           </a>
           {% if settings.show_icons.bell %}
