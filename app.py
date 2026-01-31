@@ -684,6 +684,11 @@ def settings():
             if os.path.isfile(path):
                 available_uploads.append(f"static/uploads/{filename}")
     available_uploads.sort()
+    system_navigation = settings.get("system_navigation", {})
+    default_system = next(
+        (key for key in settings_service.SYSTEM_KEYS if system_navigation.get(key)),
+        settings_service.SYSTEM_KEYS[0],
+    )
     if request.method == "POST":
         settings["project_name"] = request.form.get("project_name", settings["project_name"])
         settings["location_label"] = request.form.get("location_label", settings["location_label"])
@@ -967,6 +972,7 @@ def settings():
         available_uploads=available_uploads,
         floors=floors,
         devices=[dict(device) for device in devices],
+        default_system=default_system,
     )
 
 
