@@ -491,13 +491,10 @@
                 <label class="form-label mb-0" for="selectedSensorZone">Zone</label>
                 <input class="form-control form-control-sm" id="selectedSensorZone" type="text" placeholder="Zone">
                 <button class="btn btn-sm btn-outline-primary" type="button" id="saveSensorZoneBtn">Save Zone</button>
+                <button class="btn btn-sm btn-outline-danger" type="button" id="deleteSelectedSensorBtn">Delete Sensor</button>
               </div>
             </div>
           </div>
-        </div>
-        <div class="map-editor-bin mt-2" id="sensorDeleteBin">
-          <i class="bi bi-trash"></i>
-          <span>Drag sensor or logo here to remove</span>
         </div>
       </div>
 
@@ -1240,11 +1237,11 @@
   const clearSensorsBtn = document.getElementById('clearSensorsBtn');
   const clearFloorPlanBtn = document.getElementById('clearFloorPlanBtn');
   const sensorCountLabel = document.getElementById('sensorCountLabel');
-  const sensorDeleteBin = document.getElementById('sensorDeleteBin');
   const sensorZoneEditor = document.getElementById('sensorZoneEditor');
   const selectedSensorLabel = document.getElementById('selectedSensorLabel');
   const selectedSensorZone = document.getElementById('selectedSensorZone');
   const saveSensorZoneBtn = document.getElementById('saveSensorZoneBtn');
+  const deleteSelectedSensorBtn = document.getElementById('deleteSelectedSensorBtn');
 
   const updateSensorCount = (floorId) => {
     const count = editorData.devices.filter((device) => device.floor_id === floorId).length;
@@ -1272,6 +1269,24 @@
     selectedSensorLabel.textContent = deviceId;
     selectedSensorZone.value = device ? (device.zone || '') : '';
     sensorZoneEditor.classList.remove('d-none');
+  };
+
+  const deleteSensorById = async (deviceId) => {
+    if (!deviceId) {
+      return false;
+    }
+    const response = await fetch(editorData.deleteDeviceRoute.replace('__device__', deviceId), {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      return false;
+    }
+    editorData.devices = editorData.devices.filter((device) => device.device_id !== deviceId);
+    if (selectedDeviceId === deviceId) {
+      setSelectedDevice(null);
+    }
+    renderEditor(editorSelect.value);
+    return true;
   };
 
   const renderEditor = (floorId) => {
@@ -1343,44 +1358,11 @@
           const clampedY = clamp(y, 0, 100);
           icon.style.left = `${clampedX}%`;
           icon.style.top = `${clampedY}%`;
-          if (sensorDeleteBin) {
-            const binRect = sensorDeleteBin.getBoundingClientRect();
-            const isOverBin =
-              moveEvent.clientX >= binRect.left &&
-              moveEvent.clientX <= binRect.right &&
-              moveEvent.clientY >= binRect.top &&
-              moveEvent.clientY <= binRect.bottom;
-            sensorDeleteBin.classList.toggle('is-active', isOverBin);
-          }
         };
 
-        const upHandler = async (upEvent) => {
+        const upHandler = async () => {
           document.removeEventListener('pointermove', moveHandler);
           document.removeEventListener('pointerup', upHandler);
-          let removeDevice = false;
-          if (sensorDeleteBin) {
-            const binRect = sensorDeleteBin.getBoundingClientRect();
-            removeDevice =
-              upEvent.clientX >= binRect.left &&
-              upEvent.clientX <= binRect.right &&
-              upEvent.clientY >= binRect.top &&
-              upEvent.clientY <= binRect.bottom;
-            sensorDeleteBin.classList.remove('is-active');
-          }
-          if (removeDevice) {
-            const response = await fetch(editorData.deleteDeviceRoute.replace('__device__', deviceId), {
-              method: 'DELETE',
-            });
-            if (!response.ok) {
-              return;
-            }
-            editorData.devices = editorData.devices.filter((device) => device.device_id !== deviceId);
-            if (selectedDeviceId === deviceId) {
-              setSelectedDevice(null);
-            }
-            renderEditor(editorSelect.value);
-            return;
-          }
           const left = parseFloat(icon.style.left);
           const top = parseFloat(icon.style.top);
           const route = editorData.updateDeviceRoute.replace('__device__', deviceId);
@@ -1417,49 +1399,11 @@
           const clampedY = clamp(y, 0, 100);
           icon.style.left = `${clampedX}%`;
           icon.style.top = `${clampedY}%`;
-          if (sensorDeleteBin) {
-            const binRect = sensorDeleteBin.getBoundingClientRect();
-            const isOverBin =
-              moveEvent.clientX >= binRect.left &&
-              moveEvent.clientX <= binRect.right &&
-              moveEvent.clientY >= binRect.top &&
-              moveEvent.clientY <= binRect.bottom;
-            sensorDeleteBin.classList.toggle('is-active', isOverBin);
-          }
         };
 
-        const upHandler = async (upEvent) => {
+        const upHandler = async () => {
           document.removeEventListener('pointermove', moveHandler);
           document.removeEventListener('pointerup', upHandler);
-          let removeLogo = false;
-          if (sensorDeleteBin) {
-            const binRect = sensorDeleteBin.getBoundingClientRect();
-            removeLogo =
-              upEvent.clientX >= binRect.left &&
-              upEvent.clientX <= binRect.right &&
-              upEvent.clientY >= binRect.top &&
-              upEvent.clientY <= binRect.bottom;
-            sensorDeleteBin.classList.remove('is-active');
-          }
-          if (removeLogo) {
-            const response = await fetch(editorData.deleteLogoRoute.replace('__logo__', logoId), {
-              method: 'DELETE',
-            });
-            if (!response.ok) {
-              return;
-            }
-            const floorId = editorContainer.dataset.floor;
-            if (floorId && editorData.floorLogos[floorId]) {
-              editorData.floorLogos[floorId] = editorData.floorLogos[floorId].filter(
-                (logo) => logo.logo_id !== logoId
-              );
-              if (!editorData.floorLogos[floorId].length) {
-                delete editorData.floorLogos[floorId];
-              }
-            }
-            renderEditor(editorSelect.value);
-            return;
-          }
           const left = parseFloat(icon.style.left);
           const top = parseFloat(icon.style.top);
           const route = editorData.updateLogoRoute.replace('__logo__', logoId);
@@ -1489,6 +1433,15 @@
         return;
       }
       setSelectedDevice(null);
+    });
+  }
+
+  if (deleteSelectedSensorBtn) {
+    deleteSelectedSensorBtn.addEventListener('click', async () => {
+      if (!selectedDeviceId) {
+        return;
+      }
+      await deleteSensorById(selectedDeviceId);
     });
   }
 
