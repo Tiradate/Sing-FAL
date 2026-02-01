@@ -141,9 +141,9 @@
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label mb-1">Value</label>
-              <input class="form-control form-control-sm" name="metric_value" type="number" step="0.1" value="80" required>
+              <input class="form-control form-control-sm" name="metric_value" type="text" value="80" required>
               {% if current_system == "fire" %}
-              <small class="text-muted">Use the numeric value from the Fire Systems Severity Mapping settings.</small>
+              <small>Use the text value from the Fire Systems Severity Mapping settings.</small>
               {% endif %}
             </div>
             <div class="col-12 col-md-4">
