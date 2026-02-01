@@ -147,11 +147,20 @@ def index():
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
     active_alarms = data_service.get_active_alarms()
+
+    def device_value(device, key, default=None):
+        if hasattr(device, "get"):
+            return device.get(key, default)
+        try:
+            return device[key]
+        except (KeyError, TypeError):
+            return default
+
     device_label_map = {}
     for device in devices:
-        device_id = device["device_id"]
+        device_id = device_value(device, "device_id")
         if device_id:
-            device_label_map[device_id] = device["label"]
+            device_label_map[device_id] = device_value(device, "label")
     metric_options = get_enabled_metric_options(settings, active_system)
     metric_option_map = {
         option["key"]: {"label": option["label"], "unit": option["unit"]}
@@ -217,11 +226,11 @@ def index():
     indoor_critical_count = 0
     outdoor_critical_count = 0
     for device in devices:
-        device_id = device["device_id"]
+        device_id = device_value(device, "device_id")
         severity = device_severity.get(device_id)
         if severity not in critical_levels:
             continue
-        if is_outdoor_zone(device.get("zone", "")):
+        if is_outdoor_zone(device_value(device, "zone", "")):
             outdoor_critical_count += 1
         else:
             indoor_critical_count += 1
