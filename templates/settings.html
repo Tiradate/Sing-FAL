@@ -508,9 +508,6 @@
                 <label class="form-label mb-1">Sensors on this floor</label>
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
                   <span class="text-muted small">Selected: <span id="bulkSelectedCount">0</span></span>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" id="bulkSelectAllBtn">
-                    Select all
-                  </button>
                   <button class="btn btn-sm btn-outline-light" type="button" id="bulkClearSelectionBtn">
                     Clear
                   </button>
@@ -521,11 +518,16 @@
               <div class="col-12 col-md-6">
                 <label class="form-label mb-1" for="bulkSensorZone">Zone</label>
                 <input class="form-control form-control-sm" id="bulkSensorZone" type="text" placeholder="Zone">
-                <button class="btn btn-sm btn-outline-primary mt-2" type="button" id="applyBulkZoneBtn">Apply Updates to Selected</button>
-              </div>
-              <div class="col-12 col-md-6">
                 <label class="form-label mb-1" for="bulkSensorType">Sensor type</label>
                 <input class="form-control form-control-sm" id="bulkSensorType" type="text" placeholder="Sensor type">
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                  <button class="btn btn-sm btn-outline-primary" type="button" id="applyBulkZoneBtn">
+                    Apply Updates to Selected
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" id="bulkSmartFillSelectBtn">
+                    Smart-fill Selection
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1286,8 +1288,8 @@
   const applyBulkZoneBtn = document.getElementById('applyBulkZoneBtn');
   const bulkSelectedCount = document.getElementById('bulkSelectedCount');
   const bulkSelectionHint = document.getElementById('bulkSelectionHint');
-  const bulkSelectAllBtn = document.getElementById('bulkSelectAllBtn');
   const bulkClearSelectionBtn = document.getElementById('bulkClearSelectionBtn');
+  const bulkSmartFillSelectBtn = document.getElementById('bulkSmartFillSelectBtn');
 
   const updateSensorCount = (floorId) => {
     const count = editorData.devices.filter((device) => device.floor_id === floorId).length;
@@ -1806,19 +1808,35 @@
     });
   }
 
-  if (bulkSelectAllBtn && bulkSensorList) {
-    bulkSelectAllBtn.addEventListener('click', () => {
+  if (bulkClearSelectionBtn && bulkSensorList) {
+    bulkClearSelectionBtn.addEventListener('click', () => {
       bulkSensorList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
-        input.checked = true;
+        input.checked = false;
       });
       updateBulkSelectionSummary();
     });
   }
 
-  if (bulkClearSelectionBtn && bulkSensorList) {
-    bulkClearSelectionBtn.addEventListener('click', () => {
+  if (bulkSmartFillSelectBtn && bulkSensorList) {
+    bulkSmartFillSelectBtn.addEventListener('click', () => {
+      const zoneValue = (bulkSensorZone?.value || '').trim().toLowerCase();
+      const typeValue = (bulkSensorType?.value || '').trim().toLowerCase();
+      if (!zoneValue && !typeValue) {
+        return;
+      }
       bulkSensorList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
-        input.checked = false;
+        const device = editorData.devices.find((item) => item.device_id === input.value);
+        if (!device) {
+          input.checked = false;
+          return;
+        }
+        const zoneMatch = zoneValue
+          ? (device.zone || '').toLowerCase().includes(zoneValue)
+          : true;
+        const typeMatch = typeValue
+          ? (getSensorTypeFromLabel(device.label) || '').toLowerCase().includes(typeValue)
+          : true;
+        input.checked = zoneMatch && typeMatch;
       });
       updateBulkSelectionSummary();
     });
