@@ -92,13 +92,13 @@
         <div class="btn-group btn-group-sm" role="group" aria-label="Alarm view">
           <a
             class="btn btn-outline-primary {% if alarms_view == 'today' %}active{% endif %}"
-            href="{{ url_for('alarms', view='today') }}"
+            href="{{ url_for('alarms', view='today', system=current_system) }}"
           >
             Today
           </a>
           <a
             class="btn btn-outline-primary {% if alarms_view != 'today' %}active{% endif %}"
-            href="{{ url_for('alarms', view='active') }}"
+            href="{{ url_for('alarms', view='active', system=current_system) }}"
           >
             Active
           </a>
@@ -134,12 +134,9 @@
             <div class="col-12 col-md-4">
               <label class="form-label mb-1">Metric</label>
               <select class="form-select form-select-sm" name="metric">
-                <option value="pm25" selected>PM2.5</option>
-                <option value="pm10">PM10</option>
-                <option value="co2">CO₂</option>
-                <option value="temperature">Temperature</option>
-                <option value="humidity">Humidity</option>
-                <option value="tvoc">TVOC</option>
+                {% for metric in alarm_metric_options %}
+                <option value="{{ metric.key }}" {% if loop.first %}selected{% endif %}>{{ metric.label }}</option>
+                {% endfor %}
               </select>
             </div>
             <div class="col-12 col-md-4">

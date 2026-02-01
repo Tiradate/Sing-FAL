@@ -9,6 +9,24 @@
     "settings": true
   },
   "show_severity_lines": true,
+  "tag_visibility": {
+    "iaq": {
+      "temperature": true,
+      "pm25": true,
+      "pm10": true,
+      "humidity": true,
+      "tvoc": true,
+      "co2": true
+    },
+    "fire": {
+      "smoke": true,
+      "heat": true,
+      "flow_switch": true,
+      "supervisory_valve": true,
+      "manual": true,
+      "gas": true
+    }
+  },
   "system_navigation": {
     "iaq": true,
     "energy": true,

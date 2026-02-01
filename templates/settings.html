@@ -294,14 +294,51 @@
       <div data-system-section="iaq">
         <div id="iaqSeveritySection">
           <h6>IAQ Severity Mapping</h6>
+          {% set iaq_tag_visibility = settings.tag_visibility.get('iaq', {}) if settings.tag_visibility is defined else {} %}
           <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
             <div class="col-12 col-md-3">Severity</div>
-            <div class="col-6 col-md-2 col-xl-1">Temp (°C)</div>
-            <div class="col-6 col-md-2 col-xl-1">PM2.5</div>
-            <div class="col-6 col-md-2 col-xl-1">PM10</div>
-            <div class="col-6 col-md-2 col-xl-1">Humidity (%)</div>
-            <div class="col-6 col-md-2 col-xl-1">TVOC</div>
-            <div class="col-6 col-md-2 col-xl-1">CO₂ (ppm)</div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>Temp (°C)</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="iaqTagTemperature" name="iaq_tag_temperature" {% if iaq_tag_visibility.get('temperature', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="iaqTagTemperature">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>PM2.5</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="iaqTagPm25" name="iaq_tag_pm25" {% if iaq_tag_visibility.get('pm25', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="iaqTagPm25">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>PM10</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="iaqTagPm10" name="iaq_tag_pm10" {% if iaq_tag_visibility.get('pm10', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="iaqTagPm10">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>Humidity (%)</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="iaqTagHumidity" name="iaq_tag_humidity" {% if iaq_tag_visibility.get('humidity', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="iaqTagHumidity">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>TVOC</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="iaqTagTvoc" name="iaq_tag_tvoc" {% if iaq_tag_visibility.get('tvoc', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="iaqTagTvoc">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>CO₂ (ppm)</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="iaqTagCo2" name="iaq_tag_co2" {% if iaq_tag_visibility.get('co2', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="iaqTagCo2">Show</label>
+              </div>
+            </div>
             <div class="col-12 col-md-2">Critical</div>
           </div>
           <div id="severityRows" data-severity-rows="iaq">
@@ -571,14 +608,51 @@
       <div class="d-none" data-system-section="fire">
         <div id="fireSeveritySection">
           <h6>Fire Systems Severity Mapping</h6>
+          {% set fire_tag_visibility = settings.tag_visibility.get('fire', {}) if settings.tag_visibility is defined else {} %}
           <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
             <div class="col-12 col-md-3">Severity</div>
-            <div class="col-6 col-md-2 col-xl-1">Smoke</div>
-            <div class="col-6 col-md-2 col-xl-1">Heat</div>
-            <div class="col-6 col-md-2 col-xl-1">Flow Switch</div>
-            <div class="col-6 col-md-2 col-xl-1">Supervisory valve</div>
-            <div class="col-6 col-md-2 col-xl-1">Manual</div>
-            <div class="col-6 col-md-2 col-xl-1">Gas</div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>Smoke</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fireTagSmoke" name="fire_tag_smoke" {% if fire_tag_visibility.get('smoke', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="fireTagSmoke">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>Heat</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fireTagHeat" name="fire_tag_heat" {% if fire_tag_visibility.get('heat', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="fireTagHeat">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>Flow Switch</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fireTagFlowSwitch" name="fire_tag_flow_switch" {% if fire_tag_visibility.get('flow_switch', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="fireTagFlowSwitch">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>Supervisory valve</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fireTagSupervisoryValve" name="fire_tag_supervisory_valve" {% if fire_tag_visibility.get('supervisory_valve', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="fireTagSupervisoryValve">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>Manual</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fireTagManual" name="fire_tag_manual" {% if fire_tag_visibility.get('manual', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="fireTagManual">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>Gas</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fireTagGas" name="fire_tag_gas" {% if fire_tag_visibility.get('gas', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="fireTagGas">Show</label>
+              </div>
+            </div>
           </div>
           <div id="fireSeverityRows" data-severity-rows="fire">
             {% set fire_icon_options = [

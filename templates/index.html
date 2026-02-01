@@ -251,10 +251,10 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', device=default_view_device, start=daily_view_start, end=daily_view_end, interval=default_view_interval) }}">Last 24 hours</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=daily_view_start, end=daily_view_end, interval=default_view_interval) }}">Last 24 hours</a>
               </li>
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">All data</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">All data</a>
               </li>
             </ul>
           </div>
@@ -294,10 +294,10 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', device=default_view_device, start=weekly_view_start, end=weekly_view_end, interval=default_view_interval) }}">Last 7 days</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=weekly_view_start, end=weekly_view_end, interval=default_view_interval) }}">Last 7 days</a>
               </li>
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">All data</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">All data</a>
               </li>
             </ul>
           </div>
@@ -319,22 +319,19 @@
   <div class="col-12 col-lg-4">
     {% if show_sensor_average %}
     <div class="row g-3">
-      {% for label, display in {
-        'temperature':'Temperature',
-        'pm25':'PM2.5',
-        'pm10':'PM10',
-        'humidity':'Humidity',
-        'tvoc':'TVOC',
-        'co2':'CO₂'
-      }.items() %}
-      {% set data = sensor_cards.get(label, {}) %}
-      {% set severity = sensor_card_severity.get(label) %}
+      {% for metric in metric_options %}
+      {% set data = sensor_cards.get(metric.key, {}) %}
+      {% set severity = sensor_card_severity.get(metric.key) %}
       <div class="col-12 col-md-6">
         <div class="card shadow-sm h-100" style="{% if severity %}border: 2px solid {{ severity.color }};{% endif %}">
           <div class="card-body dashboard-card-body">
-            <div class="text-muted small">{{ display }}</div>
+            <div class="text-muted small">{{ metric.label }}</div>
             <div class="fs-5 fw-semibold" style="{% if severity %}color: {{ severity.color }};{% endif %}">
-              {{ '%.1f'|format(data.value or 0) }} {{ data.unit }}
+              {% if data.value is not none %}
+                {{ '%.1f'|format(data.value or 0) }} {{ data.unit }}
+              {% else %}
+                --
+              {% endif %}
             </div>
           </div>
         </div>
@@ -347,7 +344,7 @@
     <div class="card shadow-sm mt-3">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
         <h6 class="mb-0">Alerts &amp; Notifications</h6>
-        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('alarms') }}">See all alarm</a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('alarms', system=active_system) }}">See all alarm</a>
       </div>
       <div class="card-body dashboard-card-body">
         {% if active_alarms %}
@@ -386,8 +383,8 @@
     floors: {{ floors|tojson }},
     activeFloor: {{ active_floor|tojson }},
     autoRotateSeconds: {{ settings.floor_auto_rotate_seconds|tojson }},
-    floorRoute: {{ url_for('index')|tojson }},
-    mapFullRoute: {{ url_for('map_full')|tojson }},
+    floorRoute: {{ url_for('index', system=active_system)|tojson }},
+    mapFullRoute: {{ url_for('map_full', system=active_system)|tojson }},
     isFullMap: false,
     dailyRoute: {{ url_for('graphs_daily')|tojson }},
     weeklyRoute: {{ url_for('graphs_weekly')|tojson }},
