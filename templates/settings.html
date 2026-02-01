@@ -490,6 +490,10 @@
               <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
                 <label class="form-label mb-0" for="selectedSensorLabel">Label</label>
                 <input class="form-control form-control-sm" id="selectedSensorLabel" type="text" placeholder="Sensor label">
+                <div class="form-text" id="selectedSensorLabelHint">Label [Building-Floor-Zone-Sensor type-Sensor number]</div>
+                <div class="invalid-feedback" id="selectedSensorLabelError">
+                  Label must include a sensor type in the 4th position.
+                </div>
                 <button class="btn btn-sm btn-outline-primary" type="button" id="saveSensorLabelBtn">Save Label</button>
                 <button class="btn btn-sm btn-outline-danger" type="button" id="deleteSelectedSensorBtn">Delete Sensor</button>
               </div>
@@ -1258,6 +1262,8 @@
   const sensorZoneEditor = document.getElementById('sensorZoneEditor');
   const selectedSensorId = document.getElementById('selectedSensorId');
   const selectedSensorLabel = document.getElementById('selectedSensorLabel');
+  const selectedSensorLabelHint = document.getElementById('selectedSensorLabelHint');
+  const selectedSensorLabelError = document.getElementById('selectedSensorLabelError');
   const saveSensorLabelBtn = document.getElementById('saveSensorLabelBtn');
   const deleteSelectedSensorBtn = document.getElementById('deleteSelectedSensorBtn');
   const bulkSensorList = document.getElementById('bulkSensorList');
@@ -1272,15 +1278,45 @@
   const getDeviceDisplayName = (device) =>
     device.label ? `${device.label} (${device.device_id})` : device.device_id;
 
-  const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-  const replaceZoneToken = (label, currentZone, nextZone) => {
-    if (!label || !currentZone || !nextZone || currentZone === nextZone) {
+  const updateZoneSegment = (label, nextZone) => {
+    if (!label || !nextZone) {
       return null;
     }
-    const pattern = new RegExp(`(^|-)${escapeRegExp(currentZone)}(-|$)`, 'g');
-    const updated = label.replace(pattern, `$1${nextZone}$2`);
-    return updated === label ? null : updated;
+    const segments = label.split('-');
+    if (segments.length < 3) {
+      return null;
+    }
+    const zoneSegment = segments[2];
+    const numberMatch = zoneSegment.match(/\d+/);
+    let nextSegment = zoneSegment;
+    if (numberMatch) {
+      nextSegment = zoneSegment.replace(numberMatch[0], nextZone);
+    } else {
+      nextSegment = `Z${nextZone}`;
+    }
+    if (nextSegment === zoneSegment) {
+      return null;
+    }
+    segments[2] = nextSegment;
+    return segments.join('-');
+  };
+
+  const isSensorLabelValid = (labelValue) => {
+    const segments = labelValue.split('-').filter((segment) => segment.trim() !== '');
+    return segments.length >= 4;
+  };
+
+  const updateSensorLabelValidation = () => {
+    if (!selectedSensorLabel || !saveSensorLabelBtn) {
+      return;
+    }
+    const labelValue = (selectedSensorLabel.value || '').trim();
+    const isValid = !labelValue || !selectedDeviceId || isSensorLabelValid(labelValue);
+    selectedSensorLabel.classList.toggle('is-invalid', !isValid);
+    if (selectedSensorLabelError) {
+      selectedSensorLabelError.style.display = isValid ? 'none' : 'block';
+    }
+    saveSensorLabelBtn.disabled = !isValid;
   };
 
   const renderBulkSensorList = (floorId) => {
@@ -1334,10 +1370,14 @@
       selectedSensorId.textContent = selectedDeviceId;
       selectedSensorLabel.value = device && device.label ? device.label : '';
       selectedSensorLabel.placeholder = selectedDeviceId;
+      if (selectedSensorLabelHint) {
+        selectedSensorLabelHint.classList.remove('d-none');
+      }
       if (deleteSelectedSensorBtn) {
         deleteSelectedSensorBtn.textContent = 'Delete Sensor';
       }
       sensorZoneEditor.classList.remove('d-none');
+      updateSensorLabelValidation();
       return;
     }
     if (selectedLogoId) {
@@ -1347,19 +1387,27 @@
       selectedSensorId.textContent = selectedLogoId;
       selectedSensorLabel.value = logo && logo.label ? logo.label : '';
       selectedSensorLabel.placeholder = 'Logo label';
+      if (selectedSensorLabelHint) {
+        selectedSensorLabelHint.classList.add('d-none');
+      }
       if (deleteSelectedSensorBtn) {
         deleteSelectedSensorBtn.textContent = 'Delete Logo';
       }
       sensorZoneEditor.classList.remove('d-none');
+      updateSensorLabelValidation();
       return;
     }
     sensorZoneEditor.classList.add('d-none');
     selectedSensorId.textContent = '';
     selectedSensorLabel.value = '';
     selectedSensorLabel.placeholder = 'Sensor label';
+    if (selectedSensorLabelHint) {
+      selectedSensorLabelHint.classList.add('d-none');
+    }
     if (deleteSelectedSensorBtn) {
       deleteSelectedSensorBtn.textContent = 'Delete Sensor';
     }
+    updateSensorLabelValidation();
   };
 
   const setSelectedDevice = (deviceId) => {
@@ -1598,6 +1646,10 @@
     saveSensorLabelBtn.addEventListener('click', async () => {
       const labelValue = (selectedSensorLabel.value || '').trim();
       if (selectedDeviceId) {
+        if (labelValue && !isSensorLabelValid(labelValue)) {
+          updateSensorLabelValidation();
+          return;
+        }
         const response = await fetch(
           editorData.updateDeviceLabelRoute.replace('__device__', selectedDeviceId),
           {
@@ -1650,6 +1702,12 @@
     });
   }
 
+  if (selectedSensorLabel) {
+    selectedSensorLabel.addEventListener('input', () => {
+      updateSensorLabelValidation();
+    });
+  }
+
   if (applyBulkZoneBtn) {
     applyBulkZoneBtn.addEventListener('click', async () => {
       if (!bulkSensorList || !bulkSensorZone) {
@@ -1676,7 +1734,7 @@
           let labelUpdate = null;
           const device = editorData.devices.find((item) => item.device_id === deviceId);
           if (device) {
-            labelUpdate = replaceZoneToken(device.label || '', device.zone || '', zoneValue);
+            labelUpdate = updateZoneSegment(device.label || '', zoneValue);
           }
           if (labelUpdate !== null) {
             const labelResponse = await fetch(
