@@ -835,6 +835,7 @@ def settings():
         (key for key in settings_service.SYSTEM_KEYS if system_navigation.get(key)),
         settings_service.SYSTEM_KEYS[0],
     )
+    previous_sensor_icon = settings.get("sensor_icon", "")
     if request.method == "POST":
         settings["project_name"] = request.form.get("project_name", settings["project_name"])
         settings["location_label"] = request.form.get("location_label", settings["location_label"])
@@ -1107,6 +1108,9 @@ def settings():
         sensor_icon_existing = request.form.get("sensor_icon_existing", "").strip()
         if sensor_icon_existing:
             settings["sensor_icon"] = sensor_icon_existing
+        next_sensor_icon = settings.get("sensor_icon", "")
+        if previous_sensor_icon and next_sensor_icon != previous_sensor_icon:
+            data_service.set_sensor_icon_for_missing(previous_sensor_icon)
 
         if "floor_logo_icon" in request.files:
             file = request.files["floor_logo_icon"]
@@ -1238,11 +1242,13 @@ def create_device():
     sensor_type = (payload.get("sensor_type") or "").strip() or None
     if not floor_id:
         return jsonify({"error": "Missing floor_id"}), 400
+    settings = settings_service.load_settings()
     device = data_service.create_device(
         floor_id,
         zone=zone or "Z1",
         sensor_type=sensor_type or "DZ",
         sensor_name=sensor_name,
+        sensor_icon=settings.get("sensor_icon"),
     )
     return jsonify(device)
 
