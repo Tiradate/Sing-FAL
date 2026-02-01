@@ -511,7 +511,11 @@
               <div class="col-12 col-md-6">
                 <label class="form-label mb-1" for="bulkSensorZone">Zone</label>
                 <input class="form-control form-control-sm" id="bulkSensorZone" type="text" placeholder="Zone">
-                <button class="btn btn-sm btn-outline-primary mt-2" type="button" id="applyBulkZoneBtn">Apply Zone to Selected</button>
+                <button class="btn btn-sm btn-outline-primary mt-2" type="button" id="applyBulkZoneBtn">Apply Updates to Selected</button>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label mb-1" for="bulkSensorType">Sensor type</label>
+                <input class="form-control form-control-sm" id="bulkSensorType" type="text" placeholder="Sensor type">
               </div>
             </div>
           </div>
@@ -1268,6 +1272,7 @@
   const deleteSelectedSensorBtn = document.getElementById('deleteSelectedSensorBtn');
   const bulkSensorList = document.getElementById('bulkSensorList');
   const bulkSensorZone = document.getElementById('bulkSensorZone');
+  const bulkSensorType = document.getElementById('bulkSensorType');
   const applyBulkZoneBtn = document.getElementById('applyBulkZoneBtn');
 
   const updateSensorCount = (floorId) => {
@@ -1298,6 +1303,22 @@
       return null;
     }
     segments[2] = nextSegment;
+    return segments.join('-');
+  };
+
+  const updateSensorTypeSegment = (label, nextType) => {
+    if (!label || !nextType) {
+      return null;
+    }
+    const segments = label.split('-');
+    if (segments.length < 4) {
+      return null;
+    }
+    const currentType = segments[3];
+    if (!currentType || currentType === nextType) {
+      return null;
+    }
+    segments[3] = nextType;
     return segments.join('-');
   };
 
@@ -1714,27 +1735,47 @@
         return;
       }
       const zoneValue = (bulkSensorZone.value || '').trim();
+      const typeValue = (bulkSensorType?.value || '').trim();
       const selectedInputs = Array.from(
         bulkSensorList.querySelectorAll('input[type="checkbox"]:checked')
       );
-      if (!selectedInputs.length) {
+      if (!selectedInputs.length || (!zoneValue && !typeValue)) {
         return;
       }
       const results = await Promise.all(
         selectedInputs.map(async (input) => {
           const deviceId = input.value;
-          const response = await fetch(
-            editorData.updateDeviceZoneRoute.replace('__device__', deviceId),
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ zone: zoneValue }),
-            }
-          );
+          let response = { ok: true };
+          if (zoneValue) {
+            response = await fetch(
+              editorData.updateDeviceZoneRoute.replace('__device__', deviceId),
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zone: zoneValue }),
+              }
+            );
+          }
           let labelUpdate = null;
           const device = editorData.devices.find((item) => item.device_id === deviceId);
           if (device) {
-            labelUpdate = updateZoneSegment(device.label || '', zoneValue);
+            const currentLabel = device.label || '';
+            let nextLabel = currentLabel;
+            if (zoneValue) {
+              const zoneUpdate = updateZoneSegment(nextLabel, zoneValue);
+              if (zoneUpdate) {
+                nextLabel = zoneUpdate;
+              }
+            }
+            if (typeValue) {
+              const typeUpdate = updateSensorTypeSegment(nextLabel, typeValue);
+              if (typeUpdate) {
+                nextLabel = typeUpdate;
+              }
+            }
+            if (nextLabel !== currentLabel) {
+              labelUpdate = nextLabel;
+            }
           }
           if (labelUpdate !== null) {
             const labelResponse = await fetch(
@@ -1758,7 +1799,9 @@
         }
         const device = editorData.devices.find((item) => item.device_id === deviceId);
         if (device) {
-          device.zone = zoneValue;
+          if (zoneValue) {
+            device.zone = zoneValue;
+          }
           if (labelUpdate !== null) {
             device.label = labelUpdate;
           }
