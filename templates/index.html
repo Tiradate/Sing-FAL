@@ -31,6 +31,12 @@
   {% set top_definition_columns = top_definition.columns if top_definition.columns is defined else {} %}
   {% set top_definition_mode = top_definition.mode if top_definition.mode is defined else 'average' %}
   {% set top_definition_legend = top_definition.legend if top_definition.legend is defined and top_definition.legend else settings.severity_levels %}
+  {% set dashboard_card_map = settings.modules.dashboard_cards if settings.modules and settings.modules.dashboard_cards is defined else {} %}
+  {% set dashboard_cards = dashboard_card_map.get(active_system, {}) %}
+  {% set show_daily_graph = dashboard_cards.daily_graph is not defined or dashboard_cards.daily_graph %}
+  {% set show_weekly_overview = dashboard_cards.weekly_overview is not defined or dashboard_cards.weekly_overview %}
+  {% set show_sensor_average = dashboard_cards.sensor_average is not defined or dashboard_cards.sensor_average %}
+  {% set show_alerts_notifications = dashboard_cards.alerts_notifications is not defined or dashboard_cards.alerts_notifications %}
   {% if top_definition.enabled %}
   <div class="col-12 col-lg-6 w-100">
     <div class="card shadow-sm h-100">
@@ -221,7 +227,9 @@
     </div>
   </div>
 
+  {% if show_daily_graph or show_weekly_overview %}
   <div class="col-12 col-lg-3">
+    {% if show_daily_graph %}
     <div class="card shadow-sm mb-3">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
         <div>
@@ -262,7 +270,9 @@
         </div>
       </div>
     </div>
+    {% endif %}
 
+    {% if show_weekly_overview %}
     <div class="card shadow-sm">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
         <div>
@@ -301,9 +311,13 @@
         </div>
       </div>
     </div>
+    {% endif %}
   </div>
+  {% endif %}
 
+  {% if show_sensor_average or show_alerts_notifications %}
   <div class="col-12 col-lg-4">
+    {% if show_sensor_average %}
     <div class="row g-3">
       {% for label, display in {
         'temperature':'Temperature',
@@ -327,7 +341,9 @@
       </div>
       {% endfor %}
     </div>
+    {% endif %}
 
+    {% if show_alerts_notifications %}
     <div class="card shadow-sm mt-3">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
         <h6 class="mb-0">Alerts &amp; Notifications</h6>
@@ -352,7 +368,9 @@
         {% endif %}
       </div>
     </div>
+    {% endif %}
   </div>
+  {% endif %}
 </div>
 {% endblock %}
 

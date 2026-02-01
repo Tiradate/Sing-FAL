@@ -803,6 +803,24 @@ def settings():
                 "legend": legend,
             }
         modules["top_definition"] = updated_top_definition
+
+        updated_dashboard_cards = {}
+        for system_key in settings_service.SYSTEM_KEYS:
+            updated_dashboard_cards[system_key] = {
+                "daily_graph": bool(
+                    request.form.get(f"dashboard_card_daily_graph_{system_key}")
+                ),
+                "weekly_overview": bool(
+                    request.form.get(f"dashboard_card_weekly_overview_{system_key}")
+                ),
+                "sensor_average": bool(
+                    request.form.get(f"dashboard_card_sensor_average_{system_key}")
+                ),
+                "alerts_notifications": bool(
+                    request.form.get(f"dashboard_card_alerts_notifications_{system_key}")
+                ),
+            }
+        modules["dashboard_cards"] = updated_dashboard_cards
         settings["modules"] = modules
 
         fire_severity_labels = request.form.getlist("fire_severity_label")
