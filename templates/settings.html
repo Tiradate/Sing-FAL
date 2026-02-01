@@ -653,6 +653,7 @@
                 <label class="form-check-label small" for="fireTagGas">Show</label>
               </div>
             </div>
+            <div class="col-12 col-md-2">Critical</div>
           </div>
           <div id="fireSeverityRows" data-severity-rows="fire">
             {% set fire_icon_options = [
@@ -719,6 +720,12 @@
               </div>
               <div class="col-6 col-md-2 col-xl-1">
                 <input class="form-control" type="text" name="fire_gas" value="{{ level.gas }}" placeholder="Text">
+              </div>
+              <div class="col-12 col-md-2">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="critical_levels" value="{{ level.label }}" {% if level.label in settings.critical_levels %}checked{% endif %}>
+                  <label class="form-check-label">Critical</label>
+                </div>
               </div>
             </div>
             {% endfor %}
@@ -858,7 +865,21 @@
       <div class="col-6 col-md-2 col-xl-1">
         <input class="form-control" type="text" name="fire_gas" placeholder="Text">
       </div>
+      <div class="col-12 col-md-2">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="critical_levels" value="">
+          <label class="form-check-label">Critical</label>
+        </div>
+      </div>
     `;
+    const fireSeveritySelect = row.querySelector('select[name="fire_severity_label"]');
+    const fireCriticalInput = row.querySelector('input[name="critical_levels"]');
+    if (fireSeveritySelect && fireCriticalInput) {
+      fireSeveritySelect.addEventListener('change', (event) => {
+        fireCriticalInput.value = event.target.value;
+      });
+      fireCriticalInput.value = fireSeveritySelect.value;
+    }
     container.appendChild(row);
   });
 
@@ -1046,6 +1067,16 @@
   }
 
   if (fireSeverityRows) {
+    fireSeverityRows.querySelectorAll('.fire-severity-row').forEach((row) => {
+      const select = row.querySelector('select[name="fire_severity_label"]');
+      const criticalInput = row.querySelector('input[name="critical_levels"]');
+      if (select && criticalInput) {
+        select.addEventListener('change', (event) => {
+          criticalInput.value = event.target.value;
+        });
+        criticalInput.value = select.value;
+      }
+    });
     const fireLegendHelper = legendHelpers.fire;
     fireSeverityRows.querySelectorAll('select[name="fire_severity_label"]').forEach((select) => {
       const currentValue = select.value;
