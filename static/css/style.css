@@ -28,6 +28,18 @@ body.dashboard-bg {
   background-color: var(--dashboard-card-body-bg, #ffffff) !important;
 }
 
+@media (min-width: 992px) {
+  .dashboard-map-col {
+    flex: 0 0 39.666667%;
+    max-width: 39.666667%;
+  }
+
+  .dashboard-alerts-col {
+    flex: 0 0 20.333333%;
+    max-width: 20.333333%;
+  }
+}
+
 .header-icon {
   position: relative;
   color: #212529;
