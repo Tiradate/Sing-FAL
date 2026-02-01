@@ -1487,13 +1487,11 @@
       if (!floorId) {
         return;
       }
-      const sensorName = (prompt('Enter sensor name (optional)') || '').trim();
       const response = await fetch(editorData.createDeviceRoute, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           floor_id: floorId,
-          sensor_name: sensorName || undefined,
         }),
       });
       if (!response.ok) {
