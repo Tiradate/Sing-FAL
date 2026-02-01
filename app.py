@@ -90,6 +90,10 @@ def record_value(record, key, default=None):
         return default
 
 
+def device_value(device, key, default=None):
+    return record_value(device, key, default)
+
+
 def derive_device_severity(devices, device_metric_severity, alarm_severity, settings):
     levels = settings.get("severity_levels", [])
     severity_rank = {level["label"]: index for index, level in enumerate(levels)}
@@ -716,14 +720,6 @@ def alarms():
     action_start = request.args.get("action_start") or today
     action_end = request.args.get("action_end") or today
     devices = data_service.get_devices()
-
-    def device_value(device, key):
-        if hasattr(device, "get"):
-            return device.get(key)
-        try:
-            return device[key]
-        except (KeyError, TypeError):
-            return None
 
     device_label_map = {}
     device_floors = set()
