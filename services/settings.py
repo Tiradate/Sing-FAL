@@ -32,6 +32,25 @@ DEFAULT_DASHBOARD_CARDS = {
     "alerts_notifications": True,
 }
 
+DEFAULT_TAG_VISIBILITY = {
+    "iaq": {
+        "temperature": True,
+        "pm25": True,
+        "pm10": True,
+        "humidity": True,
+        "tvoc": True,
+        "co2": True,
+    },
+    "fire": {
+        "smoke": True,
+        "heat": True,
+        "flow_switch": True,
+        "supervisory_valve": True,
+        "manual": True,
+        "gas": True,
+    },
+}
+
 DEFAULT_SETTINGS = {
     "project_name": "ICONSIAM",
     "location_label": "Bangkok, Thailand",
@@ -43,6 +62,7 @@ DEFAULT_SETTINGS = {
         "settings": True,
     },
     "show_severity_lines": True,
+    "tag_visibility": DEFAULT_TAG_VISIBILITY,
     "system_navigation": {
         "iaq": True,
         "energy": True,

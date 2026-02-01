@@ -68,6 +68,19 @@ def resolve_active_system(settings):
     return settings_service.SYSTEM_KEYS[0]
 
 
+def get_enabled_metric_options(settings, system_key):
+    if system_key == "fire":
+        options = data_service.get_fire_metric_options()
+    else:
+        options = data_service.get_metric_options()
+    visibility = settings.get("tag_visibility", {}).get(system_key, {})
+    if isinstance(visibility, dict) and visibility:
+        filtered = [option for option in options if visibility.get(option["key"], False)]
+        if filtered:
+            return filtered
+    return options
+
+
 def derive_device_severity(devices, device_metric_severity, alarm_severity, settings):
     levels = settings.get("severity_levels", [])
     severity_rank = {level["label"]: index for index, level in enumerate(levels)}
@@ -127,10 +140,19 @@ def index():
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
     active_alarms = data_service.get_active_alarms()
-    metric_options = data_service.get_metric_options()
-    metric_option_map = {option["key"]: {"label": option["label"], "unit": option["unit"]} for option in metric_options}
-    daily_metric = request.args.get("daily_metric", "pm25")
-    weekly_metric = request.args.get("weekly_metric", "pm25")
+    metric_options = get_enabled_metric_options(settings, active_system)
+    metric_option_map = {
+        option["key"]: {"label": option["label"], "unit": option["unit"]}
+        for option in metric_options
+    }
+    metric_keys = [option["key"] for option in metric_options]
+    fallback_metric = metric_keys[0] if metric_keys else "pm25"
+    daily_metric = request.args.get("daily_metric") or fallback_metric
+    weekly_metric = request.args.get("weekly_metric") or fallback_metric
+    if daily_metric not in metric_keys:
+        daily_metric = fallback_metric
+    if weekly_metric not in metric_keys:
+        weekly_metric = fallback_metric
 
     daily_labels, daily_values = data_service.get_daily_series(daily_metric, floor_id=floor_id)
     weekly_labels, weekly_values = data_service.get_weekly_series(weekly_metric, floor_id=floor_id)
@@ -154,6 +176,8 @@ def index():
         devices, device_metric_severity, alarm_severity, settings
     )
     critical_levels = set(settings.get("critical_levels", []))
+    if metric_keys:
+        active_alarms = [alarm for alarm in active_alarms if alarm["metric"] in metric_keys]
 
     def is_outdoor_zone(zone):
         if not zone:
@@ -224,11 +248,12 @@ def index():
 @app.route("/map")
 def map_full():
     settings = settings_service.load_settings()
+    active_system = resolve_active_system(settings)
     floors = data_service.get_floor_list()
     floor_id = request.args.get("floor") or (floors[0] if floors else None)
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
-    metric_options = data_service.get_metric_options()
+    metric_options = get_enabled_metric_options(settings, active_system)
     device_metrics = data_service.get_latest_device_metrics(floor_id=floor_id)
     device_metric_severity = {
         device_id: {
@@ -255,12 +280,18 @@ def map_full():
 
 @app.route("/export/sensor.csv")
 def export_sensor_csv():
+    settings = settings_service.load_settings()
+    active_system = resolve_active_system(settings)
+    metric_options = get_enabled_metric_options(settings, active_system)
+    allowed_metrics = {option["key"] for option in metric_options}
     rows = data_service.get_sensor_readings_csv()
     csv_path = os.path.join(BASE_DIR, "sensor_export.csv")
     with open(csv_path, "w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.writer(handle)
         writer.writerow(["ts", "device_id", "floor_id", "metric", "value", "unit"])
         for row in rows:
+            if allowed_metrics and row["metric"] not in allowed_metrics:
+                continue
             writer.writerow([row["ts"], row["device_id"], row["floor_id"], row["metric"], row["value"], row["unit"]])
     return send_file(csv_path, as_attachment=True, download_name="sensor_readings.csv")
 
@@ -295,6 +326,8 @@ def export_settings_csv():
 
 @app.route("/view_data")
 def view_data():
+    settings = settings_service.load_settings()
+    active_system = resolve_active_system(settings)
     device = request.args.get("device")
     start = request.args.get("start")
     end = request.args.get("end")
@@ -345,7 +378,7 @@ def view_data():
         aggregates[key]["sum"] += float(value)
         aggregates[key]["count"] += 1
 
-    metric_options = data_service.get_metric_options()
+    metric_options = get_enabled_metric_options(settings, active_system)
     metric_order = [option["key"] for option in metric_options]
     records = []
     bucket_topics = sorted({(bucket, topic) for bucket, topic, _metric in aggregates.keys()})
@@ -585,12 +618,18 @@ def graphs_weekly():
 @app.route("/alarms")
 def alarms():
     settings = settings_service.load_settings()
+    active_system = resolve_active_system(settings)
+    metric_options = get_enabled_metric_options(settings, active_system)
+    metric_keys = {option["key"] for option in metric_options}
     alarms_view = request.args.get("view") or "today"
     if session.get("is_admin") and alarms_view == "today":
         active_alarms = data_service.get_today_alarms()
     else:
         active_alarms = data_service.get_active_alarms()
     history = data_service.get_alarm_history()
+    if metric_keys:
+        active_alarms = [alarm for alarm in active_alarms if alarm["metric"] in metric_keys]
+        history = [alarm for alarm in history if alarm["metric"] in metric_keys]
     today = datetime.now(timezone.utc).date().isoformat()
     action_start = request.args.get("action_start") or today
     action_end = request.args.get("action_end") or today
@@ -612,6 +651,7 @@ def alarms():
         devices=devices,
         device_label_map=device_label_map,
         floors=floors,
+        alarm_metric_options=metric_options,
     )
 
 
@@ -728,6 +768,24 @@ def settings():
             "waste": bool(request.form.get("nav_system_waste")),
             "fire": bool(request.form.get("nav_system_fire")),
         }
+        tag_visibility = settings.get("tag_visibility", {})
+        tag_visibility["iaq"] = {
+            "temperature": bool(request.form.get("iaq_tag_temperature")),
+            "pm25": bool(request.form.get("iaq_tag_pm25")),
+            "pm10": bool(request.form.get("iaq_tag_pm10")),
+            "humidity": bool(request.form.get("iaq_tag_humidity")),
+            "tvoc": bool(request.form.get("iaq_tag_tvoc")),
+            "co2": bool(request.form.get("iaq_tag_co2")),
+        }
+        tag_visibility["fire"] = {
+            "smoke": bool(request.form.get("fire_tag_smoke")),
+            "heat": bool(request.form.get("fire_tag_heat")),
+            "flow_switch": bool(request.form.get("fire_tag_flow_switch")),
+            "supervisory_valve": bool(request.form.get("fire_tag_supervisory_valve")),
+            "manual": bool(request.form.get("fire_tag_manual")),
+            "gas": bool(request.form.get("fire_tag_gas")),
+        }
+        settings["tag_visibility"] = tag_visibility
         card_header_color = request.form.get("card_header_color", settings["card_header_color"])
         card_body_color = request.form.get("card_body_color", settings["card_body_color"])
         page_background_color = request.form.get(

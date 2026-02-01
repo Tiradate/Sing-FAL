@@ -73,6 +73,10 @@ def get_metric_options():
     return options
 
 
+def get_fire_metric_options():
+    return [{"key": key, "label": label, "unit": ""} for key, label in FIRE_DETECTOR_FIELDS]
+
+
 def get_devices():
     with connect(SENSOR_DB) as conn:
         return conn.execute("SELECT * FROM devices").fetchall()
