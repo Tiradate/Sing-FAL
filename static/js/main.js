@@ -149,9 +149,21 @@
     const floorRoute = data.floorRoute || '/';
     const mapFullRoute = data.mapFullRoute || '/map';
     const rotateStorageKey = 'dashboardAutoRotate';
+    const floorStorageKey = 'dashboardActiveFloor';
     const isFullMap = Boolean(data.isFullMap);
     let rotateTimer = null;
     let activeIndex = data.floors.indexOf(data.activeFloor);
+    const floorFromQuery = Boolean(data.floorFromQuery);
+    const storedFloor = localStorage.getItem(floorStorageKey);
+
+    if (data.activeFloor && (!storedFloor || floorFromQuery)) {
+      localStorage.setItem(floorStorageKey, data.activeFloor);
+    }
+
+    if (!floorFromQuery && storedFloor && data.floors.includes(storedFloor) && storedFloor !== data.activeFloor) {
+      window.location = `${floorRoute}?floor=${storedFloor}`;
+      return;
+    }
 
     const updateRotateButton = (isActive) => {
       if (!rotateBtn) {
@@ -176,6 +188,7 @@
         const nextIndex = (activeIndex + 1) % data.floors.length;
         const nextFloor = data.floors[nextIndex];
         activeIndex = nextIndex;
+        localStorage.setItem(floorStorageKey, nextFloor);
         window.location = `${floorRoute}?floor=${nextFloor}`;
       }, (data.autoRotateSeconds || 10) * 1000);
     };
@@ -189,6 +202,9 @@
       }
       if (rotateBtn) {
         const currentFloor = floorSelect ? floorSelect.value : data.activeFloor;
+        if (currentFloor) {
+          localStorage.setItem(floorStorageKey, currentFloor);
+        }
         window.open(`${mapFullRoute}?floor=${currentFloor}`, '_blank');
       }
     };
@@ -220,6 +236,7 @@
     if (floorSelect) {
       floorSelect.addEventListener('change', (event) => {
         const floor = event.target.value;
+        localStorage.setItem(floorStorageKey, floor);
         window.location = `${floorRoute}?floor=${floor}`;
       });
     }

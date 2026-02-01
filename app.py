@@ -143,7 +143,8 @@ def index():
     settings = settings_service.load_settings()
     active_system = resolve_active_system(settings)
     floors = data_service.get_floor_list()
-    floor_id = request.args.get("floor") or (floors[0] if floors else None)
+    floor_param = request.args.get("floor")
+    floor_id = floor_param or (floors[0] if floors else None)
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
     active_alarms = data_service.get_active_alarms()
@@ -250,6 +251,7 @@ def index():
         active_system=active_system,
         floors=floors,
         active_floor=floor_id,
+        floor_from_query=bool(floor_param),
         devices=devices,
         alarm_severity=alarm_severity,
         active_alarms=active_alarms,
@@ -289,7 +291,8 @@ def map_full():
     settings = settings_service.load_settings()
     active_system = resolve_active_system(settings)
     floors = data_service.get_floor_list()
-    floor_id = request.args.get("floor") or (floors[0] if floors else None)
+    floor_param = request.args.get("floor")
+    floor_id = floor_param or (floors[0] if floors else None)
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
     metric_options = get_enabled_metric_options(settings, active_system)
@@ -308,6 +311,7 @@ def map_full():
         "map_full.html",
         floors=floors,
         active_floor=floor_id,
+        floor_from_query=bool(floor_param),
         devices=devices,
         alarm_severity=alarm_severity,
         metric_options=metric_options,
@@ -918,6 +922,7 @@ def settings():
         updated_dashboard_cards = {}
         for system_key in settings_service.SYSTEM_KEYS:
             updated_dashboard_cards[system_key] = {
+                "map": bool(request.form.get(f"dashboard_card_map_{system_key}")),
                 "daily_graph": bool(
                     request.form.get(f"dashboard_card_daily_graph_{system_key}")
                 ),
