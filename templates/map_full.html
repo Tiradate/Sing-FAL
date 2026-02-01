@@ -3,6 +3,20 @@
 {% block header %}{% endblock %}
 
 {% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h5 class="mb-0">Map</h5>
+    <small class="text-muted">Floor plan &amp; sensors</small>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <select id="floorSelect" class="form-select form-select-sm">
+      {% for floor in floors %}
+      <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
+      {% endfor %}
+    </select>
+    <button id="floorRotate" class="btn btn-sm btn-outline-secondary">Auto</button>
+  </div>
+</div>
 <div class="map-container map-container-expanded" data-floor="{{ active_floor }}">
   {% set floor_image = settings.floor_plans.get(active_floor, '') %}
   {% if floor_image %}
@@ -104,6 +118,7 @@
     floorRoute: {{ url_for('map_full')|tojson }},
     mapFullRoute: {{ url_for('map_full')|tojson }},
     isFullMap: true,
+    floorFromQuery: {{ floor_from_query|tojson }},
     homeRoute: {{ url_for('index')|tojson }},
   };
 </script>
