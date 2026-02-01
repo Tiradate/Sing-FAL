@@ -162,6 +162,7 @@
         {'key': 'waste', 'label': 'Waste'},
         {'key': 'fire', 'label': 'Fire'}
       ] %}
+      {% set dashboard_card_map = settings.modules.dashboard_cards if settings.modules and settings.modules.dashboard_cards is defined else {} %}
 
       <hr class="my-4">
 
@@ -187,6 +188,7 @@
       {% set top_definition_columns = top_definition.columns if top_definition.columns is defined else {} %}
       {% set top_definition_mode = top_definition.mode if top_definition.mode is defined else 'average' %}
       {% set top_definition_legend = top_definition.legend if top_definition.legend is defined and top_definition.legend else settings.severity_levels %}
+      {% set dashboard_cards = dashboard_card_map.get(system.key, {}) %}
       <div data-system-section="{{ system.key }}"{% if system.key != default_system_key %} class="d-none"{% endif %}>
         <div class="col-12">
           <div class="card shadow-sm h-100" data-top-definition-key="{{ system.key }}">
@@ -235,6 +237,27 @@
                     <option value="average" {% if top_definition_mode == 'average' %}selected{% endif %}>Average</option>
                     <option value="critical" {% if top_definition_mode == 'critical' %}selected{% endif %}>Critical</option>
                   </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Dashboard Cards</label>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="dashboard_card_daily_graph_{{ system.key }}" {% if dashboard_cards.daily_graph is not defined or dashboard_cards.daily_graph %}checked{% endif %}>
+                      <label class="form-check-label">Daily Graph</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="dashboard_card_weekly_overview_{{ system.key }}" {% if dashboard_cards.weekly_overview is not defined or dashboard_cards.weekly_overview %}checked{% endif %}>
+                      <label class="form-check-label">Weekly Overview</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="dashboard_card_sensor_average_{{ system.key }}" {% if dashboard_cards.sensor_average is not defined or dashboard_cards.sensor_average %}checked{% endif %}>
+                      <label class="form-check-label">Sensor Averages</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="dashboard_card_alerts_notifications_{{ system.key }}" {% if dashboard_cards.alerts_notifications is not defined or dashboard_cards.alerts_notifications %}checked{% endif %}>
+                      <label class="form-check-label">Alerts &amp; Notifications</label>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="mt-3">

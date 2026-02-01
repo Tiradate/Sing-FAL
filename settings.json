@@ -57,7 +57,9 @@
       }
     }
   ],
-  "critical_levels": ["Unhealthy"],
+  "critical_levels": [
+    "Unhealthy"
+  ],
   "floor_plans": {},
   "sensor_icon": "static/uploads/sensor_icon.svg",
   "sensor_icon_size": 28,
@@ -70,30 +72,136 @@
   "page_background_color": "#f8f9fa",
   "modules": {
     "top_definition": {
-      "enabled": true,
-      "title": "Top Definition",
-      "header": "Average Indoor/Outdoor IAQ",
-      "columns": {
-        "indoor": "Indoor",
-        "outdoor": "Outdoor",
-        "indoor_enabled": true,
-        "outdoor_enabled": true
+      "iaq": {
+        "enabled": true,
+        "title": "Top Definition",
+        "header": "Average Indoor/Outdoor IAQ",
+        "columns": {
+          "indoor": "Indoor",
+          "outdoor": "Outdoor",
+          "indoor_enabled": true,
+          "outdoor_enabled": true
+        },
+        "mode": "average",
+        "legend": [
+          {
+            "label": "Good",
+            "color": "#28a745"
+          },
+          {
+            "label": "Moderate",
+            "color": "#fd7e14"
+          },
+          {
+            "label": "Unhealthy",
+            "color": "#dc3545"
+          }
+        ]
       },
-      "mode": "average",
-      "legend": [
-        {
-          "label": "Good",
-          "color": "#28a745"
+      "energy": {
+        "enabled": false,
+        "title": "Top Definition",
+        "header": "Energy & Carbon Overview",
+        "columns": {
+          "indoor": "Indoor",
+          "outdoor": "Outdoor",
+          "indoor_enabled": true,
+          "outdoor_enabled": true
         },
-        {
-          "label": "Moderate",
-          "color": "#fd7e14"
+        "mode": "average",
+        "legend": [
+          {
+            "label": "Good",
+            "color": "#28a745"
+          },
+          {
+            "label": "Moderate",
+            "color": "#fd7e14"
+          },
+          {
+            "label": "Unhealthy",
+            "color": "#dc3545"
+          }
+        ]
+      },
+      "waste": {
+        "enabled": false,
+        "title": "Top Definition",
+        "header": "Waste Overview",
+        "columns": {
+          "indoor": "Indoor",
+          "outdoor": "Outdoor",
+          "indoor_enabled": true,
+          "outdoor_enabled": true
         },
-        {
-          "label": "Unhealthy",
-          "color": "#dc3545"
-        }
-      ]
+        "mode": "average",
+        "legend": [
+          {
+            "label": "Good",
+            "color": "#28a745"
+          },
+          {
+            "label": "Moderate",
+            "color": "#fd7e14"
+          },
+          {
+            "label": "Unhealthy",
+            "color": "#dc3545"
+          }
+        ]
+      },
+      "fire": {
+        "enabled": true,
+        "title": "Top Definition",
+        "header": "Average Indoor/Outdoor Fire Status",
+        "columns": {
+          "indoor": "Indoor",
+          "outdoor": "Outdoor",
+          "indoor_enabled": true,
+          "outdoor_enabled": true
+        },
+        "mode": "average",
+        "legend": [
+          {
+            "label": "Good",
+            "color": "#28a745"
+          },
+          {
+            "label": "Moderate",
+            "color": "#fd7e14"
+          },
+          {
+            "label": "Unhealthy",
+            "color": "#dc3545"
+          }
+        ]
+      }
+    },
+    "dashboard_cards": {
+      "iaq": {
+        "daily_graph": true,
+        "weekly_overview": true,
+        "sensor_average": true,
+        "alerts_notifications": true
+      },
+      "energy": {
+        "daily_graph": true,
+        "weekly_overview": true,
+        "sensor_average": true,
+        "alerts_notifications": true
+      },
+      "waste": {
+        "daily_graph": true,
+        "weekly_overview": true,
+        "sensor_average": true,
+        "alerts_notifications": true
+      },
+      "fire": {
+        "daily_graph": true,
+        "weekly_overview": true,
+        "sensor_average": true,
+        "alerts_notifications": true
+      }
     }
   },
   "admin_username": "admin",
