@@ -114,6 +114,20 @@ def update_device_layout(device_id, floor_id, location_x, location_y):
         )
 
 
+def set_sensor_icon_for_missing(default_icon):
+    if not default_icon:
+        return
+    with connect(SENSOR_DB) as conn:
+        conn.execute(
+            """
+            UPDATE devices
+            SET sensor_icon = ?
+            WHERE sensor_icon IS NULL OR sensor_icon = ''
+            """,
+            (default_icon,),
+        )
+
+
 def _slugify_identifier(value, default="device"):
     cleaned = re.sub(r"\s+", "-", str(value or "").strip())
     cleaned = re.sub(r"[^A-Za-z0-9_-]", "", cleaned)
@@ -475,12 +489,14 @@ def create_device(
     zone="Z1",
     sensor_type="DZ",
     sensor_name=None,
+    sensor_icon=None,
 ):
     now = datetime.now(timezone.utc).isoformat()
     with connect(SENSOR_DB) as conn:
         zone_value = (zone or "").strip() or "Z1"
         sensor_type_value = (sensor_type or "").strip() or "DZ"
         label_value = (sensor_name or "").strip() or None
+        sensor_icon_value = (sensor_icon or "").strip() or None
         base = _build_device_base(
             floor_id,
             zone=zone_value,
@@ -490,8 +506,19 @@ def create_device(
         device_id = _next_device_id(conn, base)
         conn.execute(
             """
-            INSERT INTO devices (device_id, model, floor_id, zone, label, location_x, location_y, last_seen, signal_quality)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO devices (
+                device_id,
+                model,
+                floor_id,
+                zone,
+                label,
+                location_x,
+                location_y,
+                sensor_icon,
+                last_seen,
+                signal_quality
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 device_id,
@@ -501,6 +528,7 @@ def create_device(
                 label_value,
                 location_x,
                 location_y,
+                sensor_icon_value,
                 now,
                 100,
             ),
@@ -513,6 +541,7 @@ def create_device(
         "label": label_value,
         "location_x": location_x,
         "location_y": location_y,
+        "sensor_icon": sensor_icon_value,
         "last_seen": now,
         "signal_quality": 100,
     }

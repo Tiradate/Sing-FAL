@@ -1136,7 +1136,6 @@
     devices: {{ devices | default([]) | tojson }},
     sensorIcon: {{ settings.sensor_icon | tojson }},
     sensorIconSize: {{ settings.sensor_icon_size | tojson }},
-    sensorIconOverrides: {},
     logoIconDefault: {{ settings.floor_logo_icon | tojson }},
     logoIconSelected: {{ settings.floor_logo_icon | tojson }},
     logoIconSize: {{ settings.logo_icon_size | tojson }},
@@ -1152,16 +1151,6 @@
     updateLogoLabelRoute: {{ url_for('update_floor_logo_label', logo_id='__logo__') | tojson }},
     deleteLogoRoute: {{ url_for('delete_floor_logo', logo_id='__logo__') | tojson }},
   };
-
-  const seedSensorIconOverrides = (devices, iconPath) => {
-    devices.forEach((device) => {
-      if (!editorData.sensorIconOverrides[device.device_id]) {
-        editorData.sensorIconOverrides[device.device_id] = iconPath;
-      }
-    });
-  };
-
-  seedSensorIconOverrides(editorData.devices, editorData.sensorIcon);
 
   const floorLogoSelect = document.getElementById('floorLogoSelect');
   const projectLogoSelect = document.getElementById('projectLogoSelect');
@@ -1754,7 +1743,6 @@
       return false;
     }
     editorData.devices = editorData.devices.filter((device) => device.device_id !== deviceId);
-    delete editorData.sensorIconOverrides[deviceId];
     if (selectedDeviceId === deviceId) {
       setSelectedDevice(null);
     }
@@ -1823,7 +1811,7 @@
     editorData.devices
       .filter((device) => device.floor_id === floorId)
       .forEach((device) => {
-        const iconPath = editorData.sensorIconOverrides[device.device_id] || editorData.sensorIcon;
+        const iconPath = device.sensor_icon || editorData.sensorIcon;
         const icon = document.createElement('div');
         icon.className = 'sensor-icon map-editor-icon map-editor-sensor';
         icon.dataset.device = device.device_id;
@@ -2190,8 +2178,8 @@
         return;
       }
       const device = await response.json();
+      device.sensor_icon = device.sensor_icon || editorData.sensorIcon;
       editorData.devices.push(device);
-      editorData.sensorIconOverrides[device.device_id] = editorData.sensorIcon;
       renderEditor(floorId);
     });
   }
@@ -2241,12 +2229,6 @@
         return;
       }
       editorData.devices = editorData.devices.filter((device) => device.floor_id !== floorId);
-      Object.keys(editorData.sensorIconOverrides).forEach((deviceId) => {
-        const device = editorData.devices.find((item) => item.device_id === deviceId);
-        if (!device) {
-          delete editorData.sensorIconOverrides[deviceId];
-        }
-      });
       renderEditor(floorId);
     });
   }

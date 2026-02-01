@@ -28,6 +28,7 @@ def init_sensor_db():
                 label TEXT,
                 location_x REAL,
                 location_y REAL,
+                sensor_icon TEXT,
                 last_seen DATETIME,
                 signal_quality INTEGER
             );
@@ -54,9 +55,13 @@ def init_sensor_db():
             );
             """
         )
-        device_columns = {row["name"] for row in conn.execute("PRAGMA table_info(devices)").fetchall()}
+        device_columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(devices)").fetchall()
+        }
         if "label" not in device_columns:
             conn.execute("ALTER TABLE devices ADD COLUMN label TEXT")
+        if "sensor_icon" not in device_columns:
+            conn.execute("ALTER TABLE devices ADD COLUMN sensor_icon TEXT")
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(sensor_readings)").fetchall()}
         if "topic" not in columns:
             conn.execute("ALTER TABLE sensor_readings ADD COLUMN topic TEXT DEFAULT 'Live'")
