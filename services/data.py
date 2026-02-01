@@ -108,8 +108,15 @@ def _slugify_identifier(value, default="device"):
     return cleaned or default
 
 
-def _next_device_id(conn, floor_id):
-    base = _slugify_identifier(floor_id)
+def _build_device_base(floor_id, sensor_name=None):
+    floor_slug = _slugify_identifier(floor_id)
+    sensor_slug = _slugify_identifier(sensor_name, default="")
+    if sensor_slug:
+        return f"{floor_slug}-{sensor_slug}"
+    return floor_slug
+
+
+def _next_device_id(conn, base):
     rows = conn.execute(
         "SELECT device_id FROM devices WHERE device_id LIKE ?",
         (f"{base}-%",),
@@ -444,10 +451,11 @@ def ingest_milesight_payload(payload, *, conn=None):
             conn.close()
 
 
-def create_device(floor_id, location_x=50, location_y=50, zone="Unassigned"):
+def create_device(floor_id, location_x=50, location_y=50, zone="Unassigned", sensor_name=None):
     now = datetime.now(timezone.utc).isoformat()
     with connect(SENSOR_DB) as conn:
-        device_id = _next_device_id(conn, floor_id)
+        base = _build_device_base(floor_id, sensor_name)
+        device_id = _next_device_id(conn, base)
         conn.execute(
             """
             INSERT INTO devices (device_id, model, floor_id, zone, location_x, location_y, last_seen, signal_quality)
