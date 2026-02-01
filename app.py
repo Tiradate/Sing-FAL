@@ -932,6 +932,8 @@ def settings():
         settings["severity_levels"] = severity_levels
         settings["critical_levels"] = request.form.getlist("critical_levels")
 
+        old_floor_logo_icon = settings.get("floor_logo_icon", "")
+
         if "sensor_icon" in request.files:
             file = request.files["sensor_icon"]
             if file and file.filename:
@@ -964,6 +966,19 @@ def settings():
         project_logo_existing = request.form.get("project_logo_existing", "").strip()
         if project_logo_existing or project_logo_existing == "":
             settings["project_logo"] = project_logo_existing
+
+        new_floor_logo_icon = settings.get("floor_logo_icon", "")
+        if new_floor_logo_icon != old_floor_logo_icon:
+            floor_logos = settings.get("floor_plan_logos", {})
+            for floor_id, logos in floor_logos.items():
+                for logo in logos:
+                    if logo.get("logo_icon") == old_floor_logo_icon:
+                        if new_floor_logo_icon:
+                            logo["logo_icon"] = new_floor_logo_icon
+                        else:
+                            logo.pop("logo_icon", None)
+                    logo["floor_id"] = floor_id
+            settings["floor_plan_logos"] = floor_logos
 
         existing_floor_plans = settings.get("floor_plans", {}).copy()
         floor_ids = request.form.getlist("floor_id")
