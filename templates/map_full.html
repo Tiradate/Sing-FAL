@@ -64,7 +64,7 @@
         {% endif %}
       </div>
     </div>
-    <ul class="list-unstyled mb-0 mt-2">
+    <ul>
         {% for metric in metric_options %}
         {% set reading = device_readings.get(metric.key) %}
         {% set reading_severity = device_metric_severity.get(device.device_id, {}).get(metric.key) %}
