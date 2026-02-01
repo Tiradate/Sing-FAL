@@ -506,6 +506,16 @@
             <div class="row g-3 align-items-start">
               <div class="col-12 col-md-6">
                 <label class="form-label mb-1">Sensors on this floor</label>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                  <span class="text-muted small">Selected: <span id="bulkSelectedCount">0</span></span>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" id="bulkSelectAllBtn">
+                    Select all
+                  </button>
+                  <button class="btn btn-sm btn-outline-light" type="button" id="bulkClearSelectionBtn">
+                    Clear
+                  </button>
+                </div>
+                <div class="form-text" id="bulkSelectionHint">Select sensors to smart-fill zone/type.</div>
                 <div class="border rounded p-2 small" id="bulkSensorList"></div>
               </div>
               <div class="col-12 col-md-6">
@@ -1274,6 +1284,10 @@
   const bulkSensorZone = document.getElementById('bulkSensorZone');
   const bulkSensorType = document.getElementById('bulkSensorType');
   const applyBulkZoneBtn = document.getElementById('applyBulkZoneBtn');
+  const bulkSelectedCount = document.getElementById('bulkSelectedCount');
+  const bulkSelectionHint = document.getElementById('bulkSelectionHint');
+  const bulkSelectAllBtn = document.getElementById('bulkSelectAllBtn');
+  const bulkClearSelectionBtn = document.getElementById('bulkClearSelectionBtn');
 
   const updateSensorCount = (floorId) => {
     const count = editorData.devices.filter((device) => device.floor_id === floorId).length;
@@ -1322,9 +1336,65 @@
     return segments.join('-');
   };
 
+  const getSensorTypeFromLabel = (label) => {
+    if (!label) {
+      return null;
+    }
+    const segments = label.split('-').filter((segment) => segment.trim() !== '');
+    return segments.length >= 4 ? segments[3] : null;
+  };
+
   const isSensorLabelValid = (labelValue) => {
     const segments = labelValue.split('-').filter((segment) => segment.trim() !== '');
     return segments.length >= 4;
+  };
+
+  const updateBulkSelectionSummary = () => {
+    if (!bulkSensorList) {
+      return;
+    }
+    const selectedInputs = Array.from(
+      bulkSensorList.querySelectorAll('input[type="checkbox"]:checked')
+    );
+    if (bulkSelectedCount) {
+      bulkSelectedCount.textContent = selectedInputs.length.toString();
+    }
+    if (!selectedInputs.length) {
+      if (bulkSelectionHint) {
+        bulkSelectionHint.textContent = 'Select sensors to smart-fill zone/type.';
+      }
+      if (bulkSensorZone) {
+        bulkSensorZone.placeholder = 'Zone';
+      }
+      if (bulkSensorType) {
+        bulkSensorType.placeholder = 'Sensor type';
+      }
+      return;
+    }
+    const devices = selectedInputs
+      .map((input) => editorData.devices.find((device) => device.device_id === input.value))
+      .filter(Boolean);
+    const zones = new Set(devices.map((device) => device.zone).filter((zone) => zone));
+    const types = new Set(
+      devices.map((device) => getSensorTypeFromLabel(device.label)).filter((type) => type)
+    );
+    if (bulkSelectionHint) {
+      const zoneSummary = zones.size === 1 ? Array.from(zones)[0] : 'Mixed';
+      const typeSummary = types.size === 1 ? Array.from(types)[0] : 'Mixed';
+      bulkSelectionHint.textContent = `Detected zone: ${zoneSummary} · Type: ${typeSummary}`;
+    }
+    if (bulkSensorZone) {
+      bulkSensorZone.placeholder = zones.size === 1 ? Array.from(zones)[0] : 'Mixed';
+      if (!bulkSensorZone.value && zones.size === 1) {
+        bulkSensorZone.value = Array.from(zones)[0];
+      }
+    }
+    if (bulkSensorType) {
+      bulkSensorType.placeholder = types.size === 1 ? Array.from(types)[0] : 'Mixed';
+      if (!bulkSensorType.value && types.size === 1) {
+        bulkSensorType.value = Array.from(types)[0];
+      }
+    }
   };
 
   const updateSensorLabelValidation = () => {
@@ -1376,6 +1446,7 @@
       wrapper.appendChild(label);
       bulkSensorList.appendChild(wrapper);
     });
+    updateBulkSelectionSummary();
   };
 
   const getLogoIconPath = () => editorData.logoIconSelected || '';
@@ -1726,6 +1797,30 @@
   if (selectedSensorLabel) {
     selectedSensorLabel.addEventListener('input', () => {
       updateSensorLabelValidation();
+    });
+  }
+
+  if (bulkSensorList) {
+    bulkSensorList.addEventListener('change', () => {
+      updateBulkSelectionSummary();
+    });
+  }
+
+  if (bulkSelectAllBtn && bulkSensorList) {
+    bulkSelectAllBtn.addEventListener('click', () => {
+      bulkSensorList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = true;
+      });
+      updateBulkSelectionSummary();
+    });
+  }
+
+  if (bulkClearSelectionBtn && bulkSensorList) {
+    bulkClearSelectionBtn.addEventListener('click', () => {
+      bulkSensorList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = false;
+      });
+      updateBulkSelectionSummary();
     });
   }
 
