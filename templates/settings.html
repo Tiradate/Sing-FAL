@@ -558,9 +558,19 @@
             <div class="col-6 col-md-2 col-xl-1">Gas</div>
           </div>
           <div id="fireSeverityRows" data-severity-rows="fire">
+            {% set fire_icon_options = [
+              'bi-fire',
+              'bi-exclamation-triangle',
+              'bi-exclamation-circle',
+              'bi-shield-exclamation',
+              'bi-alarm',
+              'bi-bell'
+            ] %}
             {% set fire_levels = settings.fire_severity_mapping if settings.fire_severity_mapping else [{
               'label': '',
               'color': '#dc3545',
+              'text_color': '#ffffff',
+              'icon': '',
               'smoke': '',
               'heat': '',
               'flow_switch': '',
@@ -584,7 +594,16 @@
                   <span class="input-group-text p-0">
                     <input class="form-control form-control-color border-0" type="color" name="fire_severity_color" value="{{ level.color or '#dc3545' }}" title="Severity color">
                   </span>
+                  <span class="input-group-text p-0">
+                    <input class="form-control form-control-color border-0" type="color" name="fire_severity_text_color" value="{{ level.text_color or '#ffffff' }}" title="Severity text color">
+                  </span>
                 </div>
+                <select class="form-select form-select-sm mt-1" name="fire_severity_icon">
+                  <option value="">Select icon</option>
+                  {% for icon in fire_icon_options %}
+                  <option value="{{ icon }}" {% if icon == level.icon %}selected{% endif %}>{{ icon }}</option>
+                  {% endfor %}
+                </select>
               </div>
               <div class="col-6 col-md-2 col-xl-1">
                 <input class="form-control" type="text" name="fire_smoke" value="{{ level.smoke }}" placeholder="Text">
@@ -695,6 +714,17 @@
     const legendOptions = legendHelpers.fire
       ? legendHelpers.fire.getLegendOptions('')
       : '<option value="">Select severity</option>';
+    const fireIconOptions = [
+      'bi-fire',
+      'bi-exclamation-triangle',
+      'bi-exclamation-circle',
+      'bi-shield-exclamation',
+      'bi-alarm',
+      'bi-bell',
+    ];
+    const iconOptionsMarkup = fireIconOptions
+      .map((icon) => `<option value="${icon}">${icon}</option>`)
+      .join('');
     row.innerHTML = `
       <div class="col-12 col-md-3">
         <div class="input-group">
@@ -704,7 +734,14 @@
           <span class="input-group-text p-0">
             <input class="form-control form-control-color border-0" type="color" name="fire_severity_color" value="#dc3545" title="Severity color">
           </span>
+          <span class="input-group-text p-0">
+            <input class="form-control form-control-color border-0" type="color" name="fire_severity_text_color" value="#ffffff" title="Severity text color">
+          </span>
         </div>
+        <select class="form-select form-select-sm mt-1" name="fire_severity_icon">
+          <option value="">Select icon</option>
+          ${iconOptionsMarkup}
+        </select>
       </div>
       <div class="col-6 col-md-2 col-xl-1">
         <input class="form-control" type="text" name="fire_smoke" placeholder="Text">
