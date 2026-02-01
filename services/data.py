@@ -94,6 +94,14 @@ def update_device_zone(device_id, zone):
         )
 
 
+def update_device_label(device_id, label):
+    with connect(SENSOR_DB) as conn:
+        conn.execute(
+            "UPDATE devices SET label = ? WHERE device_id = ?",
+            (label, device_id),
+        )
+
+
 def update_device_layout(device_id, floor_id, location_x, location_y):
     with connect(SENSOR_DB) as conn:
         conn.execute(
@@ -470,6 +478,7 @@ def create_device(
     with connect(SENSOR_DB) as conn:
         zone_value = (zone or "").strip() or "Z1"
         sensor_type_value = (sensor_type or "").strip() or "DZ"
+        label_value = (sensor_name or "").strip() or None
         base = _build_device_base(
             floor_id,
             zone=zone_value,
@@ -479,14 +488,15 @@ def create_device(
         device_id = _next_device_id(conn, base)
         conn.execute(
             """
-            INSERT INTO devices (device_id, model, floor_id, zone, location_x, location_y, last_seen, signal_quality)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO devices (device_id, model, floor_id, zone, label, location_x, location_y, last_seen, signal_quality)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 device_id,
                 "Milesight AM30x",
                 floor_id,
                 zone_value,
+                label_value,
                 location_x,
                 location_y,
                 now,
@@ -498,6 +508,7 @@ def create_device(
         "model": "Milesight AM30x",
         "floor_id": floor_id,
         "zone": zone_value,
+        "label": label_value,
         "location_x": location_x,
         "location_y": location_y,
         "last_seen": now,

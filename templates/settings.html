@@ -486,12 +486,28 @@
           <div class="card-body p-3">
             <div class="d-flex flex-wrap align-items-center gap-2">
               <div class="fw-semibold">Selected sensor:</div>
-              <div id="selectedSensorLabel" class="text-muted small"></div>
+              <div id="selectedSensorId" class="text-muted small"></div>
               <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
-                <label class="form-label mb-0" for="selectedSensorZone">Zone</label>
-                <input class="form-control form-control-sm" id="selectedSensorZone" type="text" placeholder="Zone">
-                <button class="btn btn-sm btn-outline-primary" type="button" id="saveSensorZoneBtn">Save Zone</button>
+                <label class="form-label mb-0" for="selectedSensorLabel">Label</label>
+                <input class="form-control form-control-sm" id="selectedSensorLabel" type="text" placeholder="Sensor label">
+                <button class="btn btn-sm btn-outline-primary" type="button" id="saveSensorLabelBtn">Save Label</button>
                 <button class="btn btn-sm btn-outline-danger" type="button" id="deleteSelectedSensorBtn">Delete Sensor</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card mt-3" id="bulkZoneEditor">
+          <div class="card-body p-3">
+            <div class="fw-semibold mb-2">Bulk zone update</div>
+            <div class="row g-3 align-items-start">
+              <div class="col-12 col-md-6">
+                <label class="form-label mb-1">Sensors on this floor</label>
+                <div class="border rounded p-2 small" id="bulkSensorList"></div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label mb-1" for="bulkSensorZone">Zone</label>
+                <input class="form-control form-control-sm" id="bulkSensorZone" type="text" placeholder="Zone">
+                <button class="btn btn-sm btn-outline-primary mt-2" type="button" id="applyBulkZoneBtn">Apply Zone to Selected</button>
               </div>
             </div>
           </div>
@@ -900,6 +916,7 @@
     createDeviceRoute: {{ url_for('create_device') | tojson }},
     updateDeviceRoute: {{ url_for('update_device_position', device_id='__device__') | tojson }},
     updateDeviceZoneRoute: {{ url_for('update_device_zone', device_id='__device__') | tojson }},
+    updateDeviceLabelRoute: {{ url_for('update_device_label', device_id='__device__') | tojson }},
     deleteDeviceRoute: {{ url_for('delete_device', device_id='__device__') | tojson }},
     clearFloorDevicesRoute: {{ url_for('delete_floor_devices', floor_id='__floor__') | tojson }},
     clearFloorPlanRoute: {{ url_for('delete_floor_plan', floor_id='__floor__') | tojson }},
@@ -1238,14 +1255,58 @@
   const clearFloorPlanBtn = document.getElementById('clearFloorPlanBtn');
   const sensorCountLabel = document.getElementById('sensorCountLabel');
   const sensorZoneEditor = document.getElementById('sensorZoneEditor');
+  const selectedSensorId = document.getElementById('selectedSensorId');
   const selectedSensorLabel = document.getElementById('selectedSensorLabel');
-  const selectedSensorZone = document.getElementById('selectedSensorZone');
-  const saveSensorZoneBtn = document.getElementById('saveSensorZoneBtn');
+  const saveSensorLabelBtn = document.getElementById('saveSensorLabelBtn');
   const deleteSelectedSensorBtn = document.getElementById('deleteSelectedSensorBtn');
+  const bulkSensorList = document.getElementById('bulkSensorList');
+  const bulkSensorZone = document.getElementById('bulkSensorZone');
+  const applyBulkZoneBtn = document.getElementById('applyBulkZoneBtn');
 
   const updateSensorCount = (floorId) => {
     const count = editorData.devices.filter((device) => device.floor_id === floorId).length;
     sensorCountLabel.textContent = `${count} sensor${count === 1 ? '' : 's'}`;
+  };
+
+  const getDeviceDisplayName = (device) =>
+    device.label ? `${device.label} (${device.device_id})` : device.device_id;
+
+  const renderBulkSensorList = (floorId) => {
+    if (!bulkSensorList) {
+      return;
+    }
+    const checked = new Set(
+      Array.from(bulkSensorList.querySelectorAll('input[type="checkbox"]:checked')).map(
+        (input) => input.value
+      )
+    );
+    bulkSensorList.innerHTML = '';
+    const devices = editorData.devices.filter((device) => device.floor_id === floorId);
+    if (!devices.length) {
+      const empty = document.createElement('div');
+      empty.className = 'text-muted small';
+      empty.textContent = 'No sensors on this floor.';
+      bulkSensorList.appendChild(empty);
+      return;
+    }
+    devices.forEach((device, index) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'form-check';
+      const input = document.createElement('input');
+      const label = document.createElement('label');
+      const inputId = `bulk-sensor-${index}`;
+      input.type = 'checkbox';
+      input.className = 'form-check-input';
+      input.id = inputId;
+      input.value = device.device_id;
+      input.checked = checked.has(device.device_id);
+      label.className = 'form-check-label';
+      label.htmlFor = inputId;
+      label.textContent = getDeviceDisplayName(device);
+      wrapper.appendChild(input);
+      wrapper.appendChild(label);
+      bulkSensorList.appendChild(wrapper);
+    });
   };
 
   const getLogoIconPath = () => editorData.logoIconSelected || '';
@@ -1256,18 +1317,20 @@
     editorContainer.querySelectorAll('.map-editor-sensor').forEach((item) => {
       item.classList.toggle('is-selected', item.dataset.device === deviceId);
     });
-    if (!sensorZoneEditor || !selectedSensorLabel || !selectedSensorZone) {
+    if (!sensorZoneEditor || !selectedSensorId || !selectedSensorLabel) {
       return;
     }
     if (!deviceId) {
       sensorZoneEditor.classList.add('d-none');
-      selectedSensorLabel.textContent = '';
-      selectedSensorZone.value = '';
+      selectedSensorId.textContent = '';
+      selectedSensorLabel.value = '';
+      selectedSensorLabel.placeholder = 'Sensor label';
       return;
     }
     const device = editorData.devices.find((item) => item.device_id === deviceId);
-    selectedSensorLabel.textContent = deviceId;
-    selectedSensorZone.value = device ? (device.zone || '') : '';
+    selectedSensorId.textContent = deviceId;
+    selectedSensorLabel.value = device && device.label ? device.label : '';
+    selectedSensorLabel.placeholder = deviceId;
     sensorZoneEditor.classList.remove('d-none');
   };
 
@@ -1330,7 +1393,7 @@
         icon.dataset.device = device.device_id;
         icon.style.left = `${device.location_x}%`;
         icon.style.top = `${device.location_y}%`;
-        icon.title = device.device_id;
+        icon.title = device.label || device.device_id;
         icon.innerHTML = `<img src="/${editorData.sensorIcon}" alt="sensor" style="width: ${editorData.sensorIconSize}px; height: ${editorData.sensorIconSize}px;">`;
         editorContainer.appendChild(icon);
       });
@@ -1338,6 +1401,7 @@
     attachSensorDragHandlers();
     attachLogoDragHandlers();
     updateSensorCount(floorId);
+    renderBulkSensorList(floorId);
   };
 
   const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -1445,18 +1509,18 @@
     });
   }
 
-  if (saveSensorZoneBtn) {
-    saveSensorZoneBtn.addEventListener('click', async () => {
+  if (saveSensorLabelBtn) {
+    saveSensorLabelBtn.addEventListener('click', async () => {
       if (!selectedDeviceId) {
         return;
       }
-      const zoneValue = (selectedSensorZone.value || '').trim();
+      const labelValue = (selectedSensorLabel.value || '').trim();
       const response = await fetch(
-        editorData.updateDeviceZoneRoute.replace('__device__', selectedDeviceId),
+        editorData.updateDeviceLabelRoute.replace('__device__', selectedDeviceId),
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ zone: zoneValue }),
+          body: JSON.stringify({ label: labelValue }),
         }
       );
       if (!response.ok) {
@@ -1464,8 +1528,53 @@
       }
       const device = editorData.devices.find((item) => item.device_id === selectedDeviceId);
       if (device) {
-        device.zone = zoneValue;
+        device.label = labelValue;
       }
+      const selectedIcon = editorContainer.querySelector(
+        `.map-editor-sensor[data-device="${selectedDeviceId}"]`
+      );
+      if (selectedIcon) {
+        selectedIcon.title = labelValue || selectedDeviceId;
+      }
+      renderBulkSensorList(editorContainer.dataset.floor);
+    });
+  }
+
+  if (applyBulkZoneBtn) {
+    applyBulkZoneBtn.addEventListener('click', async () => {
+      if (!bulkSensorList || !bulkSensorZone) {
+        return;
+      }
+      const zoneValue = (bulkSensorZone.value || '').trim();
+      const selectedInputs = Array.from(
+        bulkSensorList.querySelectorAll('input[type="checkbox"]:checked')
+      );
+      if (!selectedInputs.length) {
+        return;
+      }
+      const results = await Promise.all(
+        selectedInputs.map(async (input) => {
+          const deviceId = input.value;
+          const response = await fetch(
+            editorData.updateDeviceZoneRoute.replace('__device__', deviceId),
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ zone: zoneValue }),
+            }
+          );
+          return { deviceId, ok: response.ok };
+        })
+      );
+      results.forEach(({ deviceId, ok }) => {
+        if (!ok) {
+          return;
+        }
+        const device = editorData.devices.find((item) => item.device_id === deviceId);
+        if (device) {
+          device.zone = zoneValue;
+        }
+      });
     });
   }
 

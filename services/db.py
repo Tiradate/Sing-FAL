@@ -25,6 +25,7 @@ def init_sensor_db():
                 model TEXT,
                 floor_id TEXT,
                 zone TEXT,
+                label TEXT,
                 location_x REAL,
                 location_y REAL,
                 last_seen DATETIME,
@@ -53,6 +54,9 @@ def init_sensor_db():
             );
             """
         )
+        device_columns = {row["name"] for row in conn.execute("PRAGMA table_info(devices)").fetchall()}
+        if "label" not in device_columns:
+            conn.execute("ALTER TABLE devices ADD COLUMN label TEXT")
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(sensor_readings)").fetchall()}
         if "topic" not in columns:
             conn.execute("ALTER TABLE sensor_readings ADD COLUMN topic TEXT DEFAULT 'Live'")
