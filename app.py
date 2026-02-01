@@ -201,6 +201,13 @@ def index():
     if metric_keys:
         active_alarms = [alarm for alarm in active_alarms if alarm["metric"] in metric_keys]
 
+    latest_alarm_id = None
+    if active_alarms:
+        latest_alarm_id = max(
+            (alarm["id"] for alarm in active_alarms if alarm.get("id") is not None),
+            default=None,
+        )
+
     def format_alarm_time(timestamp):
         if not timestamp:
             return ""
@@ -255,6 +262,7 @@ def index():
         devices=devices,
         alarm_severity=alarm_severity,
         active_alarms=active_alarms,
+        latest_alarm_id=latest_alarm_id,
         device_label_map=device_label_map,
         daily_labels=daily_labels,
         daily_values=daily_values,
@@ -283,6 +291,28 @@ def index():
         all_data_end=all_data_end.strftime("%Y-%m-%dT%H:%M"),
         default_view_interval=default_view_interval,
         status_label=data_service.aggregate_status_label(settings),
+    )
+
+
+@app.get("/api/alarms/status")
+def alarm_status():
+    settings = settings_service.load_settings()
+    active_alarms = data_service.get_active_alarms()
+    critical_levels = set(settings.get("critical_levels", []))
+    latest_alarm_id = None
+    if active_alarms:
+        latest_alarm_id = max(
+            (alarm["id"] for alarm in active_alarms if alarm.get("id") is not None),
+            default=None,
+        )
+    return jsonify(
+        {
+            "alarm_count": data_service.get_alarm_count(),
+            "has_critical": any(
+                alarm["severity"] in critical_levels for alarm in active_alarms
+            ),
+            "latest_alarm_id": latest_alarm_id,
+        }
     )
 
 

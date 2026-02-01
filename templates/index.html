@@ -443,6 +443,10 @@
     metricOptions: {{ metric_option_map|tojson }},
     severityLevels: {{ settings.severity_levels|tojson }},
     showSeverityLines: {{ settings.show_severity_lines|tojson }},
+    alarmStatusRoute: {{ url_for('alarm_status')|tojson }},
+    alarmCount: {{ alarm_count|tojson }},
+    hasCritical: {{ has_critical|tojson }},
+    latestAlarmId: {{ latest_alarm_id|tojson }},
   };
 </script>
 {% endblock %}
