@@ -141,7 +141,7 @@
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label mb-1">Value</label>
-              <input class="form-control form-control-sm" name="metric_value" type="text" value="80" required>
+              <input class="form-control form-control-sm" name="metric_value" type="text" value="{{ '' if current_system == 'fire' else '80' }}" required>
               {% if current_system == "fire" %}
               <small>Use the text value from the Fire Systems Severity Mapping settings.</small>
               {% endif %}
@@ -358,6 +358,7 @@
   if (alarmForm) {
     const tsField = alarmForm.querySelector("[name='alarm_ts']");
     const statusEl = document.getElementById("alarm-generator-status");
+    const currentSystem = "{{ current_system }}";
     if (tsField && !tsField.value) {
       const now = new Date();
       const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
@@ -370,18 +371,27 @@
       statusEl.textContent = "Sending...";
       const formData = new FormData(alarmForm);
       const metric = formData.get("metric");
-      const value = parseFloat(formData.get("metric_value"));
-          const payload = {
-            readings: [
-              {
-                device_id: formData.get("device_id"),
-                ts: new Date(formData.get("alarm_ts")).toISOString(),
-                metrics: {
-                  [metric]: value
-                }
-              }
-        ]
+      const rawValue = (formData.get("metric_value") || "").toString().trim();
+      const numericValue = parseFloat(rawValue);
+      const isNumeric = rawValue !== "" && Number.isFinite(numericValue);
+      const reading = {
+        device_id: formData.get("device_id"),
+        ts: new Date(formData.get("alarm_ts")).toISOString()
       };
+      if (currentSystem === "fire") {
+        if (!rawValue) {
+          statusEl.textContent = "Enter a fire alarm text value.";
+          return;
+        }
+        reading.alarm_text = rawValue;
+      } else {
+        if (!isNumeric) {
+          statusEl.textContent = "Enter a numeric alarm value.";
+          return;
+        }
+        reading.metrics = { [metric]: numericValue };
+      }
+      const payload = { readings: [reading] };
       try {
         const response = await fetch("{{ url_for('ingest_milesight') }}", {
           method: "POST",
