@@ -81,6 +81,15 @@ def get_enabled_metric_options(settings, system_key):
     return options
 
 
+def record_value(record, key, default=None):
+    if hasattr(record, "get"):
+        return record.get(key, default)
+    try:
+        return record[key]
+    except (KeyError, TypeError):
+        return default
+
+
 def derive_device_severity(devices, device_metric_severity, alarm_severity, settings):
     levels = settings.get("severity_levels", [])
     severity_rank = {level["label"]: index for index, level in enumerate(levels)}
@@ -149,19 +158,11 @@ def index():
     alarm_severity = data_service.get_device_alarm_severity()
     active_alarms = data_service.get_active_alarms()
 
-    def device_value(device, key, default=None):
-        if hasattr(device, "get"):
-            return device.get(key, default)
-        try:
-            return device[key]
-        except (KeyError, TypeError):
-            return default
-
     device_label_map = {}
     for device in devices:
-        device_id = device_value(device, "device_id")
+        device_id = record_value(device, "device_id")
         if device_id:
-            device_label_map[device_id] = device_value(device, "label")
+            device_label_map[device_id] = record_value(device, "label")
     metric_options = get_enabled_metric_options(settings, active_system)
     metric_option_map = {
         option["key"]: {"label": option["label"], "unit": option["unit"]}
@@ -204,7 +205,11 @@ def index():
     latest_alarm_id = None
     if active_alarms:
         latest_alarm_id = max(
-            (alarm["id"] for alarm in active_alarms if alarm.get("id") is not None),
+            (
+                record_value(alarm, "id")
+                for alarm in active_alarms
+                if record_value(alarm, "id") is not None
+            ),
             default=None,
         )
 
@@ -302,7 +307,11 @@ def alarm_status():
     latest_alarm_id = None
     if active_alarms:
         latest_alarm_id = max(
-            (alarm["id"] for alarm in active_alarms if alarm.get("id") is not None),
+            (
+                record_value(alarm, "id")
+                for alarm in active_alarms
+                if record_value(alarm, "id") is not None
+            ),
             default=None,
         )
     return jsonify(
