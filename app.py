@@ -919,10 +919,24 @@ def settings():
             }
         modules["top_definition"] = updated_top_definition
 
+        def parse_map_count(value, fallback):
+            try:
+                count = int(value)
+            except (TypeError, ValueError):
+                return fallback
+            return max(1, count)
+
+        existing_dashboard_cards = modules.get("dashboard_cards", {})
         updated_dashboard_cards = {}
         for system_key in settings_service.SYSTEM_KEYS:
+            existing_cards = existing_dashboard_cards.get(system_key, {})
+            fallback_count = existing_cards.get("map_count", 1)
             updated_dashboard_cards[system_key] = {
                 "map": bool(request.form.get(f"dashboard_card_map_{system_key}")),
+                "map_count": parse_map_count(
+                    request.form.get(f"dashboard_card_map_count_{system_key}"),
+                    fallback_count,
+                ),
                 "daily_graph": bool(
                     request.form.get(f"dashboard_card_daily_graph_{system_key}")
                 ),

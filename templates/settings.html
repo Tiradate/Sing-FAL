@@ -241,9 +241,30 @@
                 <div class="col-12">
                   <label class="form-label">Dashboard Cards</label>
                   <div class="d-flex flex-wrap gap-3">
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" name="dashboard_card_map_{{ system.key }}" {% if dashboard_cards.map is not defined or dashboard_cards.map %}checked{% endif %}>
-                      <label class="form-check-label">Map</label>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="dashboard_card_map_{{ system.key }}" {% if dashboard_cards.map is not defined or dashboard_cards.map %}checked{% endif %}>
+                        <label class="form-check-label">Map</label>
+                      </div>
+                      <div class="input-group input-group-sm" style="max-width: 200px;">
+                        <span class="input-group-text">Cards</span>
+                        <input
+                          class="form-control"
+                          type="number"
+                          min="1"
+                          id="dashboardCardMapCount_{{ system.key }}"
+                          name="dashboard_card_map_count_{{ system.key }}"
+                          value="{{ dashboard_cards.map_count if dashboard_cards.map_count is defined else 1 }}"
+                        >
+                        <button
+                          class="btn btn-outline-secondary"
+                          type="button"
+                          data-map-count-increment="{{ system.key }}"
+                          aria-label="Add map card"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" name="dashboard_card_daily_graph_{{ system.key }}" {% if dashboard_cards.daily_graph is not defined or dashboard_cards.daily_graph %}checked{% endif %}>
@@ -758,6 +779,19 @@
 
 {% block scripts %}
 <script>
+  document.querySelectorAll('[data-map-count-increment]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const systemKey = button.getAttribute('data-map-count-increment');
+      const input = document.getElementById(`dashboardCardMapCount_${systemKey}`);
+      if (!input) {
+        return;
+      }
+      const currentValue = Number.parseInt(input.value, 10);
+      const safeValue = Number.isNaN(currentValue) ? 1 : currentValue;
+      input.value = Math.max(1, safeValue + 1);
+    });
+  });
+
   const bindColorToggle = (checkboxId, inputId) => {
     const checkbox = document.getElementById(checkboxId);
     const input = document.getElementById(inputId);

@@ -154,6 +154,17 @@
     let rotateTimer = null;
     let activeIndex = data.floors.indexOf(data.activeFloor);
     const floorFromQuery = Boolean(data.floorFromQuery);
+
+    const buildFloorUrl = (baseUrl, floor) => {
+      const url = new URL(baseUrl, window.location.origin);
+      if (floor) {
+        url.searchParams.set('floor', floor);
+      } else {
+        url.searchParams.delete('floor');
+      }
+      return url.toString();
+    };
+
     const storedFloor = localStorage.getItem(floorStorageKey);
 
     if (data.activeFloor && (!storedFloor || floorFromQuery)) {
@@ -161,7 +172,7 @@
     }
 
     if (!floorFromQuery && storedFloor && data.floors.includes(storedFloor) && storedFloor !== data.activeFloor) {
-      window.location = `${floorRoute}?floor=${storedFloor}`;
+      window.location = buildFloorUrl(floorRoute, storedFloor);
       return;
     }
 
@@ -189,7 +200,7 @@
         const nextFloor = data.floors[nextIndex];
         activeIndex = nextIndex;
         localStorage.setItem(floorStorageKey, nextFloor);
-        window.location = `${floorRoute}?floor=${nextFloor}`;
+        window.location = buildFloorUrl(floorRoute, nextFloor);
       }, (data.autoRotateSeconds || 10) * 1000);
     };
 
@@ -205,7 +216,7 @@
         if (currentFloor) {
           localStorage.setItem(floorStorageKey, currentFloor);
         }
-        window.open(`${mapFullRoute}?floor=${currentFloor}`, '_blank');
+        window.open(buildFloorUrl(mapFullRoute, currentFloor), '_blank');
       }
     };
 
@@ -237,7 +248,7 @@
       floorSelect.addEventListener('change', (event) => {
         const floor = event.target.value;
         localStorage.setItem(floorStorageKey, floor);
-        window.location = `${floorRoute}?floor=${floor}`;
+        window.location = buildFloorUrl(floorRoute, floor);
       });
     }
   }

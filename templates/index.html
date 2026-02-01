@@ -34,6 +34,10 @@
   {% set dashboard_card_map = settings.modules.dashboard_cards if settings.modules and settings.modules.dashboard_cards is defined else {} %}
   {% set dashboard_cards = dashboard_card_map.get(active_system, {}) %}
   {% set show_map = dashboard_cards.map is not defined or dashboard_cards.map %}
+  {% set map_count = dashboard_cards.map_count if dashboard_cards.map_count is defined else 1 %}
+  {% if map_count < 1 %}
+  {% set map_count = 1 %}
+  {% endif %}
   {% set show_daily_graph = dashboard_cards.daily_graph is not defined or dashboard_cards.daily_graph %}
   {% set show_weekly_overview = dashboard_cards.weekly_overview is not defined or dashboard_cards.weekly_overview %}
   {% set show_sensor_average = dashboard_cards.sensor_average is not defined or dashboard_cards.sensor_average %}
@@ -87,32 +91,37 @@
 
 <div class="row g-3">
   {% if show_map %}
+  {% set map_floors = [active_floor] + (floors | reject('equalto', active_floor) | list) if floors else [] %}
+  {% for map_floor in map_floors %}
+  {% if loop.index <= map_count %}
   <div class="col-12 col-lg-5">
     <div class="card shadow-sm h-100">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
         <div>
-          <h6 class="mb-0">Map</h6>
+          <h6 class="mb-0">Map{% if not loop.first %} - {{ settings.floor_names.get(map_floor, map_floor) if settings.floor_names else map_floor }}{% endif %}</h6>
           <small class="text-muted">Floor plan &amp; sensors</small>
         </div>
         <div class="d-flex align-items-center gap-2">
-          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('map_full', floor=active_floor) }}" target="_blank">Expand</a>
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('map_full', floor=map_floor) }}" target="_blank">Expand</a>
+          {% if loop.first %}
           <select id="floorSelect" class="form-select form-select-sm">
             {% for floor in floors %}
             <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
             {% endfor %}
           </select>
           <button id="floorRotate" class="btn btn-sm btn-outline-secondary">Auto</button>
+          {% endif %}
         </div>
       </div>
       <div class="card-body dashboard-card-body">
-        <div class="map-container" data-floor="{{ active_floor }}">
-          {% set floor_image = settings.floor_plans.get(active_floor, '') %}
+        <div class="map-container" data-floor="{{ map_floor }}">
+          {% set floor_image = settings.floor_plans.get(map_floor, '') %}
           {% if floor_image %}
-          <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ settings.floor_names.get(active_floor, active_floor) if settings.floor_names else active_floor }}">
+          <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ settings.floor_names.get(map_floor, map_floor) if settings.floor_names else map_floor }}">
           {% else %}
           <div class="map-placeholder">Upload a floor plan in settings</div>
           {% endif %}
-          {% for logo in settings.floor_plan_logos.get(active_floor, []) %}
+          {% for logo in settings.floor_plan_logos.get(map_floor, []) %}
           {% set logo_icon = logo.logo_icon or settings.floor_logo_icon %}
           {% if logo_icon %}
           <div class="logo-icon" style="left: {{ logo.location_x }}%; top: {{ logo.location_y }}%;">
@@ -121,7 +130,7 @@
           {% endif %}
           {% endfor %}
           {% for device in devices %}
-          {% if device.floor_id == active_floor %}
+          {% if device.floor_id == map_floor %}
           {% set severity = device_severity.get(device.device_id, '') %}
           {% set fire_level = (settings.fire_severity_mapping|selectattr('label','equalto',severity)|list|first) %}
           {% set iaq_level = (settings.severity_levels|selectattr('label','equalto',severity)|list|first) %}
@@ -248,13 +257,17 @@
           {% endif %}
           {% endfor %}
         </div>
+        {% if loop.first %}
         <div class="sensor-details-panel mt-3" id="sensorDetailsPanel">
           <div class="sensor-details-placeholder text-muted small">Hover or tap a sensor to view details.</div>
           <div class="sensor-details-content" hidden></div>
         </div>
+        {% endif %}
       </div>
     </div>
   </div>
+  {% endif %}
+  {% endfor %}
   {% endif %}
 
   {% if show_daily_graph or show_weekly_overview %}
