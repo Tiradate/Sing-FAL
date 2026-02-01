@@ -1076,6 +1076,16 @@ def update_device_zone(device_id):
     return jsonify({"device_id": device_id, "zone": zone})
 
 
+@app.post("/api/devices/<device_id>/label")
+def update_device_label(device_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    payload = request.get_json(silent=True) or {}
+    label = (payload.get("label") or "").strip()
+    data_service.update_device_label(device_id, label)
+    return jsonify({"device_id": device_id, "label": label})
+
+
 @app.delete("/api/devices/<device_id>")
 def delete_device(device_id):
     if not session.get("is_admin"):
