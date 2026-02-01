@@ -485,7 +485,7 @@
         <div class="card mt-3 d-none" id="sensorZoneEditor">
           <div class="card-body p-3">
             <div class="d-flex flex-wrap align-items-center gap-2">
-              <div class="fw-semibold">Selected sensor:</div>
+              <div class="fw-semibold">Selected item:</div>
               <div id="selectedSensorId" class="text-muted small"></div>
               <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
                 <label class="form-label mb-0" for="selectedSensorLabel">Label</label>
@@ -922,6 +922,7 @@
     clearFloorPlanRoute: {{ url_for('delete_floor_plan', floor_id='__floor__') | tojson }},
     createLogoRoute: {{ url_for('create_floor_logo') | tojson }},
     updateLogoRoute: {{ url_for('update_floor_logo_position', logo_id='__logo__') | tojson }},
+    updateLogoLabelRoute: {{ url_for('update_floor_logo_label', logo_id='__logo__') | tojson }},
     deleteLogoRoute: {{ url_for('delete_floor_logo', logo_id='__logo__') | tojson }},
   };
 
@@ -1271,6 +1272,17 @@
   const getDeviceDisplayName = (device) =>
     device.label ? `${device.label} (${device.device_id})` : device.device_id;
 
+  const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const replaceZoneToken = (label, currentZone, nextZone) => {
+    if (!label || !currentZone || !nextZone || currentZone === nextZone) {
+      return null;
+    }
+    const pattern = new RegExp(`(^|-)${escapeRegExp(currentZone)}(-|$)`, 'g');
+    const updated = label.replace(pattern, `$1${nextZone}$2`);
+    return updated === label ? null : updated;
+  };
+
   const renderBulkSensorList = (floorId) => {
     if (!bulkSensorList) {
       return;
@@ -1311,27 +1323,67 @@
 
   const getLogoIconPath = () => editorData.logoIconSelected || '';
   let selectedDeviceId = null;
+  let selectedLogoId = null;
 
-  const setSelectedDevice = (deviceId) => {
-    selectedDeviceId = deviceId;
-    editorContainer.querySelectorAll('.map-editor-sensor').forEach((item) => {
-      item.classList.toggle('is-selected', item.dataset.device === deviceId);
-    });
+  const updateSelectionEditor = () => {
     if (!sensorZoneEditor || !selectedSensorId || !selectedSensorLabel) {
       return;
     }
-    if (!deviceId) {
-      sensorZoneEditor.classList.add('d-none');
-      selectedSensorId.textContent = '';
-      selectedSensorLabel.value = '';
-      selectedSensorLabel.placeholder = 'Sensor label';
+    if (selectedDeviceId) {
+      const device = editorData.devices.find((item) => item.device_id === selectedDeviceId);
+      selectedSensorId.textContent = selectedDeviceId;
+      selectedSensorLabel.value = device && device.label ? device.label : '';
+      selectedSensorLabel.placeholder = selectedDeviceId;
+      if (deleteSelectedSensorBtn) {
+        deleteSelectedSensorBtn.textContent = 'Delete Sensor';
+      }
+      sensorZoneEditor.classList.remove('d-none');
       return;
     }
-    const device = editorData.devices.find((item) => item.device_id === deviceId);
-    selectedSensorId.textContent = deviceId;
-    selectedSensorLabel.value = device && device.label ? device.label : '';
-    selectedSensorLabel.placeholder = deviceId;
-    sensorZoneEditor.classList.remove('d-none');
+    if (selectedLogoId) {
+      const floorId = editorContainer.dataset.floor;
+      const logos = editorData.floorLogos[floorId] || [];
+      const logo = logos.find((item) => item.logo_id === selectedLogoId);
+      selectedSensorId.textContent = selectedLogoId;
+      selectedSensorLabel.value = logo && logo.label ? logo.label : '';
+      selectedSensorLabel.placeholder = 'Logo label';
+      if (deleteSelectedSensorBtn) {
+        deleteSelectedSensorBtn.textContent = 'Delete Logo';
+      }
+      sensorZoneEditor.classList.remove('d-none');
+      return;
+    }
+    sensorZoneEditor.classList.add('d-none');
+    selectedSensorId.textContent = '';
+    selectedSensorLabel.value = '';
+    selectedSensorLabel.placeholder = 'Sensor label';
+    if (deleteSelectedSensorBtn) {
+      deleteSelectedSensorBtn.textContent = 'Delete Sensor';
+    }
+  };
+
+  const setSelectedDevice = (deviceId) => {
+    selectedDeviceId = deviceId;
+    selectedLogoId = null;
+    editorContainer.querySelectorAll('.map-editor-sensor').forEach((item) => {
+      item.classList.toggle('is-selected', item.dataset.device === deviceId);
+    });
+    editorContainer.querySelectorAll('.map-editor-logo').forEach((item) => {
+      item.classList.remove('is-selected');
+    });
+    updateSelectionEditor();
+  };
+
+  const setSelectedLogo = (logoId) => {
+    selectedLogoId = logoId;
+    selectedDeviceId = null;
+    editorContainer.querySelectorAll('.map-editor-logo').forEach((item) => {
+      item.classList.toggle('is-selected', item.dataset.logo === logoId);
+    });
+    editorContainer.querySelectorAll('.map-editor-sensor').forEach((item) => {
+      item.classList.remove('is-selected');
+    });
+    updateSelectionEditor();
   };
 
   const deleteSensorById = async (deviceId) => {
@@ -1347,6 +1399,31 @@
     editorData.devices = editorData.devices.filter((device) => device.device_id !== deviceId);
     if (selectedDeviceId === deviceId) {
       setSelectedDevice(null);
+    }
+    renderEditor(editorSelect.value);
+    return true;
+  };
+
+  const deleteLogoById = async (logoId) => {
+    if (!logoId) {
+      return false;
+    }
+    const response = await fetch(editorData.deleteLogoRoute.replace('__logo__', logoId), {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      return false;
+    }
+    Object.keys(editorData.floorLogos).forEach((floorId) => {
+      editorData.floorLogos[floorId] = (editorData.floorLogos[floorId] || []).filter(
+        (logo) => logo.logo_id !== logoId
+      );
+      if (!editorData.floorLogos[floorId].length) {
+        delete editorData.floorLogos[floorId];
+      }
+    });
+    if (selectedLogoId === logoId) {
+      setSelectedLogo(null);
     }
     renderEditor(editorSelect.value);
     return true;
@@ -1380,7 +1457,7 @@
       logoIcon.dataset.logo = logo.logo_id;
       logoIcon.style.left = `${logo.location_x}%`;
       logoIcon.style.top = `${logo.location_y}%`;
-      logoIcon.title = 'Logo';
+      logoIcon.title = logo.label || 'Logo';
       logoIcon.innerHTML = `<img src="/${logoIconPath}" alt="logo" style="height: ${editorData.logoIconSize}px; width: auto;">`;
       editorContainer.appendChild(logoIcon);
     });
@@ -1454,6 +1531,7 @@
       icon.addEventListener('pointerdown', (event) => {
         event.preventDefault();
         const logoId = icon.dataset.logo;
+        setSelectedLogo(logoId);
         const containerRect = editorContainer.getBoundingClientRect();
 
         const moveHandler = (moveEvent) => {
@@ -1493,50 +1571,82 @@
 
   if (editorContainer) {
     editorContainer.addEventListener('click', (event) => {
-      if (event.target.closest('.map-editor-sensor')) {
+      if (
+        event.target.closest('.map-editor-sensor') ||
+        event.target.closest('.map-editor-logo')
+      ) {
         return;
       }
       setSelectedDevice(null);
+      setSelectedLogo(null);
     });
   }
 
   if (deleteSelectedSensorBtn) {
     deleteSelectedSensorBtn.addEventListener('click', async () => {
-      if (!selectedDeviceId) {
+      if (selectedDeviceId) {
+        await deleteSensorById(selectedDeviceId);
         return;
       }
-      await deleteSensorById(selectedDeviceId);
+      if (selectedLogoId) {
+        await deleteLogoById(selectedLogoId);
+      }
     });
   }
 
   if (saveSensorLabelBtn) {
     saveSensorLabelBtn.addEventListener('click', async () => {
-      if (!selectedDeviceId) {
-        return;
-      }
       const labelValue = (selectedSensorLabel.value || '').trim();
-      const response = await fetch(
-        editorData.updateDeviceLabelRoute.replace('__device__', selectedDeviceId),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ label: labelValue }),
+      if (selectedDeviceId) {
+        const response = await fetch(
+          editorData.updateDeviceLabelRoute.replace('__device__', selectedDeviceId),
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ label: labelValue }),
+          }
+        );
+        if (!response.ok) {
+          return;
         }
-      );
-      if (!response.ok) {
+        const device = editorData.devices.find((item) => item.device_id === selectedDeviceId);
+        if (device) {
+          device.label = labelValue;
+        }
+        const selectedIcon = editorContainer.querySelector(
+          `.map-editor-sensor[data-device="${selectedDeviceId}"]`
+        );
+        if (selectedIcon) {
+          selectedIcon.title = labelValue || selectedDeviceId;
+        }
+        renderBulkSensorList(editorContainer.dataset.floor);
         return;
       }
-      const device = editorData.devices.find((item) => item.device_id === selectedDeviceId);
-      if (device) {
-        device.label = labelValue;
+      if (selectedLogoId) {
+        const response = await fetch(
+          editorData.updateLogoLabelRoute.replace('__logo__', selectedLogoId),
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ label: labelValue }),
+          }
+        );
+        if (!response.ok) {
+          return;
+        }
+        const floorId = editorContainer.dataset.floor;
+        const logos = editorData.floorLogos[floorId] || [];
+        const logo = logos.find((item) => item.logo_id === selectedLogoId);
+        if (logo) {
+          logo.label = labelValue;
+        }
+        const selectedIcon = editorContainer.querySelector(
+          `.map-editor-logo[data-logo="${selectedLogoId}"]`
+        );
+        if (selectedIcon) {
+          selectedIcon.title = labelValue || 'Logo';
+        }
       }
-      const selectedIcon = editorContainer.querySelector(
-        `.map-editor-sensor[data-device="${selectedDeviceId}"]`
-      );
-      if (selectedIcon) {
-        selectedIcon.title = labelValue || selectedDeviceId;
-      }
-      renderBulkSensorList(editorContainer.dataset.floor);
     });
   }
 
@@ -1563,18 +1673,51 @@
               body: JSON.stringify({ zone: zoneValue }),
             }
           );
-          return { deviceId, ok: response.ok };
+          let labelUpdate = null;
+          const device = editorData.devices.find((item) => item.device_id === deviceId);
+          if (device) {
+            labelUpdate = replaceZoneToken(device.label || '', device.zone || '', zoneValue);
+          }
+          if (labelUpdate !== null) {
+            const labelResponse = await fetch(
+              editorData.updateDeviceLabelRoute.replace('__device__', deviceId),
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label: labelUpdate }),
+              }
+            );
+            if (!labelResponse.ok) {
+              labelUpdate = null;
+            }
+          }
+          return { deviceId, ok: response.ok, labelUpdate };
         })
       );
-      results.forEach(({ deviceId, ok }) => {
+      results.forEach(({ deviceId, ok, labelUpdate }) => {
         if (!ok) {
           return;
         }
         const device = editorData.devices.find((item) => item.device_id === deviceId);
         if (device) {
           device.zone = zoneValue;
+          if (labelUpdate !== null) {
+            device.label = labelUpdate;
+          }
+        }
+        if (labelUpdate !== null) {
+          const icon = editorContainer.querySelector(
+            `.map-editor-sensor[data-device="${deviceId}"]`
+          );
+          if (icon) {
+            icon.title = labelUpdate || deviceId;
+          }
+          if (selectedDeviceId === deviceId && selectedSensorLabel) {
+            selectedSensorLabel.value = labelUpdate;
+          }
         }
       });
+      renderBulkSensorList(editorContainer.dataset.floor);
     });
   }
 

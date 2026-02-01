@@ -1128,6 +1128,7 @@ def create_floor_logo():
         return jsonify({"error": "Unauthorized"}), 403
     payload = request.get_json(silent=True) or {}
     floor_id = (payload.get("floor_id") or "").strip()
+    label = (payload.get("label") or "").strip()
     if not floor_id:
         return jsonify({"error": "Missing floor_id"}), 400
     logo_icon = (payload.get("logo_icon") or "").strip()
@@ -1141,6 +1142,7 @@ def create_floor_logo():
         "floor_id": floor_id,
         "location_x": 50,
         "location_y": 50,
+        "label": label,
     }
     if logo_icon:
         new_logo["logo_icon"] = logo_icon
@@ -1169,6 +1171,25 @@ def update_floor_logo_position(logo_id):
             if logo.get("logo_id") == logo_id:
                 logo["location_x"] = location_x
                 logo["location_y"] = location_y
+                logo["floor_id"] = floor_id
+                settings["floor_plan_logos"] = floor_logos
+                settings_service.save_settings(settings)
+                return jsonify(logo)
+    return jsonify({"error": "Logo not found"}), 404
+
+
+@app.post("/api/floor-logos/<logo_id>/label")
+def update_floor_logo_label(logo_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    payload = request.get_json(silent=True) or {}
+    label = (payload.get("label") or "").strip()
+    settings = settings_service.load_settings()
+    floor_logos = settings.get("floor_plan_logos", {})
+    for floor_id, logos in floor_logos.items():
+        for logo in logos:
+            if logo.get("logo_id") == logo_id:
+                logo["label"] = label
                 logo["floor_id"] = floor_id
                 settings["floor_plan_logos"] = floor_logos
                 settings_service.save_settings(settings)
