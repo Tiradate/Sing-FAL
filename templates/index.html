@@ -119,9 +119,18 @@
           {% for device in devices %}
           {% if device.floor_id == active_floor %}
           {% set severity = device_severity.get(device.device_id, '') %}
-          {% set severity_color = (settings.severity_levels|selectattr('label','equalto',severity)|list|first).color if severity and settings.severity_levels else ('#dc3545' if severity else '') %}
+          {% set fire_level = (settings.fire_severity_mapping|selectattr('label','equalto',severity)|list|first) %}
+          {% set iaq_level = (settings.severity_levels|selectattr('label','equalto',severity)|list|first) %}
+          {% set severity_color = fire_level.color if fire_level and fire_level.color else (iaq_level.color if iaq_level else ('#dc3545' if severity else '')) %}
+          {% set severity_text_color = fire_level.text_color if fire_level and fire_level.text_color else '' %}
+          {% set severity_icon = fire_level.icon if fire_level and fire_level.icon else (iaq_level.icon if iaq_level and iaq_level.icon else '') %}
           <div class="sensor-icon" data-device="{{ device.device_id }}" tabindex="0" style="left: {{ device.location_x }}%; top: {{ device.location_y }}%;">
             <img src="/{{ settings.sensor_icon }}" alt="sensor" style="width: {{ settings.sensor_icon_size }}px; height: {{ settings.sensor_icon_size }}px;">
+            {% if severity_icon %}
+            <span class="sensor-alert-icon" style="color: {{ severity_color }}">
+              <i class="bi {{ severity_icon }}"></i>
+            </span>
+            {% endif %}
             {% if severity %}
             <span class="sensor-badge" style="background: {{ severity_color }}"></span>
             {% endif %}
@@ -143,6 +152,14 @@
                     {% endif %}
                   </div>
                   <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ settings.floor_names.get(device.floor_id, device.floor_id) if settings.floor_names else device.floor_id }}</div>
+                  {% if severity %}
+                  <div class="small fw-semibold mt-1" style="color: {{ severity_text_color if severity_text_color else severity_color }}">
+                    {% if severity_icon %}
+                    <i class="bi {{ severity_icon }} me-1"></i>
+                    {% endif %}
+                    {{ severity }}
+                  </div>
+                  {% endif %}
                 </div>
               </div>
               <ul class="list-unstyled mb-0 mt-2">
@@ -189,12 +206,20 @@
                       {% else %}
                         {{ device.device_id }}
                       {% endif %}
-                    </div>
-                    <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ settings.floor_names.get(device.floor_id, device.floor_id) if settings.floor_names else device.floor_id }}</div>
                   </div>
+                  <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ settings.floor_names.get(device.floor_id, device.floor_id) if settings.floor_names else device.floor_id }}</div>
+                  {% if severity %}
+                  <div class="small fw-semibold mt-1" style="color: {{ severity_text_color if severity_text_color else severity_color }}">
+                    {% if severity_icon %}
+                    <i class="bi {{ severity_icon }} me-1"></i>
+                    {% endif %}
+                    {{ severity }}
+                  </div>
+                  {% endif %}
                 </div>
-                <ul class="list-unstyled mb-0 mt-2">
-                  {% for metric in metric_options %}
+              </div>
+              <ul class="list-unstyled mb-0 mt-2">
+                {% for metric in metric_options %}
                   {% set reading = device_readings.get(metric.key) %}
                   {% set reading_severity = device_metric_severity.get(device.device_id, {}).get(metric.key) %}
                   <li class="d-flex justify-content-between gap-3">
@@ -351,11 +376,21 @@
           <ul class="list-unstyled mb-0">
             {% for alarm in active_alarms[:5] %}
             <li class="d-flex align-items-start gap-2 mb-2">
-              {% set level = (settings.severity_levels|selectattr('label','equalto',alarm.severity)|list|first) %}
-              <span class="severity-dot" style="background: {{ level.color if level else '#dc3545' }}"></span>
+              {% set fire_level = (settings.fire_severity_mapping|selectattr('label','equalto',alarm.severity)|list|first) %}
+              {% set iaq_level = (settings.severity_levels|selectattr('label','equalto',alarm.severity)|list|first) %}
+              <span class="severity-dot" style="background: {{ fire_level.color if fire_level and fire_level.color else (iaq_level.color if iaq_level else '#dc3545') }}"></span>
               <div>
                 <div class="fw-semibold">{{ alarm.metric | upper }} - {{ alarm.message }}</div>
-                <small class="text-muted">{{ alarm.device_id }} | {{ settings.floor_names.get(alarm.floor_id, alarm.floor_id) if settings.floor_names else alarm.floor_id }}</small>
+                {% set alarm_label = device_label_map.get(alarm.device_id) %}
+                <small class="text-muted">
+                  {% if alarm_label and alarm_label != alarm.device_id %}
+                    {{ alarm_label }} ({{ alarm.device_id }})
+                  {% else %}
+                    {{ alarm.device_id }}
+                  {% endif %}
+                  | {{ settings.floor_names.get(alarm.floor_id, alarm.floor_id) if settings.floor_names else alarm.floor_id }}
+                  | {{ alarm.display_time or alarm.ts }}
+                </small>
               </div>
             </li>
             {% endfor %}
