@@ -109,7 +109,7 @@
         {% if session.get("is_admin") %}
         <div class="border rounded p-3 mb-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">Alarm generattion</div>
+            <div class="fw-semibold">Alarm generation</div>
             <small class="text-muted">Create a manual alarm for today</small>
           </div>
           <form id="alarm-generator" class="row gy-2 gx-2 align-items-end">
@@ -142,13 +142,16 @@
             <div class="col-12 col-md-4">
               <label class="form-label mb-1">Value</label>
               <input class="form-control form-control-sm" name="metric_value" type="number" step="0.1" value="80" required>
+              {% if current_system == "fire" %}
+              <small class="text-muted">Use the numeric value from the Fire Systems Severity Mapping settings.</small>
+              {% endif %}
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label mb-1">Date &amp; Time</label>
               <input class="form-control form-control-sm" name="alarm_ts" type="datetime-local" required>
             </div>
             <div class="col-12 col-md-4 d-flex gap-2">
-              <button class="btn btn-sm btn-primary" type="submit">Alarm generattion</button>
+              <button class="btn btn-sm btn-primary" type="submit">Generate alarm</button>
               <div id="alarm-generator-status" class="small text-muted align-self-center"></div>
             </div>
           </form>
