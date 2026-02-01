@@ -108,12 +108,19 @@ def _slugify_identifier(value, default="device"):
     return cleaned or default
 
 
-def _build_device_base(floor_id, sensor_name=None):
-    floor_slug = _slugify_identifier(floor_id)
+def _normalize_device_component(value, default):
+    normalized = _slugify_identifier(value, default=default)
+    return normalized.upper()
+
+
+def _build_device_base(floor_id, zone=None, sensor_type=None, sensor_name=None):
+    floor_slug = _normalize_device_component(floor_id, default="FLOOR")
     sensor_slug = _slugify_identifier(sensor_name, default="")
     if sensor_slug:
-        return f"{floor_slug}-{sensor_slug}"
-    return floor_slug
+        return f"{floor_slug}-{sensor_slug.upper()}"
+    zone_slug = _normalize_device_component(zone, default="Z1")
+    type_slug = _normalize_device_component(sensor_type, default="DZ")
+    return f"{floor_slug}-{zone_slug}-{type_slug}"
 
 
 def _next_device_id(conn, base):
@@ -451,10 +458,24 @@ def ingest_milesight_payload(payload, *, conn=None):
             conn.close()
 
 
-def create_device(floor_id, location_x=50, location_y=50, zone="Unassigned", sensor_name=None):
+def create_device(
+    floor_id,
+    location_x=50,
+    location_y=50,
+    zone="Z1",
+    sensor_type="DZ",
+    sensor_name=None,
+):
     now = datetime.now(timezone.utc).isoformat()
     with connect(SENSOR_DB) as conn:
-        base = _build_device_base(floor_id, sensor_name)
+        zone_value = (zone or "").strip() or "Z1"
+        sensor_type_value = (sensor_type or "").strip() or "DZ"
+        base = _build_device_base(
+            floor_id,
+            zone=zone_value,
+            sensor_type=sensor_type_value,
+            sensor_name=sensor_name,
+        )
         device_id = _next_device_id(conn, base)
         conn.execute(
             """
@@ -465,7 +486,7 @@ def create_device(floor_id, location_x=50, location_y=50, zone="Unassigned", sen
                 device_id,
                 "Milesight AM30x",
                 floor_id,
-                zone,
+                zone_value,
                 location_x,
                 location_y,
                 now,
@@ -476,7 +497,7 @@ def create_device(floor_id, location_x=50, location_y=50, zone="Unassigned", sen
         "device_id": device_id,
         "model": "Milesight AM30x",
         "floor_id": floor_id,
-        "zone": zone,
+        "zone": zone_value,
         "location_x": location_x,
         "location_y": location_y,
         "last_seen": now,

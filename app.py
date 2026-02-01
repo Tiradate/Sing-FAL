@@ -1037,9 +1037,16 @@ def create_device():
     payload = request.get_json(silent=True) or {}
     floor_id = (payload.get("floor_id") or "").strip()
     sensor_name = (payload.get("sensor_name") or "").strip() or None
+    zone = (payload.get("zone") or "").strip() or None
+    sensor_type = (payload.get("sensor_type") or "").strip() or None
     if not floor_id:
         return jsonify({"error": "Missing floor_id"}), 400
-    device = data_service.create_device(floor_id, sensor_name=sensor_name)
+    device = data_service.create_device(
+        floor_id,
+        zone=zone or "Z1",
+        sensor_type=sensor_type or "DZ",
+        sensor_name=sensor_name,
+    )
     return jsonify(device)
 
 
