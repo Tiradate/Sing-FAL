@@ -37,7 +37,13 @@
           {% endif %}
         </div>
         <div>
-          <div class="fw-semibold">{{ device.device_id }}</div>
+          <div class="fw-semibold">
+            {% if device.label and device.label != device.device_id %}
+              {{ device.label }} ({{ device.device_id }})
+            {% else %}
+              {{ device.device_id }}
+            {% endif %}
+          </div>
           <div class="small text-muted">{{ device.zone or 'Unassigned' }} · {{ settings.floor_names.get(device.floor_id, device.floor_id) if settings.floor_names else device.floor_id }}</div>
         </div>
       </div>

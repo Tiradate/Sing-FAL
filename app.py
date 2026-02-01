@@ -595,6 +595,9 @@ def alarms():
     action_start = request.args.get("action_start") or today
     action_end = request.args.get("action_end") or today
     devices = data_service.get_devices()
+    device_label_map = {
+        device["device_id"]: device.get("label") for device in devices if device.get("device_id")
+    }
     device_floors = {device["floor_id"] for device in devices if device["floor_id"]}
     floor_plan_ids = set(settings.get("floor_plans", {}).keys())
     floor_name_ids = set(settings.get("floor_names", {}).keys())
@@ -607,6 +610,7 @@ def alarms():
         action_end=action_end,
         alarms_view=alarms_view,
         devices=devices,
+        device_label_map=device_label_map,
         floors=floors,
     )
 
@@ -803,6 +807,8 @@ def settings():
 
         fire_severity_labels = request.form.getlist("fire_severity_label")
         fire_severity_colors = request.form.getlist("fire_severity_color")
+        fire_severity_text_colors = request.form.getlist("fire_severity_text_color")
+        fire_severity_icons = request.form.getlist("fire_severity_icon")
         fire_smoke_values = request.form.getlist("fire_smoke")
         fire_heat_values = request.form.getlist("fire_heat")
         fire_flow_switch_values = request.form.getlist("fire_flow_switch")
@@ -813,6 +819,8 @@ def settings():
         for (
             label,
             color,
+            text_color,
+            icon,
             smoke,
             heat,
             flow_switch,
@@ -822,6 +830,8 @@ def settings():
         ) in zip(
             fire_severity_labels,
             fire_severity_colors,
+            fire_severity_text_colors,
+            fire_severity_icons,
             fire_smoke_values,
             fire_heat_values,
             fire_flow_switch_values,
@@ -832,6 +842,8 @@ def settings():
             if (
                 label.strip()
                 or color.strip()
+                or text_color.strip()
+                or icon.strip()
                 or smoke.strip()
                 or heat.strip()
                 or flow_switch.strip()
@@ -843,6 +855,8 @@ def settings():
                     {
                         "label": label.strip(),
                         "color": color.strip(),
+                        "text_color": text_color.strip(),
+                        "icon": icon.strip(),
                         "smoke": smoke.strip(),
                         "heat": heat.strip(),
                         "flow_switch": flow_switch.strip(),

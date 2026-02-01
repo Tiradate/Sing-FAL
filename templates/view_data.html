@@ -16,7 +16,11 @@
         <select class="form-select" name="device" required>
           {% for device in devices %}
           <option value="{{ device.device_id }}" {% if device.device_id == active_device %}selected{% endif %}>
-            {{ device.device_id }}
+            {% if device.label and device.label != device.device_id %}
+              {{ device.label }} ({{ device.device_id }})
+            {% else %}
+              {{ device.device_id }}
+            {% endif %}
           </option>
           {% endfor %}
         </select>
