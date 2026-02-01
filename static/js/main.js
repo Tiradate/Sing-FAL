@@ -261,6 +261,50 @@
     });
   }
 
+  const alarmStatusRoute = data.alarmStatusRoute;
+  if (alarmStatusRoute) {
+    const initialAlarmCount = Number.isFinite(data.alarmCount) ? data.alarmCount : null;
+    const initialHasCritical = Boolean(data.hasCritical);
+    const initialLatestAlarmId = data.latestAlarmId ?? null;
+    const pollIntervalMs = 30000;
+
+    const shouldRefresh = (status) => {
+      if (!status) {
+        return false;
+      }
+      const latestAlarmId = status.latest_alarm_id ?? null;
+      const alarmCount = Number.isFinite(status.alarm_count) ? status.alarm_count : null;
+      const hasCritical = Boolean(status.has_critical);
+
+      if (hasCritical && !initialHasCritical) {
+        return true;
+      }
+      if (latestAlarmId && latestAlarmId !== initialLatestAlarmId) {
+        return true;
+      }
+      if (alarmCount !== null && initialAlarmCount !== null && alarmCount > initialAlarmCount) {
+        return true;
+      }
+      return false;
+    };
+
+    const checkAlarmStatus = async () => {
+      const response = await fetch(alarmStatusRoute, { cache: 'no-store' });
+      if (!response.ok) {
+        return;
+      }
+      const status = await response.json();
+      if (shouldRefresh(status)) {
+        window.location.reload();
+      }
+    };
+
+    setInterval(() => {
+      checkAlarmStatus().catch(() => undefined);
+    }, pollIntervalMs);
+    checkAlarmStatus().catch(() => undefined);
+  }
+
   const sensorDetailsPanel = document.getElementById('sensorDetailsPanel');
   const sensorDetailsContent = sensorDetailsPanel?.querySelector('.sensor-details-content');
   const sensorDetailsPlaceholder = sensorDetailsPanel?.querySelector('.sensor-details-placeholder');
