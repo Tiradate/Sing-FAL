@@ -140,6 +140,11 @@ def index():
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
     active_alarms = data_service.get_active_alarms()
+    device_label_map = {}
+    for device in devices:
+        device_id = device["device_id"]
+        if device_id:
+            device_label_map[device_id] = device["label"]
     metric_options = get_enabled_metric_options(settings, active_system)
     metric_option_map = {
         option["key"]: {"label": option["label"], "unit": option["unit"]}
@@ -179,6 +184,23 @@ def index():
     if metric_keys:
         active_alarms = [alarm for alarm in active_alarms if alarm["metric"] in metric_keys]
 
+    def format_alarm_time(timestamp):
+        if not timestamp:
+            return ""
+        try:
+            parsed = datetime.fromisoformat(timestamp)
+        except ValueError:
+            return timestamp
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        local_ts = parsed.astimezone(UTC_PLUS_7)
+        return local_ts.strftime("%d/%m/%Y %I:%M %p")
+
+    active_alarms = [
+        {**dict(alarm), "display_time": format_alarm_time(alarm["ts"])}
+        for alarm in active_alarms
+    ]
+
     def is_outdoor_zone(zone):
         if not zone:
             return False
@@ -215,6 +237,7 @@ def index():
         devices=devices,
         alarm_severity=alarm_severity,
         active_alarms=active_alarms,
+        device_label_map=device_label_map,
         daily_labels=daily_labels,
         daily_values=daily_values,
         weekly_labels=weekly_labels,
