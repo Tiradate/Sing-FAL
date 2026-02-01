@@ -126,9 +126,7 @@ def _build_device_base(floor_id, zone=None, sensor_type=None, sensor_name=None):
     sensor_slug = _slugify_identifier(sensor_name, default="")
     if sensor_slug:
         return f"{floor_slug}-{sensor_slug.upper()}"
-    zone_slug = _normalize_device_component(zone, default="Z1")
-    type_slug = _normalize_device_component(sensor_type, default="DZ")
-    return f"{floor_slug}-{zone_slug}-{type_slug}"
+    return floor_slug
 
 
 def _next_device_id(conn, base):
