@@ -26,6 +26,8 @@ DEFAULT_TOP_DEFINITION = {
 }
 
 DEFAULT_DASHBOARD_CARDS = {
+    "map": True,
+    "map_count": 1,
     "daily_graph": True,
     "weekly_overview": True,
     "sensor_average": True,

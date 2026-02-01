@@ -197,24 +197,32 @@
     },
     "dashboard_cards": {
       "iaq": {
+        "map": true,
+        "map_count": 1,
         "daily_graph": true,
         "weekly_overview": true,
         "sensor_average": true,
         "alerts_notifications": true
       },
       "energy": {
+        "map": true,
+        "map_count": 1,
         "daily_graph": true,
         "weekly_overview": true,
         "sensor_average": true,
         "alerts_notifications": true
       },
       "waste": {
+        "map": true,
+        "map_count": 1,
         "daily_graph": true,
         "weekly_overview": true,
         "sensor_average": true,
         "alerts_notifications": true
       },
       "fire": {
+        "map": true,
+        "map_count": 1,
         "daily_graph": true,
         "weekly_overview": true,
         "sensor_average": true,
