@@ -634,10 +634,24 @@ def alarms():
     action_start = request.args.get("action_start") or today
     action_end = request.args.get("action_end") or today
     devices = data_service.get_devices()
-    device_label_map = {
-        device["device_id"]: device.get("label") for device in devices if device.get("device_id")
-    }
-    device_floors = {device["floor_id"] for device in devices if device["floor_id"]}
+
+    def device_value(device, key):
+        if hasattr(device, "get"):
+            return device.get(key)
+        try:
+            return device[key]
+        except (KeyError, TypeError):
+            return None
+
+    device_label_map = {}
+    device_floors = set()
+    for device in devices:
+        device_id = device_value(device, "device_id")
+        if device_id:
+            device_label_map[device_id] = device_value(device, "label")
+        floor_id = device_value(device, "floor_id")
+        if floor_id:
+            device_floors.add(floor_id)
     floor_plan_ids = set(settings.get("floor_plans", {}).keys())
     floor_name_ids = set(settings.get("floor_names", {}).keys())
     floors = sorted(floor_plan_ids | device_floors | floor_name_ids)
