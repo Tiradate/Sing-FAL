@@ -84,6 +84,13 @@ def get_enabled_metric_options(settings, system_key):
 def derive_device_severity(devices, device_metric_severity, alarm_severity, settings):
     levels = settings.get("severity_levels", [])
     severity_rank = {level["label"]: index for index, level in enumerate(levels)}
+    fire_levels = settings.get("fire_severity_mapping", [])
+    fire_rank_offset = len(severity_rank)
+    for index, level in enumerate(fire_levels):
+        label = (level.get("label") or "").strip()
+        if not label or label in severity_rank:
+            continue
+        severity_rank[label] = fire_rank_offset + index
 
     def get_rank(label):
         if not label:
