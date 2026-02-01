@@ -527,6 +527,9 @@
                   <button class="btn btn-sm btn-outline-secondary" type="button" id="bulkSmartFillSelectBtn">
                     Smart-fill Selection
                   </button>
+                  <button class="btn btn-sm btn-outline-light" type="button" id="bulkDeselectAllBtn">
+                    Deselect All
+                  </button>
                 </div>
               </div>
             </div>
@@ -1290,6 +1293,7 @@
   const bulkSelectionHint = document.getElementById('bulkSelectionHint');
   const bulkClearSelectionBtn = document.getElementById('bulkClearSelectionBtn');
   const bulkSmartFillSelectBtn = document.getElementById('bulkSmartFillSelectBtn');
+  const bulkDeselectAllBtn = document.getElementById('bulkDeselectAllBtn');
 
   const updateSensorCount = (floorId) => {
     const count = editorData.devices.filter((device) => device.floor_id === floorId).length;
@@ -1837,6 +1841,15 @@
           ? (getSensorTypeFromLabel(device.label) || '').toLowerCase().includes(typeValue)
           : true;
         input.checked = zoneMatch && typeMatch;
+      });
+      updateBulkSelectionSummary();
+    });
+  }
+
+  if (bulkDeselectAllBtn && bulkSensorList) {
+    bulkDeselectAllBtn.addEventListener('click', () => {
+      bulkSensorList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = false;
       });
       updateBulkSelectionSummary();
     });
