@@ -1036,9 +1036,10 @@ def create_device():
         return jsonify({"error": "Unauthorized"}), 403
     payload = request.get_json(silent=True) or {}
     floor_id = (payload.get("floor_id") or "").strip()
+    sensor_name = (payload.get("sensor_name") or "").strip() or None
     if not floor_id:
         return jsonify({"error": "Missing floor_id"}), 400
-    device = data_service.create_device(floor_id)
+    device = data_service.create_device(floor_id, sensor_name=sensor_name)
     return jsonify(device)
 
 
