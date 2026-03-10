@@ -35,6 +35,40 @@ UTC_PLUS_7 = timezone(timedelta(hours=7))
 UTC_PLUS_6_5 = timezone(timedelta(hours=6, minutes=30))
 
 
+def ensure_runtime_environment():
+    in_virtualenv = (
+        hasattr(sys, "real_prefix")
+        or getattr(sys, "base_prefix", sys.prefix) != sys.prefix
+        or bool(os.environ.get("VIRTUAL_ENV"))
+    )
+    if not in_virtualenv:
+        print(
+            "[startup] Warning: Python virtual environment not detected. "
+            "Dependency installation will run in the current interpreter environment."
+        )
+
+    requirements_path = os.path.join(BASE_DIR, "requirements.txt")
+    if not os.path.exists(requirements_path):
+        print(f"[startup] requirements.txt not found at {requirements_path}. Skipping dependency sync.")
+        return
+
+    print("[startup] Updating pip...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
+
+    print("[startup] Installing dependencies from requirements.txt...")
+    subprocess.check_call(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "-r",
+            requirements_path,
+        ]
+    )
+
+
 def parse_date_range(start_str, end_str, default_tz):
     def parse(value):
         for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
@@ -1457,4 +1491,5 @@ def logout():
 
 
 if __name__ == "__main__":
+    ensure_runtime_environment()
     app.run(debug=True, host="0.0.0.0", port=5000)
