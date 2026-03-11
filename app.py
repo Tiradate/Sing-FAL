@@ -19,7 +19,28 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def _venv_python_path(venv_path):
     if os.name == "nt":
         return os.path.join(venv_path, "Scripts", "python.exe")
+
+    python3_path = os.path.join(venv_path, "bin", "python3")
+    if os.path.exists(python3_path):
+        return python3_path
+
     return os.path.join(venv_path, "bin", "python")
+
+
+def _create_virtualenv(venv_path):
+    commands = [
+        [sys.executable, "-m", "venv", "--system-site-packages", venv_path],
+        [sys.executable, "-m", "venv", venv_path],
+    ]
+
+    for command in commands:
+        try:
+            subprocess.check_call(command)
+            return True
+        except subprocess.CalledProcessError as exc:
+            print(f"[startup] Virtual environment creation failed for '{' '.join(command)}': {exc}")
+
+    return False
 
 
 def _requirements_hash(requirements_path):
@@ -65,7 +86,14 @@ def ensure_runtime_environment():
     if not in_virtualenv:
         if not os.path.exists(venv_python):
             print(f"[startup] Virtual environment not found. Creating one at {venv_path}...")
-            subprocess.check_call([sys.executable, "-m", "venv", "--system-site-packages", venv_path])
+            if not _create_virtualenv(venv_path):
+                print(
+                    "[startup] Warning: unable to create virtual environment on this system. "
+                    "Continuing with the current Python interpreter."
+                )
+                venv_python = os.path.abspath(sys.executable)
+            else:
+                venv_python = _venv_python_path(venv_path)
 
         if os.path.abspath(sys.executable) != os.path.abspath(venv_python):
             print("[startup] Re-launching app using virtual environment interpreter...")
