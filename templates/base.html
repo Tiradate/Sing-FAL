@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ current_lang|default('en') }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -30,26 +30,39 @@
           {% endif %}
         </div>
         <div class="d-flex align-items-center gap-3">
-          <a class="header-icon" href="{% if current_system is defined %}{{ url_for('index', system=current_system) }}{% else %}{{ url_for('index') }}{% endif %}" aria-label="Home">
+          <a class="header-icon" href="{% if current_system is defined %}{{ url_for('index', system=current_system) }}{% else %}{{ url_for('index') }}{% endif %}" aria-label="{{ t('home') }}" title="{{ t('home') }}">
             <i class="bi bi-house"></i>
           </a>
           {% if settings.show_icons.bell %}
-          <a class="header-icon" href="{{ url_for('alarms', system=current_system) }}">
+          <a class="header-icon" href="{{ url_for('alarms', system=current_system) }}" title="{{ t('notifications') }}">
             <i class="bi bi-bell"></i>
             <span class="badge rounded-pill bg-danger">{{ alarm_count }}</span>
           </a>
           {% endif %}
           {% if settings.show_icons.download %}
-          <a class="header-icon" href="{{ url_for('export_sensor_csv', system=current_system) }}">
+          <a class="header-icon" href="{{ url_for('export_sensor_csv', system=current_system) }}" title="{{ t('download') }}">
             <i class="bi bi-download"></i>
           </a>
           {% endif %}
           {% if is_admin and settings.show_icons.settings %}
-          <a class="header-icon" href="{{ url_for('settings') }}">
+          <a class="header-icon" href="{{ url_for('settings') }}" title="{{ t('settings') }}">
             <i class="bi bi-gear"></i>
           </a>
           {% endif %}
-          <a class="header-icon" href="{{ url_for('logout') }}">
+          <div class="dropdown">
+            <a class="header-icon language-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ t('language') }}">
+              <i class="bi bi-translate"></i>
+              <span class="language-label">{{ supported_languages.get(current_lang, 'ENG') }}</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              {% for code, label in supported_languages.items() %}
+              <li>
+                <a class="dropdown-item{% if current_lang == code %} active{% endif %}" href="{{ url_for('set_language', lang=code, next=request.full_path) }}">{{ label }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          <a class="header-icon" href="{{ url_for('logout') }}" title="{{ t('logout') }}">
             <i class="bi bi-box-arrow-right"></i>
           </a>
         </div>
@@ -57,7 +70,7 @@
     </div>
     {% if has_critical %}
     <div class="alert alert-danger text-center rounded-0 mb-0" role="alert">
-      Critical alarm detected. Immediate attention required.
+      {{ t('critical_alarm') }}
     </div>
     {% endif %}
   </header>

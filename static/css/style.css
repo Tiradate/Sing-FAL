@@ -54,6 +54,18 @@ body.dashboard-bg {
   font-size: 0.65rem;
 }
 
+
+.language-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.language-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
 .project-logo {
   max-height: 36px;
   width: auto;
