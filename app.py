@@ -540,17 +540,26 @@ def export_settings_csv():
     settings = settings_service.load_settings()
     devices = data_service.get_devices()
     floor_plan_sensors = {}
+    sensor_positions = []
     for device in devices:
         floor_id = device["floor_id"] or ""
+        sensor_position = {
+            "device_id": device["device_id"],
+            "floor_id": floor_id,
+            "location_x": device["location_x"],
+            "location_y": device["location_y"],
+        }
+        sensor_positions.append(sensor_position)
         floor_plan_sensors.setdefault(floor_id, []).append(
             {
-                "device_id": device["device_id"],
-                "location_x": device["location_x"],
-                "location_y": device["location_y"],
+                "device_id": sensor_position["device_id"],
+                "location_x": sensor_position["location_x"],
+                "location_y": sensor_position["location_y"],
             }
         )
     export_settings = dict(settings)
     export_settings["floor_plan_sensors"] = floor_plan_sensors
+    export_settings["sensor_positions"] = sensor_positions
     csv_path = os.path.join(BASE_DIR, "settings_export.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
@@ -844,12 +853,30 @@ def import_settings_csv():
             value = row.get("value")
             if not key:
                 continue
-            if key == "floor_plan_sensors":
+            if key in {"floor_plan_sensors", "sensor_positions"}:
                 try:
                     layout_payload = json.loads(value)
                 except (json.JSONDecodeError, TypeError):
                     continue
-                if isinstance(layout_payload, dict):
+                if key == "sensor_positions" and isinstance(layout_payload, list):
+                    for sensor in layout_payload:
+                        if not isinstance(sensor, dict):
+                            continue
+                        device_id = (sensor.get("device_id") or "").strip()
+                        if not device_id:
+                            continue
+                        floor_id = (sensor.get("floor_id") or "").strip()
+                        try:
+                            location_x = float(sensor.get("location_x"))
+                            location_y = float(sensor.get("location_y"))
+                        except (TypeError, ValueError):
+                            continue
+                        location_x = max(0, min(100, location_x))
+                        location_y = max(0, min(100, location_y))
+                        data_service.update_device_layout(
+                            device_id, floor_id, location_x, location_y
+                        )
+                elif isinstance(layout_payload, dict):
                     for floor_id, sensors in layout_payload.items():
                         if not isinstance(sensors, list):
                             continue
