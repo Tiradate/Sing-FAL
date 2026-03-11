@@ -854,6 +854,32 @@ def import_settings_csv():
         settings = settings_service.load_settings()
         file_content = settings_file.stream.read().decode("utf-8-sig")
         reader = csv.DictReader(io.StringIO(file_content))
+
+        def parse_sensor_layouts(layout_payload, floor_id_hint=None):
+            layouts = []
+            if isinstance(layout_payload, list):
+                for sensor in layout_payload:
+                    if not isinstance(sensor, dict):
+                        continue
+                    device_id = (sensor.get("device_id") or "").strip()
+                    if not device_id:
+                        continue
+                    floor_id = normalize_floor_id(sensor.get("floor_id") or floor_id_hint)
+                    try:
+                        location_x = float(sensor.get("location_x"))
+                        location_y = float(sensor.get("location_y"))
+                    except (TypeError, ValueError):
+                        continue
+                    layouts.append(
+                        {
+                            "device_id": device_id,
+                            "floor_id": floor_id,
+                            "location_x": max(0, min(100, location_x)),
+                            "location_y": max(0, min(100, location_y)),
+                        }
+                    )
+            return layouts
+
         for row in reader:
             key = (row.get("key") or "").strip()
             value = row.get("value")
@@ -865,44 +891,12 @@ def import_settings_csv():
                 except (json.JSONDecodeError, TypeError):
                     continue
                 if key == "sensor_positions" and isinstance(layout_payload, list):
-                    for sensor in layout_payload:
-                        if not isinstance(sensor, dict):
-                            continue
-                        device_id = (sensor.get("device_id") or "").strip()
-                        if not device_id:
-                            continue
-                        floor_id = normalize_floor_id(sensor.get("floor_id"))
-                        try:
-                            location_x = float(sensor.get("location_x"))
-                            location_y = float(sensor.get("location_y"))
-                        except (TypeError, ValueError):
-                            continue
-                        location_x = max(0, min(100, location_x))
-                        location_y = max(0, min(100, location_y))
-                        data_service.update_device_layout(
-                            device_id, floor_id, location_x, location_y
-                        )
+                    data_service.upsert_device_layouts(parse_sensor_layouts(layout_payload))
                 elif isinstance(layout_payload, dict):
+                    layouts = []
                     for floor_id, sensors in layout_payload.items():
-                        normalized_floor_id = normalize_floor_id(floor_id)
-                        if not isinstance(sensors, list):
-                            continue
-                        for sensor in sensors:
-                            if not isinstance(sensor, dict):
-                                continue
-                            device_id = (sensor.get("device_id") or "").strip()
-                            if not device_id:
-                                continue
-                            try:
-                                location_x = float(sensor.get("location_x"))
-                                location_y = float(sensor.get("location_y"))
-                            except (TypeError, ValueError):
-                                continue
-                            location_x = max(0, min(100, location_x))
-                            location_y = max(0, min(100, location_y))
-                            data_service.update_device_layout(
-                                device_id, normalized_floor_id, location_x, location_y
-                            )
+                        layouts.extend(parse_sensor_layouts(sensors, floor_id_hint=floor_id))
+                    data_service.upsert_device_layouts(layouts)
                 continue
             try:
                 settings[key] = json.loads(value)
