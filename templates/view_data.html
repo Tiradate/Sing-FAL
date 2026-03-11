@@ -3,8 +3,8 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
   <div>
-    <h4 class="fw-bold mb-0">Sensor Data Explorer</h4>
-    <div class="text-muted small">{{ data|length }} records</div>
+    <h4 class="fw-bold mb-0">{{ t('sensor_data_explorer') }}</h4>
+    <div class="text-muted small">{{ data|length }} {{ t('records') }}</div>
   </div>
 </div>
 
@@ -12,7 +12,7 @@
   <div class="card-body">
     <form class="row g-3 align-items-end" method="get" action="{{ url_for('view_data', system=current_system) }}">
       <div class="col-12 col-md-3">
-        <label class="form-label">Device</label>
+        <label class="form-label">{{ t('device') }}</label>
         <select class="form-select" name="device" required>
           {% for device in devices %}
           <option value="{{ device.device_id }}" {% if device.device_id == active_device %}selected{% endif %}>
@@ -26,23 +26,23 @@
         </select>
       </div>
       <div class="col-12 col-md-3">
-        <label class="form-label">Start</label>
+        <label class="form-label">{{ t('start') }}</label>
         <input class="form-control" type="datetime-local" name="start" value="{{ start_datetime }}" required>
       </div>
       <div class="col-12 col-md-3">
-        <label class="form-label">End</label>
+        <label class="form-label">{{ t('end') }}</label>
         <input class="form-control" type="datetime-local" name="end" value="{{ end_datetime }}" required>
       </div>
       <div class="col-12 col-md-2">
-        <label class="form-label">Interval</label>
+        <label class="form-label">{{ t('interval') }}</label>
         <select class="form-select" name="interval">
           {% for option in [10, 30, 60] %}
-          <option value="{{ option }}" {% if option == interval_minutes %}selected{% endif %}>{{ option }} min</option>
+          <option value="{{ option }}" {% if option == interval_minutes %}selected{% endif %}>{{ option }} {{ t('minutes_short') }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="col-12 col-md-1 d-grid">
-        <button class="btn btn-primary" type="submit">Filter</button>
+        <button class="btn btn-primary" type="submit">{{ t('filter') }}</button>
       </div>
     </form>
   </div>
@@ -51,58 +51,58 @@
 {% if is_admin %}
 <div class="card shadow-sm mb-3">
   <div class="card-body">
-    <h6 class="fw-bold">Admin Data Tools</h6>
+    <h6 class="fw-bold">{{ t('admin_data_tools') }}</h6>
     <div class="row g-3">
       <div class="col-12 col-lg-6">
         <div class="border rounded p-3 h-100">
-          <div class="fw-semibold mb-2">Delete current data range</div>
-          <form method="post" action="{{ url_for('delete_view_data') }}" onsubmit="return confirm('Delete data for the selected device and range?');">
+          <div class="fw-semibold mb-2">{{ t('delete_current_data_range') }}</div>
+          <form method="post" action="{{ url_for('delete_view_data') }}" onsubmit="return confirm('{{ t('confirm_delete_selected_range') }}');">
             <input type="hidden" name="device" value="{{ active_device }}">
             <input type="hidden" name="start" value="{{ start_datetime }}">
             <input type="hidden" name="end" value="{{ end_datetime }}">
             <input type="hidden" name="interval" value="{{ interval_minutes }}">
-            <button class="btn btn-outline-danger" type="submit">Delete Data</button>
+            <button class="btn btn-outline-danger" type="submit">{{ t('delete_data') }}</button>
           </form>
         </div>
       </div>
       <div class="col-12 col-lg-6">
         <div class="border rounded p-3 h-100">
-          <div class="fw-semibold mb-2">Test data controls</div>
+          <div class="fw-semibold mb-2">{{ t('test_data_controls') }}</div>
           <form class="row g-2 align-items-end" method="post" action="{{ url_for('seed_test_data') }}" id="seedTestDataForm">
             <input type="hidden" name="device" value="{{ active_device }}">
             <input type="hidden" name="start" value="{{ start_datetime }}">
             <input type="hidden" name="end" value="{{ end_datetime }}">
             <input type="hidden" name="interval" value="{{ interval_minutes }}">
             <div class="col-12 col-md-5">
-              <label class="form-label mb-0">Start date</label>
+              <label class="form-label mb-0">{{ t('start_date') }}</label>
               <input class="form-control" type="date" name="start_date" value="{{ start_date }}" required>
             </div>
             <div class="col-12 col-md-5">
-              <label class="form-label mb-0">End date</label>
+              <label class="form-label mb-0">{{ t('end_date') }}</label>
               <input class="form-control" type="date" name="end_date" value="{{ end_date }}" required>
             </div>
             <div class="col-12 col-md-2 d-grid">
-              <button class="btn btn-outline-primary" type="submit">Seed Test Data</button>
+              <button class="btn btn-outline-primary" type="submit">{{ t('seed_test_data') }}</button>
             </div>
           </form>
-          <form class="row g-2 align-items-end mt-2" method="post" action="{{ url_for('delete_test_data') }}" onsubmit="return confirm('Delete test data?');">
+          <form class="row g-2 align-items-end mt-2" method="post" action="{{ url_for('delete_test_data') }}" onsubmit="return confirm('{{ t('confirm_delete_test_data') }}');">
             <input type="hidden" name="device" value="{{ active_device }}">
             <input type="hidden" name="start" value="{{ start_datetime }}">
             <input type="hidden" name="end" value="{{ end_datetime }}">
             <input type="hidden" name="interval" value="{{ interval_minutes }}">
             <div class="col-12 col-md-5">
-              <label class="form-label mb-0">Start date</label>
+              <label class="form-label mb-0">{{ t('start_date') }}</label>
               <input class="form-control" type="date" name="start_date" value="{{ start_date }}">
             </div>
             <div class="col-12 col-md-5">
-              <label class="form-label mb-0">End date</label>
+              <label class="form-label mb-0">{{ t('end_date') }}</label>
               <input class="form-control" type="date" name="end_date" value="{{ end_date }}">
             </div>
             <div class="col-12 col-md-2 d-grid">
-              <button class="btn btn-outline-danger" type="submit">Delete Test Data</button>
+              <button class="btn btn-outline-danger" type="submit">{{ t('delete_test_data') }}</button>
             </div>
           </form>
-          <div class="small text-muted mt-2">Test data is tagged with topic "Test" and seeded for all devices.</div>
+          <div class="small text-muted mt-2">{{ t('test_data_note') }}</div>
         </div>
       </div>
     </div>
@@ -116,10 +116,10 @@
       <table class="table table-striped align-middle" id="dataTable">
         <thead>
           <tr>
-            <th scope="col" role="button" onclick="sortTable(0)">Timestamp</th>
-            <th scope="col" role="button" onclick="sortTable(1)">Gateway</th>
-            <th scope="col" role="button" onclick="sortTable(2)">Topic</th>
-            <th scope="col" role="button" onclick="sortTable(3)">Device</th>
+            <th scope="col" role="button" onclick="sortTable(0)">{{ t('timestamp') }}</th>
+            <th scope="col" role="button" onclick="sortTable(1)">{{ t('gateway') }}</th>
+            <th scope="col" role="button" onclick="sortTable(2)">{{ t('topic') }}</th>
+            <th scope="col" role="button" onclick="sortTable(3)">{{ t('device') }}</th>
             {% for metric in metric_options %}
             <th scope="col" role="button" onclick="sortTable({{ loop.index + 3 }})">
               {{ metric.label }}{% if metric.unit %}({{ metric.unit }}){% endif %}
@@ -141,7 +141,7 @@
           {% else %}
           <tr>
             <td colspan="{{ 4 + metric_options|length }}" class="text-center text-muted">
-              No data available for this range.
+              {{ t('no_data_for_range') }}
             </td>
           </tr>
           {% endfor %}
