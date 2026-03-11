@@ -9,6 +9,7 @@ import sys
 import uuid
 import zipfile
 from datetime import datetime, timedelta, timezone
+from shutil import which
 
 
 BASE_DIR = os.path.dirname(__file__)
@@ -69,6 +70,50 @@ def _requirements_satisfied(requirements_path):
 
     return True
 
+
+def _has_pip():
+    try:
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "--version"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def _install_system_python_packages():
+    if sys.platform != "linux" or which("apt-get") is None:
+        return False
+
+    os_release_path = "/etc/os-release"
+    try:
+        with open(os_release_path, "r", encoding="utf-8") as os_release_file:
+            os_release = os_release_file.read().lower()
+    except OSError:
+        return False
+
+    if "debian" not in os_release and "ubuntu" not in os_release:
+        return False
+
+    commands = [
+        ["apt-get", "update"],
+        ["apt-get", "install", "-y", "python3-pip", "python3-venv"],
+    ]
+
+    for command in commands:
+        try:
+            subprocess.check_call(command)
+        except subprocess.CalledProcessError as exc:
+            print(
+                "[startup] Warning: automatic system package installation failed "
+                f"for '{' '.join(command)}' ({exc})."
+            )
+            return False
+
+    return True
+
 def ensure_runtime_environment():
     requirements_path = os.path.join(BASE_DIR, "requirements.txt")
     if not os.path.exists(requirements_path):
@@ -119,6 +164,17 @@ def ensure_runtime_environment():
     if existing_state == runtime_key:
         print("[startup] Runtime dependencies are already synchronized.")
         return
+
+    if not _has_pip():
+        print("[startup] pip is unavailable; attempting to install python3-pip/python3-venv...")
+        if _install_system_python_packages() and _has_pip():
+            print("[startup] pip installation succeeded.")
+        else:
+            print(
+                "[startup] Warning: pip is unavailable and could not be installed automatically. "
+                "Dependency synchronization skipped."
+            )
+            return
 
     try:
         print("[startup] Updating pip...")
