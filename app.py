@@ -166,6 +166,44 @@ from services.db import SENSOR_DB, connect, init_all, seed_demo_data
 app = Flask(__name__)
 app.secret_key = "replace-with-secure-secret"
 
+SUPPORTED_LANGUAGES = {
+    "en": "ENG",
+    "th": "THA",
+}
+
+TRANSLATIONS = {
+    "en": {
+        "home": "Home",
+        "notifications": "Notifications",
+        "download": "Download",
+        "settings": "Settings",
+        "logout": "Logout",
+        "language": "Language",
+        "critical_alarm": "Critical alarm detected. Immediate attention required.",
+        "login": "Login",
+        "admin_login": "Admin Login",
+        "username": "Username",
+        "password": "Password",
+        "home_page_for_guest": "Home page for guest",
+        "invalid_credentials": "Invalid credentials",
+    },
+    "th": {
+        "home": "หน้าแรก",
+        "notifications": "การแจ้งเตือน",
+        "download": "ดาวน์โหลด",
+        "settings": "ตั้งค่า",
+        "logout": "ออกจากระบบ",
+        "language": "ภาษา",
+        "critical_alarm": "พบสัญญาณเตือนระดับวิกฤต กรุณาตรวจสอบทันที",
+        "login": "เข้าสู่ระบบ",
+        "admin_login": "ผู้ดูแลระบบเข้าสู่ระบบ",
+        "username": "ชื่อผู้ใช้",
+        "password": "รหัสผ่าน",
+        "home_page_for_guest": "กลับสู่หน้าแรกสำหรับผู้เยี่ยมชม",
+        "invalid_credentials": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+    },
+}
+
 UTC_PLUS_7 = timezone(timedelta(hours=7))
 UTC_PLUS_6_5 = timezone(timedelta(hours=6, minutes=30))
 
@@ -291,6 +329,20 @@ def ensure_init():
     seed_demo_data()
 
 
+def get_current_language():
+    language = session.get("lang", "en")
+    if language not in SUPPORTED_LANGUAGES:
+        return "en"
+    return language
+
+
+def translate_text(key):
+    language = get_current_language()
+    default_messages = TRANSLATIONS["en"]
+    language_messages = TRANSLATIONS.get(language, default_messages)
+    return language_messages.get(key, default_messages.get(key, key))
+
+
 @app.context_processor
 def inject_globals():
     settings = settings_service.load_settings()
@@ -304,7 +356,21 @@ def inject_globals():
         "avg_signal": data_service.get_avg_signal_quality(),
         "has_critical": any(alarm["severity"] in critical_levels for alarm in active_alarms),
         "current_system": resolve_active_system(settings),
+        "current_lang": get_current_language(),
+        "supported_languages": SUPPORTED_LANGUAGES,
+        "t": translate_text,
     }
+
+
+@app.route("/set-language/<lang>")
+def set_language(lang):
+    normalized = (lang or "").strip().lower()
+    session["lang"] = normalized if normalized in SUPPORTED_LANGUAGES else "en"
+
+    next_url = request.args.get("next")
+    if next_url:
+        return redirect(next_url)
+    return redirect(url_for("index"))
 
 
 @app.route("/")
@@ -1667,7 +1733,7 @@ def login():
         if username == settings.get("admin_username") and password == settings.get("admin_password"):
             session["is_admin"] = True
             return redirect(url_for("index"))
-        error = "Invalid credentials"
+        error = translate_text("invalid_credentials")
     return render_template("login.html", error=error)
 
 
