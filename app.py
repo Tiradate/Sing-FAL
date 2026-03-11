@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import uuid
+import zipfile
 from datetime import datetime, timedelta, timezone
 
 
@@ -171,6 +172,48 @@ def resolve_active_system(settings):
         if system_navigation.get(key):
             return key
     return settings_service.SYSTEM_KEYS[0]
+
+
+def _collect_upload_assets(settings, devices):
+    asset_paths = set()
+
+    def add_asset(path_value):
+        if not isinstance(path_value, str):
+            return
+        normalized_path = path_value.strip().replace("\\", "/")
+        if not normalized_path.startswith("static/uploads/"):
+            return
+        relative_name = normalized_path[len("static/uploads/") :]
+        if not relative_name or ".." in relative_name:
+            return
+        absolute_path = os.path.join(UPLOAD_DIR, os.path.basename(relative_name))
+        if os.path.isfile(absolute_path):
+            asset_paths.add((os.path.basename(relative_name), absolute_path))
+
+    add_asset(settings.get("sensor_icon"))
+    add_asset(settings.get("floor_logo_icon"))
+    add_asset(settings.get("project_logo"))
+
+    for floor_plan_path in (settings.get("floor_plans") or {}).values():
+        add_asset(floor_plan_path)
+
+    for floor_logo in (settings.get("floor_plan_logos") or {}).values():
+        if isinstance(floor_logo, dict):
+            add_asset(floor_logo.get("logo_icon"))
+
+    for level in settings.get("severity_levels", []):
+        if isinstance(level, dict):
+            add_asset(level.get("icon"))
+
+    for level in settings.get("fire_severity_levels", []):
+        if isinstance(level, dict):
+            add_asset(level.get("icon"))
+
+    for device in devices:
+        if isinstance(device, dict):
+            add_asset(device.get("sensor_icon"))
+
+    return sorted(asset_paths, key=lambda item: item[0].lower())
 
 
 def get_enabled_metric_options(settings, system_key):
@@ -515,6 +558,23 @@ def export_settings_csv():
     return send_file(csv_path, as_attachment=True, download_name="settings.csv")
 
 
+@app.route("/settings/export-assets.zip")
+def export_settings_assets_zip():
+    if not session.get("is_admin"):
+        return redirect(url_for("login"))
+
+    settings = settings_service.load_settings()
+    devices = data_service.get_devices()
+    assets = _collect_upload_assets(settings, devices)
+    zip_path = os.path.join(BASE_DIR, "settings_assets_export.zip")
+
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for filename, absolute_path in assets:
+            archive.write(absolute_path, arcname=filename)
+
+    return send_file(zip_path, as_attachment=True, download_name="settings_assets.zip")
+
+
 @app.route("/view_data")
 def view_data():
     settings = settings_service.load_settings()
@@ -745,48 +805,68 @@ def import_settings_csv():
         return redirect(url_for("login"))
 
     settings_file = request.files.get("settings_csv")
-    if not settings_file or not settings_file.filename:
+    assets_zip_file = request.files.get("settings_assets_zip")
+    has_csv = bool(settings_file and settings_file.filename)
+    has_zip = bool(assets_zip_file and assets_zip_file.filename)
+    if not has_csv and not has_zip:
         return redirect(url_for("settings"))
 
-    settings = settings_service.load_settings()
-    file_content = settings_file.stream.read().decode("utf-8")
-    reader = csv.DictReader(io.StringIO(file_content))
-    for row in reader:
-        key = (row.get("key") or "").strip()
-        value = row.get("value")
-        if not key:
-            continue
-        if key == "floor_plan_sensors":
-            try:
-                layout_payload = json.loads(value)
-            except (json.JSONDecodeError, TypeError):
-                continue
-            if isinstance(layout_payload, dict):
-                for floor_id, sensors in layout_payload.items():
-                    if not isinstance(sensors, list):
-                        continue
-                    for sensor in sensors:
-                        if not isinstance(sensor, dict):
-                            continue
-                        device_id = (sensor.get("device_id") or "").strip()
-                        if not device_id:
-                            continue
-                        try:
-                            location_x = float(sensor.get("location_x"))
-                            location_y = float(sensor.get("location_y"))
-                        except (TypeError, ValueError):
-                            continue
-                        location_x = max(0, min(100, location_x))
-                        location_y = max(0, min(100, location_y))
-                        data_service.update_device_layout(
-                            device_id, floor_id, location_x, location_y
-                        )
-            continue
+    if has_zip:
         try:
-            settings[key] = json.loads(value)
-        except (json.JSONDecodeError, TypeError):
-            settings[key] = value
-    settings_service.save_settings(settings)
+            with zipfile.ZipFile(assets_zip_file.stream) as archive:
+                for member in archive.infolist():
+                    if member.is_dir():
+                        continue
+                    filename = secure_filename(os.path.basename(member.filename))
+                    if not filename:
+                        continue
+                    with archive.open(member) as source, open(
+                        os.path.join(UPLOAD_DIR, filename), "wb"
+                    ) as destination:
+                        destination.write(source.read())
+        except zipfile.BadZipFile:
+            return redirect(url_for("settings"))
+
+    if has_csv:
+        settings = settings_service.load_settings()
+        file_content = settings_file.stream.read().decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(file_content))
+        for row in reader:
+            key = (row.get("key") or "").strip()
+            value = row.get("value")
+            if not key:
+                continue
+            if key == "floor_plan_sensors":
+                try:
+                    layout_payload = json.loads(value)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                if isinstance(layout_payload, dict):
+                    for floor_id, sensors in layout_payload.items():
+                        if not isinstance(sensors, list):
+                            continue
+                        for sensor in sensors:
+                            if not isinstance(sensor, dict):
+                                continue
+                            device_id = (sensor.get("device_id") or "").strip()
+                            if not device_id:
+                                continue
+                            try:
+                                location_x = float(sensor.get("location_x"))
+                                location_y = float(sensor.get("location_y"))
+                            except (TypeError, ValueError):
+                                continue
+                            location_x = max(0, min(100, location_x))
+                            location_y = max(0, min(100, location_y))
+                            data_service.update_device_layout(
+                                device_id, floor_id, location_x, location_y
+                            )
+                continue
+            try:
+                settings[key] = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                settings[key] = value
+        settings_service.save_settings(settings)
     return redirect(url_for("settings"))
 
 
