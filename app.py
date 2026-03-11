@@ -203,43 +203,17 @@ def resolve_active_system(settings):
 
 
 def _collect_upload_assets(settings, devices):
-    asset_paths = set()
+    del settings, devices
 
-    def add_asset(path_value):
-        if not isinstance(path_value, str):
-            return
-        normalized_path = path_value.strip().replace("\\", "/")
-        if not normalized_path.startswith("static/uploads/"):
-            return
-        relative_name = normalized_path[len("static/uploads/") :]
-        if not relative_name or ".." in relative_name:
-            return
-        absolute_path = os.path.join(UPLOAD_DIR, os.path.basename(relative_name))
-        if os.path.isfile(absolute_path):
-            asset_paths.add((os.path.basename(relative_name), absolute_path))
+    asset_paths = []
+    if not os.path.isdir(UPLOAD_DIR):
+        return asset_paths
 
-    add_asset(settings.get("sensor_icon"))
-    add_asset(settings.get("floor_logo_icon"))
-    add_asset(settings.get("project_logo"))
-
-    for floor_plan_path in (settings.get("floor_plans") or {}).values():
-        add_asset(floor_plan_path)
-
-    for floor_logo in (settings.get("floor_plan_logos") or {}).values():
-        if isinstance(floor_logo, dict):
-            add_asset(floor_logo.get("logo_icon"))
-
-    for level in settings.get("severity_levels", []):
-        if isinstance(level, dict):
-            add_asset(level.get("icon"))
-
-    for level in settings.get("fire_severity_levels", []):
-        if isinstance(level, dict):
-            add_asset(level.get("icon"))
-
-    for device in devices:
-        if isinstance(device, dict):
-            add_asset(device.get("sensor_icon"))
+    for root, _dirs, files in os.walk(UPLOAD_DIR):
+        for filename in files:
+            absolute_path = os.path.join(root, filename)
+            relative_name = os.path.relpath(absolute_path, UPLOAD_DIR).replace("\\", "/")
+            asset_paths.append((relative_name, absolute_path))
 
     return sorted(asset_paths, key=lambda item: item[0].lower())
 
@@ -845,11 +819,17 @@ def import_settings_csv():
                 for member in archive.infolist():
                     if member.is_dir():
                         continue
-                    filename = secure_filename(os.path.basename(member.filename))
-                    if not filename:
+                    normalized_name = member.filename.replace("\\", "/").strip("/")
+                    if not normalized_name:
                         continue
+                    parts = [secure_filename(part) for part in normalized_name.split("/")]
+                    safe_parts = [part for part in parts if part and part not in {".", ".."}]
+                    if not safe_parts:
+                        continue
+                    target_path = os.path.join(UPLOAD_DIR, *safe_parts)
+                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
                     with archive.open(member) as source, open(
-                        os.path.join(UPLOAD_DIR, filename), "wb"
+                        target_path, "wb"
                     ) as destination:
                         destination.write(source.read())
         except zipfile.BadZipFile:
