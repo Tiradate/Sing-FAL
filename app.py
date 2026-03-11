@@ -1,5 +1,7 @@
 import csv
+import hashlib
 import io
+import importlib.metadata
 import json
 import os
 import subprocess
@@ -8,42 +10,111 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 
-
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-def ensure_runtime_environment():
-    in_virtualenv = (
-        hasattr(sys, "real_prefix")
-        or getattr(sys, "base_prefix", sys.prefix) != sys.prefix
-        or bool(os.environ.get("VIRTUAL_ENV"))
-    )
-    if not in_virtualenv:
-        print(
-            "[startup] Warning: Python virtual environment not detected. "
-            "Dependency installation will run in the current interpreter environment."
-        )
 
+
+def _venv_python_path(venv_path):
+    if os.name == "nt":
+        return os.path.join(venv_path, "Scripts", "python.exe")
+    return os.path.join(venv_path, "bin", "python")
+
+
+def _requirements_hash(requirements_path):
+    with open(requirements_path, "rb") as requirements_file:
+        return hashlib.sha256(requirements_file.read()).hexdigest()
+
+
+def _requirements_satisfied(requirements_path):
+    with open(requirements_path, "r", encoding="utf-8") as requirements_file:
+        for raw_line in requirements_file:
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+
+            if "==" not in line:
+                return False
+
+            package_name, expected_version = [part.strip() for part in line.split("==", 1)]
+            try:
+                installed_version = importlib.metadata.version(package_name)
+            except importlib.metadata.PackageNotFoundError:
+                return False
+
+            if installed_version != expected_version:
+                return False
+
+    return True
+
+def ensure_runtime_environment():
     requirements_path = os.path.join(BASE_DIR, "requirements.txt")
     if not os.path.exists(requirements_path):
         print(f"[startup] requirements.txt not found at {requirements_path}. Skipping dependency sync.")
         return
 
-    print("[startup] Updating pip...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
-
-    print("[startup] Installing dependencies from requirements.txt...")
-    subprocess.check_call(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "--upgrade",
-            "-r",
-            requirements_path,
-        ]
+    in_virtualenv = (
+        hasattr(sys, "real_prefix")
+        or getattr(sys, "base_prefix", sys.prefix) != sys.prefix
+        or bool(os.environ.get("VIRTUAL_ENV"))
     )
+    venv_path = os.path.join(BASE_DIR, ".venv")
+    venv_python = _venv_python_path(venv_path)
+
+    if not in_virtualenv:
+        if not os.path.exists(venv_python):
+            print(f"[startup] Virtual environment not found. Creating one at {venv_path}...")
+            subprocess.check_call([sys.executable, "-m", "venv", "--system-site-packages", venv_path])
+
+        if os.path.abspath(sys.executable) != os.path.abspath(venv_python):
+            print("[startup] Re-launching app using virtual environment interpreter...")
+            subprocess.check_call([venv_python, os.path.abspath(__file__), *sys.argv[1:]])
+            sys.exit(0)
+
+    if _requirements_satisfied(requirements_path):
+        print("[startup] Runtime dependencies are already available.")
+        return
+
+    state_path = os.path.join(BASE_DIR, ".runtime_env_state.json")
+    runtime_key = {
+        "python": os.path.abspath(sys.executable),
+        "requirements_hash": _requirements_hash(requirements_path),
+    }
+
+    try:
+        with open(state_path, "r", encoding="utf-8") as state_file:
+            existing_state = json.load(state_file)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        existing_state = {}
+
+    if existing_state == runtime_key:
+        print("[startup] Runtime dependencies are already synchronized.")
+        return
+
+    try:
+        print("[startup] Updating pip...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
+
+        print("[startup] Installing dependencies from requirements.txt...")
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "-r",
+                requirements_path,
+            ]
+        )
+    except subprocess.CalledProcessError as exc:
+        print(f"[startup] Warning: dependency synchronization failed ({exc}). Continuing startup.")
+        return
+
+    with open(state_path, "w", encoding="utf-8") as state_file:
+        json.dump(runtime_key, state_file)
+
+
 ensure_runtime_environment()
 
 from flask import (
