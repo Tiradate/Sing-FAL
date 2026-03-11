@@ -763,6 +763,7 @@
         <div class="d-flex flex-wrap gap-2">
           <button class="btn btn-primary" type="submit">Save Settings</button>
           <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_csv') }}">Export Settings CSV</a>
+          <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_assets_zip') }}">Export Assets ZIP</a>
         </div>
       </div>
     </form>
@@ -771,6 +772,11 @@
       <div class="d-flex flex-wrap gap-2">
         <input class="form-control" type="file" name="settings_csv" accept=".csv">
         <button class="btn btn-outline-primary" type="submit">Import CSV</button>
+      </div>
+      <label class="form-label mt-3">Import Assets ZIP</label>
+      <div class="d-flex flex-wrap gap-2">
+        <input class="form-control" type="file" name="settings_assets_zip" accept=".zip">
+        <button class="btn btn-outline-primary" type="submit">Import ZIP</button>
       </div>
     </form>
   </div>
