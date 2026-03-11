@@ -114,6 +114,52 @@ def update_device_layout(device_id, floor_id, location_x, location_y):
         )
 
 
+def upsert_device_layouts(layouts):
+    now = datetime.now(timezone.utc).isoformat()
+    with connect(SENSOR_DB) as conn:
+        for layout in layouts:
+            device_id = (layout.get("device_id") or "").strip()
+            if not device_id:
+                continue
+            floor_id = (layout.get("floor_id") or "").strip()
+            location_x = layout.get("location_x")
+            location_y = layout.get("location_y")
+            conn.execute(
+                """
+                INSERT INTO devices (
+                    device_id,
+                    model,
+                    floor_id,
+                    zone,
+                    label,
+                    location_x,
+                    location_y,
+                    sensor_icon,
+                    last_seen,
+                    signal_quality
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(device_id)
+                DO UPDATE SET
+                    floor_id = excluded.floor_id,
+                    location_x = excluded.location_x,
+                    location_y = excluded.location_y
+                """,
+                (
+                    device_id,
+                    "Milesight AM30x",
+                    floor_id,
+                    "Z1",
+                    None,
+                    location_x,
+                    location_y,
+                    None,
+                    now,
+                    100,
+                ),
+            )
+
+
 def set_sensor_icon_for_missing(default_icon):
     if not default_icon:
         return
