@@ -83,6 +83,15 @@ def _has_pip():
         return False
 
 
+def _bootstrap_pip():
+    try:
+        subprocess.check_call([sys.executable, "-m", "ensurepip", "--upgrade"])
+        return _has_pip()
+    except subprocess.CalledProcessError as exc:
+        print(f"[startup] ensurepip bootstrap failed ({exc}).")
+        return False
+
+
 def _install_system_python_packages():
     if sys.platform != "linux" or which("apt-get") is None:
         return False
@@ -166,15 +175,19 @@ def ensure_runtime_environment():
         return
 
     if not _has_pip():
-        print("[startup] pip is unavailable; attempting to install python3-pip/python3-venv...")
-        if _install_system_python_packages() and _has_pip():
+        print("[startup] pip is unavailable; attempting to bootstrap with ensurepip...")
+        if _bootstrap_pip():
             print("[startup] pip installation succeeded.")
         else:
-            print(
-                "[startup] Warning: pip is unavailable and could not be installed automatically. "
-                "Dependency synchronization skipped."
-            )
-            return
+            print("[startup] ensurepip was unavailable; attempting to install python3-pip/python3-venv...")
+            if _install_system_python_packages() and _has_pip():
+                print("[startup] pip installation succeeded.")
+            else:
+                print(
+                    "[startup] Warning: pip is unavailable and could not be installed automatically. "
+                    "Dependency synchronization skipped."
+                )
+                return
 
     try:
         print("[startup] Updating pip...")
