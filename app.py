@@ -7,34 +7,11 @@ import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from flask import (
-    Flask,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    send_file,
-    session,
-    url_for,
-)
-from werkzeug.utils import secure_filename
 
-from services import data as data_service
-from services import settings as settings_service
-from services.db import SENSOR_DB, connect, init_all, seed_demo_data
-
-
-app = Flask(__name__)
-app.secret_key = "replace-with-secure-secret"
 
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-UTC_PLUS_7 = timezone(timedelta(hours=7))
-UTC_PLUS_6_5 = timezone(timedelta(hours=6, minutes=30))
-
-
 def ensure_runtime_environment():
     in_virtualenv = (
         hasattr(sys, "real_prefix")
@@ -67,7 +44,30 @@ def ensure_runtime_environment():
             requirements_path,
         ]
     )
+ensure_runtime_environment()
 
+from flask import (
+    Flask,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
+from werkzeug.utils import secure_filename
+
+from services import data as data_service
+from services import settings as settings_service
+from services.db import SENSOR_DB, connect, init_all, seed_demo_data
+
+
+app = Flask(__name__)
+app.secret_key = "replace-with-secure-secret"
+
+UTC_PLUS_7 = timezone(timedelta(hours=7))
+UTC_PLUS_6_5 = timezone(timedelta(hours=6, minutes=30))
 
 def parse_date_range(start_str, end_str, default_tz):
     def parse(value):
@@ -1491,5 +1491,4 @@ def logout():
 
 
 if __name__ == "__main__":
-    ensure_runtime_environment()
     app.run(debug=True, host="0.0.0.0", port=5000)
