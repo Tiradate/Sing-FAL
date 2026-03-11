@@ -244,6 +244,12 @@ def device_value(device, key, default=None):
     return record_value(device, key, default)
 
 
+def normalize_floor_id(value):
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
 def derive_device_severity(devices, device_metric_severity, alarm_severity, settings):
     levels = settings.get("severity_levels", [])
     severity_rank = {level["label"]: index for index, level in enumerate(levels)}
@@ -865,7 +871,7 @@ def import_settings_csv():
                         device_id = (sensor.get("device_id") or "").strip()
                         if not device_id:
                             continue
-                        floor_id = (sensor.get("floor_id") or "").strip()
+                        floor_id = normalize_floor_id(sensor.get("floor_id"))
                         try:
                             location_x = float(sensor.get("location_x"))
                             location_y = float(sensor.get("location_y"))
@@ -878,6 +884,7 @@ def import_settings_csv():
                         )
                 elif isinstance(layout_payload, dict):
                     for floor_id, sensors in layout_payload.items():
+                        normalized_floor_id = normalize_floor_id(floor_id)
                         if not isinstance(sensors, list):
                             continue
                         for sensor in sensors:
@@ -894,7 +901,7 @@ def import_settings_csv():
                             location_x = max(0, min(100, location_x))
                             location_y = max(0, min(100, location_y))
                             data_service.update_device_layout(
-                                device_id, floor_id, location_x, location_y
+                                device_id, normalized_floor_id, location_x, location_y
                             )
                 continue
             try:
