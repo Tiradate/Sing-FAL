@@ -51,14 +51,14 @@
       <div class="card-body dashboard-card-body">
         <div class="d-flex align-items-center flex-wrap gap-4">
           <div>
-            <div class="small text-uppercase text-muted">{{ top_definition.title or 'Top Definition' }}</div>
-            <h6 class="text-muted mb-0">{{ top_definition.header or 'Average Indoor/Outdoor IAQ' }}</h6>
+            <div class="small text-uppercase text-muted">{{ top_definition.title or t('top_definition') }}</div>
+            <h6 class="text-muted mb-0">{{ top_definition.header or t('average_indoor_outdoor_iaq') }}</h6>
           </div>
           {% if top_definition_columns.indoor_enabled is not defined or top_definition_columns.indoor_enabled %}
           <div>
-            <div class="small text-uppercase text-muted">{{ top_definition_columns.indoor or 'Indoor' }}</div>
+            <div class="small text-uppercase text-muted">{{ top_definition_columns.indoor or t('indoor') }}</div>
             {% if top_definition_mode == 'critical' %}
-            <div class="fw-semibold">{{ indoor_critical_count }} Critical</div>
+            <div class="fw-semibold">{{ indoor_critical_count }} {{ t('critical') }}</div>
             {% else %}
             <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.indoor or 0) }} IAQ</div>
             {% endif %}
@@ -66,9 +66,9 @@
           {% endif %}
           {% if top_definition_columns.outdoor_enabled is not defined or top_definition_columns.outdoor_enabled %}
           <div>
-            <div class="small text-uppercase text-muted">{{ top_definition_columns.outdoor or 'Outdoor' }}</div>
+            <div class="small text-uppercase text-muted">{{ top_definition_columns.outdoor or t('outdoor') }}</div>
             {% if top_definition_mode == 'critical' %}
-            <div class="fw-semibold">{{ outdoor_critical_count }} Critical</div>
+            <div class="fw-semibold">{{ outdoor_critical_count }} {{ t('critical') }}</div>
             {% else %}
             <div class="fw-semibold">{{ '%.1f'|format(indoor_outdoor_aqi.outdoor or 0) }} IAQ</div>
             {% endif %}
@@ -99,11 +99,11 @@
     <div class="card shadow-sm h-100">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
         <div>
-          <h6 class="mb-0">Map{% if not loop.first %} - {{ settings.floor_names.get(map_floor, map_floor) if settings.floor_names else map_floor }}{% endif %}</h6>
-          <small class="text-muted">Floor plan &amp; sensors</small>
+          <h6 class="mb-0">{{ t('map') }}{% if not loop.first %} - {{ settings.floor_names.get(map_floor, map_floor) if settings.floor_names else map_floor }}{% endif %}</h6>
+          <small class="text-muted">{{ t('floor_plan_sensors') }}</small>
         </div>
         <div class="d-flex align-items-center gap-2">
-          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('map_full', floor=map_floor) }}" target="_blank">Expand</a>
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('map_full', floor=map_floor) }}" target="_blank">{{ t('expand') }}</a>
           {% if loop.first %}
           <select id="floorSelect" class="form-select form-select-sm">
             {% for floor in floors %}
@@ -166,7 +166,7 @@
                       {{ device.device_id }}
                     {% endif %}
                   </div>
-                  <div>{{ device.zone or 'Unassigned' }} · {{ settings.floor_names.get(device.floor_id, device.floor_id) if settings.floor_names else device.floor_id }}</div>
+                  <div>{{ device.zone or t('unassigned') }} · {{ settings.floor_names.get(device.floor_id, device.floor_id) if settings.floor_names else device.floor_id }}</div>
                   {% if severity %}
                   <div class="small fw-semibold mt-1" style="color: {{ severity_text_color if severity_text_color else severity_color }}">
                     {% if severity_icon %}
@@ -189,7 +189,7 @@
                   <span class="fw-semibold" style="color: {{ reading_severity.color }}">
                     {% if reading %}
                       {% if metric.key == 'motion' %}
-                        {{ 'Occupied' if reading.value else 'Vacant' }}
+                        {{ t('occupied') if reading.value else t('vacant') }}
                       {% else %}
                         {{ '%.1f'|format(reading.value or 0) }} {{ reading.unit or metric.unit }}
                       {% endif %}
@@ -219,7 +219,7 @@
                         {{ device.device_id }}
                       {% endif %}
                   </div>
-                  <div>{{ device.zone or 'Unassigned' }} · {{ settings.floor_names.get(device.floor_id, device.floor_id) if settings.floor_names else device.floor_id }}</div>
+                  <div>{{ device.zone or t('unassigned') }} · {{ settings.floor_names.get(device.floor_id, device.floor_id) if settings.floor_names else device.floor_id }}</div>
                   {% if severity %}
                   <div class="small fw-semibold mt-1" style="color: {{ severity_text_color if severity_text_color else severity_color }}">
                     {% if severity_icon %}
@@ -239,7 +239,7 @@
                     <span class="fw-semibold"{% if reading_severity and reading_severity.label in settings.critical_levels %} style="color: {{ reading_severity.color }}"{% endif %}>
                       {% if reading %}
                         {% if metric.key == 'motion' %}
-                          {{ 'Occupied' if reading.value else 'Vacant' }}
+                          {{ t('occupied') if reading.value else t('vacant') }}
                         {% else %}
                           {{ '%.1f'|format(reading.value or 0) }} {{ reading.unit or metric.unit }}
                         {% endif %}
@@ -258,7 +258,7 @@
         </div>
         {% if loop.first %}
         <div class="sensor-details-panel mt-3" id="sensorDetailsPanel">
-          <div class="sensor-details-placeholder text-muted small">Hover or tap a sensor to view details.</div>
+          <div class="sensor-details-placeholder text-muted small">{{ t('hover_sensor_details') }}</div>
           <div class="sensor-details-content" hidden></div>
         </div>
         {% endif %}
@@ -275,8 +275,8 @@
     <div class="card shadow-sm mb-3">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
         <div>
-          <h6 class="mb-0">Daily Graph</h6>
-          <small class="text-muted">24-hour timeline</small>
+          <h6 class="mb-0">{{ t('daily_graph') }}</h6>
+          <small class="text-muted">{{ t('timeline_24h') }}</small>
         </div>
         <div class="d-flex align-items-center gap-2">
           <select id="dailyMetricSelect" class="form-select form-select-sm">
@@ -289,14 +289,14 @@
           {% if default_view_device %}
           <div class="dropdown">
             <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-              View data
+              {{ t('view_data') }}
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=daily_view_start, end=daily_view_end, interval=default_view_interval) }}">Last 24 hours</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=daily_view_start, end=daily_view_end, interval=default_view_interval) }}">{{ t('last_24_hours') }}</a>
               </li>
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">All data</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">{{ t('all_data') }}</a>
               </li>
             </ul>
           </div>
@@ -307,7 +307,7 @@
         <canvas id="dailyChart"></canvas>
         <div class="d-flex justify-content-between mt-2">
           <button class="btn btn-sm btn-outline-secondary">&lt;</button>
-          <span class="small text-muted">Today</span>
+          <span class="small text-muted">{{ t('today') }}</span>
           <button class="btn btn-sm btn-outline-secondary">&gt;</button>
         </div>
       </div>
@@ -318,8 +318,8 @@
     <div class="card shadow-sm">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
         <div>
-          <h6 class="mb-0">Weekly Overview</h6>
-          <small class="text-muted">Average per day</small>
+          <h6 class="mb-0">{{ t('weekly_overview') }}</h6>
+          <small class="text-muted">{{ t('average_per_day') }}</small>
         </div>
         <div class="d-flex align-items-center gap-2">
           <select id="weeklyMetricSelect" class="form-select form-select-sm">
@@ -332,14 +332,14 @@
           {% if default_view_device %}
           <div class="dropdown">
             <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-              View data
+              {{ t('view_data') }}
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=weekly_view_start, end=weekly_view_end, interval=default_view_interval) }}">Last 7 days</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=weekly_view_start, end=weekly_view_end, interval=default_view_interval) }}">{{ t('last_7_days') }}</a>
               </li>
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">All data</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">{{ t('all_data') }}</a>
               </li>
             </ul>
           </div>
@@ -385,8 +385,8 @@
     {% if show_alerts_notifications %}
     <div class="card shadow-sm {% if show_sensor_average %}mt-3{% else %}mt-0{% endif %}">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">Alerts &amp; Notifications</h6>
-        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('alarms', system=active_system) }}">See all alarm</a>
+        <h6 class="mb-0">{{ t('alerts_notifications') }}</h6>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('alarms', system=active_system) }}">{{ t('see_all_alarm') }}</a>
       </div>
       <div class="card-body dashboard-card-body">
         {% if active_alarms %}
@@ -413,7 +413,7 @@
             {% endfor %}
           </ul>
         {% else %}
-          <div class="text-muted">No active alarms.</div>
+          <div class="text-muted">{{ t('no_active_alarms') }}</div>
         {% endif %}
       </div>
     </div>
