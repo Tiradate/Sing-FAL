@@ -8,6 +8,8 @@ import subprocess
 import sys
 import uuid
 import zipfile
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 from datetime import datetime, timedelta, timezone
 from shutil import which
 
@@ -1263,6 +1265,189 @@ def export_action_history():
     return send_file(csv_path, as_attachment=True, download_name="action_history.csv")
 
 
+def _parse_endpoint_sources(form_data):
+    names = form_data.getlist("endpoint_name")
+    formats = form_data.getlist("endpoint_format")
+    base_urls = form_data.getlist("endpoint_base_url")
+    tokens = form_data.getlist("endpoint_token")
+    mqtt_hosts = form_data.getlist("endpoint_mqtt_host")
+    mqtt_ports = form_data.getlist("endpoint_mqtt_port")
+    mqtt_usernames = form_data.getlist("endpoint_mqtt_username")
+    mqtt_passwords = form_data.getlist("endpoint_mqtt_password")
+    mqtt_topics = form_data.getlist("endpoint_mqtt_topic")
+
+    max_len = max(
+        len(names),
+        len(formats),
+        len(base_urls),
+        len(tokens),
+        len(mqtt_hosts),
+        len(mqtt_ports),
+        len(mqtt_usernames),
+        len(mqtt_passwords),
+        len(mqtt_topics),
+        1,
+    )
+    sources = []
+    for index in range(max_len):
+        name = (names[index] if index < len(names) else "").strip()
+        source_format = (formats[index] if index < len(formats) else "api").strip().lower()
+        if source_format not in ("api", "mqtt"):
+            source_format = "api"
+        base_url = (base_urls[index] if index < len(base_urls) else "").strip().rstrip("/")
+        token = (tokens[index] if index < len(tokens) else "").strip()
+        mqtt_host = (mqtt_hosts[index] if index < len(mqtt_hosts) else "").strip()
+        mqtt_port_raw = (mqtt_ports[index] if index < len(mqtt_ports) else "1883").strip()
+        mqtt_username = (mqtt_usernames[index] if index < len(mqtt_usernames) else "").strip()
+        mqtt_password = (mqtt_passwords[index] if index < len(mqtt_passwords) else "").strip()
+        mqtt_topic = (mqtt_topics[index] if index < len(mqtt_topics) else "").strip()
+        if not name:
+            continue
+        try:
+            mqtt_port = int(mqtt_port_raw or 1883)
+        except ValueError:
+            mqtt_port = 1883
+        sources.append(
+            {
+                "name": name,
+                "format": source_format,
+                "base_url": base_url,
+                "token": token,
+                "mqtt": {
+                    "host": mqtt_host,
+                    "port": mqtt_port,
+                    "username": mqtt_username,
+                    "password": mqtt_password,
+                    "topic": mqtt_topic,
+                },
+            }
+        )
+
+    if not sources:
+        sources.append(
+            {
+                "name": "LIV-24 IAQ",
+                "format": "api",
+                "base_url": "",
+                "token": "",
+                "mqtt": {
+                    "host": "",
+                    "port": 1883,
+                    "username": "",
+                    "password": "",
+                    "topic": "",
+                },
+            }
+        )
+    return sources
+
+
+def _make_external_request(source, path, query=None):
+    base_url = (source.get("base_url") or "").strip().rstrip("/")
+    if not base_url:
+        raise ValueError("Base URL is required")
+    url = f"{base_url}{path}"
+    if query:
+        url = f"{url}?{urlencode(query, doseq=True)}"
+    headers = {"Accept": "application/json"}
+    token = (source.get("token") or "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request_obj = Request(url, headers=headers, method="GET")
+    with urlopen(request_obj, timeout=15) as response:
+        payload = response.read().decode("utf-8")
+    return json.loads(payload)
+
+
+def _find_source_by_name(settings, source_name):
+    sources = settings.get("endpoint_sources", [])
+    for source in sources:
+        if source.get("name") == source_name:
+            return source
+    return None
+
+
+@app.get("/api/settings/source-devices")
+def get_endpoint_source_devices():
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    settings = settings_service.load_settings()
+    source_name = (request.args.get("source_name") or "").strip()
+    if not source_name:
+        return jsonify({"error": "Missing source_name"}), 400
+    source = _find_source_by_name(settings, source_name)
+    if not source:
+        return jsonify({"error": f"Source '{source_name}' not found"}), 404
+    if source.get("format") != "api":
+        return jsonify({"error": "Device list is only supported for API format sources"}), 400
+
+    try:
+        organizations = _make_external_request(source, "/api/external/v1/organizations")
+        first_org_uuid = organizations[0].get("uuid") if organizations else None
+        devices = _make_external_request(
+            source,
+            "/api/external/v1/devices",
+            {"org_uuid": first_org_uuid} if first_org_uuid else None,
+        )
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify(
+        {
+            "source": source_name,
+            "organizations": organizations,
+            "devices": devices,
+        }
+    )
+
+
+@app.get("/api/settings/source-preview")
+def preview_endpoint_source_data():
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    settings = settings_service.load_settings()
+    source_name = (request.args.get("source_name") or "LIV-24 IAQ").strip()
+    source = _find_source_by_name(settings, source_name)
+    if not source:
+        return jsonify({"error": f"Source '{source_name}' not found"}), 404
+    if source.get("format") != "api":
+        return jsonify({"error": "Preview is only supported for API format sources"}), 400
+
+    try:
+        organizations = _make_external_request(source, "/api/external/v1/organizations")
+        first_org_uuid = organizations[0].get("uuid") if organizations else None
+        devices = _make_external_request(
+            source,
+            "/api/external/v1/devices",
+            {"org_uuid": first_org_uuid} if first_org_uuid else None,
+        )
+        device_ids = [device.get("uuid") for device in devices if device.get("uuid")]
+        latest_values = {"items": []}
+        if device_ids:
+            latest_values = _make_external_request(
+                source,
+                "/api/external/v1/latest-values",
+                {"device_uuid": device_ids},
+            )
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify(
+        {
+            "source": {
+                "name": source.get("name"),
+                "format": source.get("format"),
+                "base_url": source.get("base_url"),
+            },
+            "organizations": organizations,
+            "devices": devices,
+            "latest_values": latest_values,
+        }
+    )
+
+
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
     if not session.get("is_admin"):
@@ -1286,6 +1471,7 @@ def settings():
         settings_service.SYSTEM_KEYS[0],
     )
     previous_sensor_icon = settings.get("sensor_icon", "")
+    endpoint_sources = settings.get("endpoint_sources", [])
     if request.method == "POST":
         settings["project_name"] = request.form.get("project_name", settings["project_name"])
         settings["location_label"] = request.form.get("location_label", settings["location_label"])
@@ -1329,6 +1515,7 @@ def settings():
             "gas": bool(request.form.get("fire_tag_gas")),
         }
         settings["tag_visibility"] = tag_visibility
+        settings["endpoint_sources"] = _parse_endpoint_sources(request.form)
         card_header_color = request.form.get("card_header_color", settings["card_header_color"])
         card_body_color = request.form.get("card_body_color", settings["card_body_color"])
         page_background_color = request.form.get(
@@ -1634,6 +1821,7 @@ def settings():
         floors=floors,
         devices=[dict(device) for device in devices],
         default_system=default_system,
+        endpoint_sources=endpoint_sources,
     )
 
 
@@ -1727,6 +1915,23 @@ def update_device_zone(device_id):
     zone = (payload.get("zone") or "").strip()
     data_service.update_device_zone(device_id, zone)
     return jsonify({"device_id": device_id, "zone": zone})
+
+@app.post("/api/devices/<device_id>/source-mapping")
+def update_device_source_mapping(device_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+    payload = request.get_json(silent=True) or {}
+    source_name = (payload.get("source_name") or "").strip() or None
+    source_device_name = (payload.get("source_device_name") or "").strip() or None
+    data_service.update_device_source_mapping(device_id, source_name, source_device_name)
+    return jsonify(
+        {
+            "device_id": device_id,
+            "source_name": source_name,
+            "source_device_name": source_device_name,
+        }
+    )
+
 
 
 @app.post("/api/devices/<device_id>/label")

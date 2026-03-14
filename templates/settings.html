@@ -148,6 +148,137 @@
         </div>
       </div>
 
+
+      <hr class="my-4">
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h6 class="mb-0">API / MQTT Endpoint Settings</h6>
+          <small class="text-muted">Configure one or more API/MQTT sources. Default source is LIV-24 IAQ.</small>
+        </div>
+        <button class="btn btn-outline-primary btn-sm" type="button" id="addEndpointSourceBtn">+ Add Source</button>
+      </div>
+
+      <div id="endpointSourceList" class="vstack gap-3">
+        {% set source_list = endpoint_sources if endpoint_sources is defined and endpoint_sources else settings.endpoint_sources %}
+        {% for source in source_list %}
+        {% set mqtt = source.mqtt if source.mqtt is defined and source.mqtt else {} %}
+        <div class="card" data-endpoint-source-row>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="mb-0">Source {{ loop.index }}</h6>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-use-api-source {% if (source.format or "api") != "api" %}disabled{% endif %}>Use API</button>
+                <button class="btn btn-outline-danger btn-sm" type="button" data-remove-endpoint-source {% if loop.first %}disabled{% endif %}>Remove</button>
+              </div>
+            </div>
+            <div class="row g-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label">Source Name</label>
+                <input class="form-control" type="text" name="endpoint_name" value="{{ source.name or '' }}" placeholder="LIV-24 IAQ">
+              </div>
+              <div class="col-12 col-md-2">
+                <label class="form-label">Format</label>
+                <select class="form-select" name="endpoint_format" data-endpoint-format-select>
+                  <option value="api" {% if (source.format or 'api') == 'api' %}selected{% endif %}>API</option>
+                  <option value="mqtt" {% if source.format == 'mqtt' %}selected{% endif %}>MQTT</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-6" data-endpoint-api-fields>
+                <label class="form-label">API Base URL</label>
+                <input class="form-control" type="url" name="endpoint_base_url" value="{{ source.base_url or '' }}" placeholder="https://your-server.com">
+              </div>
+              <div class="col-12 col-md-6" data-endpoint-api-fields>
+                <label class="form-label">Bearer Token</label>
+                <input class="form-control" type="text" name="endpoint_token" value="{{ source.token or '' }}" placeholder="optional token">
+              </div>
+              <div class="col-12 col-md-4" data-endpoint-mqtt-fields>
+                <label class="form-label">MQTT Host</label>
+                <input class="form-control" type="text" name="endpoint_mqtt_host" value="{{ mqtt.host or '' }}">
+              </div>
+              <div class="col-12 col-md-2" data-endpoint-mqtt-fields>
+                <label class="form-label">MQTT Port</label>
+                <input class="form-control" type="number" name="endpoint_mqtt_port" value="{{ mqtt.port or 1883 }}">
+              </div>
+              <div class="col-12 col-md-3" data-endpoint-mqtt-fields>
+                <label class="form-label">MQTT Username</label>
+                <input class="form-control" type="text" name="endpoint_mqtt_username" value="{{ mqtt.username or '' }}">
+              </div>
+              <div class="col-12 col-md-3" data-endpoint-mqtt-fields>
+                <label class="form-label">MQTT Password</label>
+                <input class="form-control" type="password" name="endpoint_mqtt_password" value="{{ mqtt.password or '' }}">
+              </div>
+              <div class="col-12" data-endpoint-mqtt-fields>
+                <label class="form-label">MQTT Topic</label>
+                <input class="form-control" type="text" name="endpoint_mqtt_topic" value="{{ mqtt.topic or '' }}">
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="mt-3 d-flex gap-2 align-items-center">
+        <button class="btn btn-outline-secondary btn-sm" type="button" id="previewLiv24DataBtn">API Data</button>
+        <small class="text-muted">Load organizations, devices, and latest values from source: LIV-24 IAQ.</small>
+      </div>
+      <pre id="previewLiv24DataOutput" class="mt-2 p-3 bg-light border rounded small" style="max-height: 320px; overflow: auto;">Click "API Data" to load source structure preview.</pre>
+
+      <template id="endpointSourceRowTemplate">
+        <div class="card" data-endpoint-source-row>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="mb-0">New Source</h6>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-use-api-source>Use API</button>
+                <button class="btn btn-outline-danger btn-sm" type="button" data-remove-endpoint-source>Remove</button>
+              </div>
+            </div>
+            <div class="row g-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label">Source Name</label>
+                <input class="form-control" type="text" name="endpoint_name" placeholder="Source name">
+              </div>
+              <div class="col-12 col-md-2">
+                <label class="form-label">Format</label>
+                <select class="form-select" name="endpoint_format" data-endpoint-format-select>
+                  <option value="api" selected>API</option>
+                  <option value="mqtt">MQTT</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-6" data-endpoint-api-fields>
+                <label class="form-label">API Base URL</label>
+                <input class="form-control" type="url" name="endpoint_base_url" placeholder="https://your-server.com">
+              </div>
+              <div class="col-12 col-md-6" data-endpoint-api-fields>
+                <label class="form-label">Bearer Token</label>
+                <input class="form-control" type="text" name="endpoint_token" placeholder="optional token">
+              </div>
+              <div class="col-12 col-md-4" data-endpoint-mqtt-fields>
+                <label class="form-label">MQTT Host</label>
+                <input class="form-control" type="text" name="endpoint_mqtt_host">
+              </div>
+              <div class="col-12 col-md-2" data-endpoint-mqtt-fields>
+                <label class="form-label">MQTT Port</label>
+                <input class="form-control" type="number" name="endpoint_mqtt_port" value="1883">
+              </div>
+              <div class="col-12 col-md-3" data-endpoint-mqtt-fields>
+                <label class="form-label">MQTT Username</label>
+                <input class="form-control" type="text" name="endpoint_mqtt_username">
+              </div>
+              <div class="col-12 col-md-3" data-endpoint-mqtt-fields>
+                <label class="form-label">MQTT Password</label>
+                <input class="form-control" type="password" name="endpoint_mqtt_password">
+              </div>
+              <div class="col-12" data-endpoint-mqtt-fields>
+                <label class="form-label">MQTT Topic</label>
+                <input class="form-control" type="text" name="endpoint_mqtt_topic">
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
       {% set top_definition_by_system = settings.modules.top_definition if settings.modules and settings.modules.top_definition is defined else {} %}
       {% set iaq_top_definition = top_definition_by_system.get('iaq', {}) %}
       {% set iaq_top_definition_legend = iaq_top_definition.legend if iaq_top_definition.legend is defined and iaq_top_definition.legend else settings.severity_levels %}
@@ -605,6 +736,17 @@
                 <input class="form-control form-control-sm" id="bulkSensorZone" type="text" placeholder="Zone">
                 <label class="form-label mb-1" for="bulkSensorType">Sensor type</label>
                 <input class="form-control form-control-sm" id="bulkSensorType" type="text" placeholder="Sensor type">
+                <label class="form-label mb-1" for="bulkSourceName">Mapping source</label>
+                <select class="form-select form-select-sm" id="bulkSourceName">
+                  <option value="">Select source</option>
+                  {% for source in source_list %}
+                  <option value="{{ source.name or '' }}">{{ source.name or '' }}</option>
+                  {% endfor %}
+                </select>
+                <label class="form-label mb-1" for="bulkSourceDeviceName">Source device name</label>
+                <input class="form-control form-control-sm" id="bulkSourceDeviceName" list="bulkSourceDeviceNameList" type="text" placeholder="Incoming API device name">
+                <datalist id="bulkSourceDeviceNameList"></datalist>
+                <div class="form-text">Use mapping fields to keep source-device identity in <code>sensordata.db</code>.</div>
                 <div class="d-flex flex-wrap gap-2 mt-2">
                   <button class="btn btn-sm btn-outline-primary" type="button" id="applyBulkZoneBtn">
                     Apply Updates to Selected
@@ -814,6 +956,110 @@
   bindColorToggle('cardHeaderTransparent', 'cardHeaderColor');
   bindColorToggle('cardBodyTransparent', 'cardBodyColor');
   bindColorToggle('pageBackgroundTransparent', 'pageBackgroundColor');
+
+  const endpointSourceList = document.getElementById('endpointSourceList');
+  const endpointSourceRowTemplate = document.getElementById('endpointSourceRowTemplate');
+  const addEndpointSourceBtn = document.getElementById('addEndpointSourceBtn');
+  const previewLiv24DataBtn = document.getElementById('previewLiv24DataBtn');
+  const previewLiv24DataOutput = document.getElementById('previewLiv24DataOutput');
+  const sourceDeviceCatalog = {};
+
+  const updateEndpointSourceVisibility = (row) => {
+    if (!row) {
+      return;
+    }
+    const formatSelect = row.querySelector('[data-endpoint-format-select]');
+    const selectedFormat = formatSelect ? formatSelect.value : 'api';
+    row.querySelectorAll('[data-endpoint-api-fields]').forEach((field) => {
+      field.classList.toggle('d-none', selectedFormat !== 'api');
+    });
+    row.querySelectorAll('[data-endpoint-mqtt-fields]').forEach((field) => {
+      field.classList.toggle('d-none', selectedFormat !== 'mqtt');
+    });
+  };
+
+  const bindEndpointSourceRow = (row) => {
+    if (!row) {
+      return;
+    }
+    const formatSelect = row.querySelector('[data-endpoint-format-select]');
+    const sourceNameInput = row.querySelector('input[name="endpoint_name"]');
+    const useApiBtn = row.querySelector('[data-use-api-source]');
+    const applyFormatState = () => {
+      updateEndpointSourceVisibility(row);
+      if (useApiBtn && formatSelect) {
+        useApiBtn.disabled = formatSelect.value !== 'api';
+      }
+    };
+    if (formatSelect) {
+      formatSelect.addEventListener('change', applyFormatState);
+    }
+    if (useApiBtn) {
+      useApiBtn.addEventListener('click', async () => {
+        const sourceName = (sourceNameInput?.value || '').trim();
+        if (!sourceName) {
+          alert('Please enter source name before using API.');
+          return;
+        }
+        useApiBtn.disabled = true;
+        useApiBtn.textContent = 'Loading...';
+        try {
+          const response = await fetch(`/api/settings/source-devices?source_name=${encodeURIComponent(sourceName)}`);
+          const payload = await response.json();
+          if (!response.ok || payload.error) {
+            throw new Error(payload.error || 'Failed to fetch source devices');
+          }
+          sourceDeviceCatalog[sourceName] = payload.devices || [];
+          if (bulkSourceName) {
+            bulkSourceName.value = sourceName;
+            refreshBulkSourceDeviceOptions();
+          }
+          if (previewLiv24DataOutput) {
+            previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
+          }
+        } catch (error) {
+          alert(`Use API failed: ${error}`);
+        } finally {
+          useApiBtn.disabled = formatSelect && formatSelect.value !== 'api';
+          useApiBtn.textContent = 'Use API';
+        }
+      });
+    }
+    const removeBtn = row.querySelector('[data-remove-endpoint-source]');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        row.remove();
+      });
+    }
+    applyFormatState();
+  };
+
+  if (endpointSourceList) {
+    endpointSourceList.querySelectorAll('[data-endpoint-source-row]').forEach(bindEndpointSourceRow);
+  }
+
+  if (addEndpointSourceBtn && endpointSourceList && endpointSourceRowTemplate) {
+    addEndpointSourceBtn.addEventListener('click', () => {
+      const fragment = endpointSourceRowTemplate.content.cloneNode(true);
+      const row = fragment.querySelector('[data-endpoint-source-row]');
+      endpointSourceList.appendChild(fragment);
+      bindEndpointSourceRow(endpointSourceList.lastElementChild || row);
+    });
+  }
+
+  if (previewLiv24DataBtn && previewLiv24DataOutput) {
+    previewLiv24DataBtn.addEventListener('click', async () => {
+      previewLiv24DataOutput.textContent = 'Loading API data...';
+      try {
+        const selectedSource = encodeURIComponent((bulkSourceName?.value || 'LIV-24 IAQ').trim() || 'LIV-24 IAQ');
+        const response = await fetch(`/api/settings/source-preview?source_name=${selectedSource}`);
+        const payload = await response.json();
+        previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
+      } catch (error) {
+        previewLiv24DataOutput.textContent = `Failed to load data: ${error}`;
+      }
+    });
+  }
 
   const systemPageSelect = document.getElementById('systemPageSelect');
   const systemSections = document.querySelectorAll('[data-system-section]');
@@ -1149,6 +1395,9 @@
     updateDeviceRoute: {{ url_for('update_device_position', device_id='__device__') | tojson }},
     updateDeviceZoneRoute: {{ url_for('update_device_zone', device_id='__device__') | tojson }},
     updateDeviceLabelRoute: {{ url_for('update_device_label', device_id='__device__') | tojson }},
+    updateDeviceSourceMappingRoute: {{ url_for('update_device_source_mapping', device_id='__device__') | tojson }},
+    sourceDevicesRoute: {{ url_for('get_endpoint_source_devices') | tojson }},
+    endpointSources: {{ (endpoint_sources if endpoint_sources is defined else settings.endpoint_sources) | default([]) | tojson }},
     deleteDeviceRoute: {{ url_for('delete_device', device_id='__device__') | tojson }},
     clearFloorDevicesRoute: {{ url_for('delete_floor_devices', floor_id='__floor__') | tojson }},
     clearFloorPlanRoute: {{ url_for('delete_floor_plan', floor_id='__floor__') | tojson }},
@@ -1494,12 +1743,29 @@
   const bulkSensorList = document.getElementById('bulkSensorList');
   const bulkSensorZone = document.getElementById('bulkSensorZone');
   const bulkSensorType = document.getElementById('bulkSensorType');
+  const bulkSourceName = document.getElementById('bulkSourceName');
+  const bulkSourceDeviceName = document.getElementById('bulkSourceDeviceName');
+  const bulkSourceDeviceNameList = document.getElementById('bulkSourceDeviceNameList');
   const applyBulkZoneBtn = document.getElementById('applyBulkZoneBtn');
   const bulkSelectedCount = document.getElementById('bulkSelectedCount');
   const bulkSelectionHint = document.getElementById('bulkSelectionHint');
   const bulkClearSelectionBtn = document.getElementById('bulkClearSelectionBtn');
   const bulkSmartFillSelectBtn = document.getElementById('bulkSmartFillSelectBtn');
   const bulkDeselectAllBtn = document.getElementById('bulkDeselectAllBtn');
+
+  const refreshBulkSourceDeviceOptions = () => {
+    if (!bulkSourceDeviceNameList) {
+      return;
+    }
+    const sourceName = (bulkSourceName?.value || '').trim();
+    const sourceDevices = sourceDeviceCatalog[sourceName] || [];
+    bulkSourceDeviceNameList.innerHTML = '';
+    sourceDevices.forEach((device) => {
+      const option = document.createElement('option');
+      option.value = device.display_name || device.uuid || '';
+      bulkSourceDeviceNameList.appendChild(option);
+    });
+  };
 
   const updateSensorCount = (floorId) => {
     const count = editorData.devices.filter((device) => device.floor_id === floorId).length;
@@ -1556,6 +1822,28 @@
     return segments.length >= 4 ? segments[3] : null;
   };
 
+  const findAutoMappedSourceDeviceName = (device, sourceName) => {
+    if (!device || !sourceName) {
+      return null;
+    }
+    const sourceDevices = sourceDeviceCatalog[sourceName] || [];
+    if (!sourceDevices.length) {
+      return null;
+    }
+    const candidates = [device.label, device.device_id]
+      .filter(Boolean)
+      .map((value) => value.trim().toLowerCase());
+    const match = sourceDevices.find((sourceDevice) => {
+      const sourceDisplay = (sourceDevice.display_name || '').trim().toLowerCase();
+      const sourceUuid = (sourceDevice.uuid || '').trim().toLowerCase();
+      return candidates.includes(sourceDisplay) || candidates.includes(sourceUuid);
+    });
+    if (!match) {
+      return null;
+    }
+    return match.display_name || match.uuid || null;
+  };
+
   const isSensorLabelValid = (labelValue) => {
     const segments = labelValue.split('-').filter((segment) => segment.trim() !== '');
     return segments.length >= 4;
@@ -1581,6 +1869,9 @@
       if (bulkSensorType) {
         bulkSensorType.placeholder = 'Sensor type';
       }
+      if (bulkSourceDeviceName) {
+        bulkSourceDeviceName.placeholder = 'Incoming API device name';
+      }
       return;
     }
     const devices = selectedInputs
@@ -1590,10 +1881,14 @@
     const types = new Set(
       devices.map((device) => getSensorTypeFromLabel(device.label)).filter((type) => type)
     );
+    const sourceDevices = new Set(
+      devices.map((device) => device.source_device_name).filter((value) => value)
+    );
     if (bulkSelectionHint) {
       const zoneSummary = zones.size === 1 ? Array.from(zones)[0] : 'Mixed';
       const typeSummary = types.size === 1 ? Array.from(types)[0] : 'Mixed';
-      bulkSelectionHint.textContent = `Detected zone: ${zoneSummary} · Type: ${typeSummary}`;
+      const sourceSummary = sourceDevices.size === 1 ? Array.from(sourceDevices)[0] : (sourceDevices.size ? 'Mixed' : 'None');
+      bulkSelectionHint.textContent = `Detected zone: ${zoneSummary} · Type: ${typeSummary} · Source device: ${sourceSummary}`;
     }
     if (bulkSensorZone) {
       bulkSensorZone.placeholder = zones.size === 1 ? Array.from(zones)[0] : 'Mixed';
@@ -1606,6 +1901,9 @@
       if (!bulkSensorType.value && types.size === 1) {
         bulkSensorType.value = Array.from(types)[0];
       }
+    }
+    if (bulkSourceDeviceName) {
+      bulkSourceDeviceName.placeholder = sourceDevices.size === 1 ? Array.from(sourceDevices)[0] : (sourceDevices.size ? 'Mixed' : 'Incoming API device name');
     }
   };
 
@@ -1653,7 +1951,10 @@
       input.checked = checked.has(device.device_id);
       label.className = 'form-check-label';
       label.htmlFor = inputId;
-      label.textContent = getDeviceDisplayName(device);
+      const mapping = device.source_name && device.source_device_name
+        ? ` · ${device.source_name}: ${device.source_device_name}`
+        : (device.source_name ? ` · ${device.source_name}` : "");
+      label.textContent = `${getDeviceDisplayName(device)}${mapping}`;
       wrapper.appendChild(input);
       wrapper.appendChild(label);
       bulkSensorList.appendChild(wrapper);
@@ -2019,6 +2320,13 @@
     });
   }
 
+  if (bulkSourceName) {
+    bulkSourceName.addEventListener('change', () => {
+      refreshBulkSourceDeviceOptions();
+    });
+    refreshBulkSourceDeviceOptions();
+  }
+
   if (bulkClearSelectionBtn && bulkSensorList) {
     bulkClearSelectionBtn.addEventListener('click', () => {
       bulkSensorList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
@@ -2069,10 +2377,12 @@
       }
       const zoneValue = (bulkSensorZone.value || '').trim();
       const typeValue = (bulkSensorType?.value || '').trim();
+      const sourceNameValue = (bulkSourceName?.value || '').trim();
+      const sourceDeviceNameValue = (bulkSourceDeviceName?.value || '').trim();
       const selectedInputs = Array.from(
         bulkSensorList.querySelectorAll('input[type="checkbox"]:checked')
       );
-      if (!selectedInputs.length || (!zoneValue && !typeValue)) {
+      if (!selectedInputs.length || (!zoneValue && !typeValue && !sourceNameValue && !sourceDeviceNameValue)) {
         return;
       }
       const results = await Promise.all(
@@ -2123,10 +2433,34 @@
               labelUpdate = null;
             }
           }
-          return { deviceId, ok: response.ok, labelUpdate };
+          let mappingOk = true;
+          let mappedSourceDeviceName = sourceDeviceNameValue || null;
+          if (!mappedSourceDeviceName && sourceNameValue) {
+            mappedSourceDeviceName = findAutoMappedSourceDeviceName(device, sourceNameValue);
+          }
+          if (sourceNameValue || mappedSourceDeviceName) {
+            const mappingResponse = await fetch(
+              editorData.updateDeviceSourceMappingRoute.replace('__device__', deviceId),
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  source_name: sourceNameValue || null,
+                  source_device_name: mappedSourceDeviceName || null,
+                }),
+              }
+            );
+            mappingOk = mappingResponse.ok;
+          }
+          return {
+            deviceId,
+            ok: response.ok && mappingOk,
+            labelUpdate,
+            mappedSourceDeviceName,
+          };
         })
       );
-      results.forEach(({ deviceId, ok, labelUpdate }) => {
+      results.forEach(({ deviceId, ok, labelUpdate, mappedSourceDeviceName }) => {
         if (!ok) {
           return;
         }
@@ -2137,6 +2471,10 @@
           }
           if (labelUpdate !== null) {
             device.label = labelUpdate;
+          }
+          if (sourceNameValue || mappedSourceDeviceName) {
+            device.source_name = sourceNameValue || null;
+            device.source_device_name = mappedSourceDeviceName || null;
           }
         }
         if (labelUpdate !== null) {

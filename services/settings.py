@@ -151,6 +151,21 @@ DEFAULT_SETTINGS = {
     },
     "admin_username": "admin",
     "admin_password": "admin123",
+    "endpoint_sources": [
+        {
+            "name": "LIV-24 IAQ",
+            "format": "api",
+            "base_url": "",
+            "token": "",
+            "mqtt": {
+                "host": "",
+                "port": 1883,
+                "username": "",
+                "password": "",
+                "topic": "",
+            },
+        }
+    ],
 }
 
 
