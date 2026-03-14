@@ -98,6 +98,18 @@ def update_device_zone(device_id, zone):
         )
 
 
+def update_device_source_mapping(device_id, source_name=None, source_device_name=None):
+    with connect(SENSOR_DB) as conn:
+        conn.execute(
+            """
+            UPDATE devices
+            SET source_name = ?, source_device_name = ?
+            WHERE device_id = ?
+            """,
+            (source_name, source_device_name, device_id),
+        )
+
+
 def update_device_label(device_id, label):
     with connect(SENSOR_DB) as conn:
         conn.execute(
@@ -136,9 +148,11 @@ def upsert_device_layouts(layouts):
                     location_y,
                     sensor_icon,
                     last_seen,
-                    signal_quality
+                    signal_quality,
+                    source_name,
+                    source_device_name
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(device_id)
                 DO UPDATE SET
                     floor_id = excluded.floor_id,
@@ -156,6 +170,8 @@ def upsert_device_layouts(layouts):
                     None,
                     now,
                     100,
+                    None,
+                    None,
                 ),
             )
 
@@ -389,6 +405,14 @@ def ingest_milesight_payload(payload, *, conn=None):
         conn = connect(SENSOR_DB)
     device_rows = conn.execute("SELECT * FROM devices").fetchall()
     known_devices = {row["device_id"]: row for row in device_rows}
+    mapped_source_devices = {}
+    source_name_counts = {}
+    for row in device_rows:
+        source_name = (row["source_name"] or "").strip()
+        source_device_name = (row["source_device_name"] or "").strip()
+        if source_device_name:
+            mapped_source_devices[(source_name, source_device_name)] = row
+            source_name_counts[source_device_name] = source_name_counts.get(source_device_name, 0) + 1
     allowed_floors = set(settings.get("floor_plans", {}).keys())
 
     try:
@@ -403,11 +427,24 @@ def ingest_milesight_payload(payload, *, conn=None):
             if not device_id:
                 device_id = reading.get("device_eui") or reading.get("dev_eui") or ""
                 device_id = str(device_id).strip()
+            source_name = (reading.get("source_name") or reading.get("source") or "").strip()
             if not device_id:
                 continue
             device_row = known_devices.get(device_id)
             if not device_row:
+                device_row = mapped_source_devices.get((source_name, device_id))
+                if not device_row and source_name_counts.get(device_id) == 1:
+                    device_row = next(
+                        (
+                            row
+                            for (mapped_source_name, mapped_device_name), row in mapped_source_devices.items()
+                            if mapped_device_name == device_id
+                        ),
+                        None,
+                    )
+            if not device_row:
                 continue
+            device_id = device_row["device_id"]
             stored_floor_id = (device_row["floor_id"] or "").strip()
             if not stored_floor_id:
                 continue
@@ -562,9 +599,11 @@ def create_device(
                 location_y,
                 sensor_icon,
                 last_seen,
-                signal_quality
+                signal_quality,
+                source_name,
+                source_device_name
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 device_id,
@@ -577,6 +616,8 @@ def create_device(
                 sensor_icon_value,
                 now,
                 100,
+                None,
+                None,
             ),
         )
     return {
@@ -590,6 +631,8 @@ def create_device(
         "sensor_icon": sensor_icon_value,
         "last_seen": now,
         "signal_quality": 100,
+        "source_name": None,
+        "source_device_name": None,
     }
 
 

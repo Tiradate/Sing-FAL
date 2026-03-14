@@ -30,7 +30,9 @@ def init_sensor_db():
                 location_y REAL,
                 sensor_icon TEXT,
                 last_seen DATETIME,
-                signal_quality INTEGER
+                signal_quality INTEGER,
+                source_name TEXT,
+                source_device_name TEXT
             );
             CREATE TABLE IF NOT EXISTS sensor_readings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,6 +64,10 @@ def init_sensor_db():
             conn.execute("ALTER TABLE devices ADD COLUMN label TEXT")
         if "sensor_icon" not in device_columns:
             conn.execute("ALTER TABLE devices ADD COLUMN sensor_icon TEXT")
+        if "source_name" not in device_columns:
+            conn.execute("ALTER TABLE devices ADD COLUMN source_name TEXT")
+        if "source_device_name" not in device_columns:
+            conn.execute("ALTER TABLE devices ADD COLUMN source_device_name TEXT")
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(sensor_readings)").fetchall()}
         if "topic" not in columns:
             conn.execute("ALTER TABLE sensor_readings ADD COLUMN topic TEXT DEFAULT 'Live'")
