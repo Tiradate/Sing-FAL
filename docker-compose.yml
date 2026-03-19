@@ -1,0 +1,18 @@
+services:
+  icon-milesight:
+    build: .
+    container_name: icon-milesight
+    ports:
+      - "${APP_PORT:-5000}:5000"
+    environment:
+      ICON_SKIP_RUNTIME_BOOTSTRAP: "1"
+      ICON_DATA_DIR: /data
+      ICON_SECRET_KEY: "${ICON_SECRET_KEY:-change-this-secret}"
+      ICON_DEBUG: "${ICON_DEBUG:-0}"
+    volumes:
+      - icon_data:/data
+      - ./static/uploads:/app/static/uploads
+    restart: unless-stopped
+
+volumes:
+  icon_data:

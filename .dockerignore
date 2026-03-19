@@ -1,0 +1,13 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.db
+.env
+.runtime_env_state.json
+sensor_export.csv
+settings_export.csv
+settings_assets_export.zip
+action_history_export.csv

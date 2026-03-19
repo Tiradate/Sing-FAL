@@ -21,7 +21,7 @@
     <div class="container-fluid py-2 px-3">
       <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2">
-          <span class="badge text-bg-success">Signal</span>
+          <span class="badge text-bg-success">{{ 'สัญญาณ' if current_lang == 'th' else 'Signal' }}</span>
           <strong>{{ avg_signal }}%</strong>
         </div>
         <div class="text-center flex-grow-1">
@@ -30,10 +30,12 @@
           {% endif %}
         </div>
         <div class="d-flex align-items-center gap-3">
+          {% if has_page_access('home') %}
           <a class="header-icon" href="{% if current_system is defined %}{{ url_for('index', system=current_system) }}{% else %}{{ url_for('index') }}{% endif %}" aria-label="{{ t('home') }}" title="{{ t('home') }}">
-            <i class="bi bi-house"></i>
+            <i class="bi bi-house-door"></i>
           </a>
-          {% if settings.show_icons.bell %}
+          {% endif %}
+          {% if settings.show_icons.bell and has_page_access('alarms') %}
           <a class="header-icon" href="{{ url_for('alarms', system=current_system) }}" title="{{ t('notifications') }}">
             <i class="bi bi-bell"></i>
             <span class="badge rounded-pill bg-danger">{{ alarm_count }}</span>
@@ -44,7 +46,7 @@
             <i class="bi bi-download"></i>
           </a>
           {% endif %}
-          {% if is_admin and settings.show_icons.settings %}
+          {% if has_page_access('settings') and settings.show_icons.settings %}
           <a class="header-icon" href="{{ url_for('settings') }}" title="{{ t('settings') }}">
             <i class="bi bi-gear"></i>
           </a>
@@ -77,6 +79,17 @@
   {% endblock %}
 
   <main class="container-fluid py-3 px-3">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-3">
+          {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }}" role="alert">
+            {{ message }}
+          </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
     {% block content %}{% endblock %}
   </main>
 

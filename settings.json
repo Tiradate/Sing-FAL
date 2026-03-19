@@ -29,23 +29,36 @@
   },
   "system_navigation": {
     "iaq": true,
-    "energy": true,
-    "waste": true,
-    "fire": true
+    "energy": false,
+    "waste": false,
+    "fire": false
   },
-  "fire_severity_mapping": [],
+  "fire_severity_mapping": [
+    {
+      "label": "",
+      "color": "#dc3545",
+      "text_color": "#ffffff",
+      "icon": "",
+      "smoke": "",
+      "heat": "",
+      "flow_switch": "",
+      "supervisory_valve": "",
+      "manual": "",
+      "gas": ""
+    }
+  ],
   "severity_levels": [
     {
       "label": "Good",
       "color": "#28a745",
       "icon": "bi-emoji-smile",
       "thresholds": {
-        "temperature": 24,
-        "humidity": 60,
-        "pm25": 15,
-        "pm10": 45,
+        "temperature": 24.0,
+        "humidity": 60.0,
+        "pm25": 15.0,
+        "pm10": 45.0,
         "tvoc": 0.5,
-        "co2": 1000
+        "co2": 1000.0
       }
     },
     {
@@ -53,12 +66,12 @@
       "color": "#fd7e14",
       "icon": "bi-exclamation-circle",
       "thresholds": {
-        "temperature": 27,
-        "humidity": 70,
-        "pm25": 35,
-        "pm10": 75,
+        "temperature": 27.0,
+        "humidity": 70.0,
+        "pm25": 35.0,
+        "pm10": 75.0,
         "tvoc": 1.0,
-        "co2": 1500
+        "co2": 1500.0
       }
     },
     {
@@ -66,33 +79,151 @@
       "color": "#dc3545",
       "icon": "bi-exclamation-triangle",
       "thresholds": {
-        "temperature": 30,
-        "humidity": 80,
-        "pm25": 55,
-        "pm10": 150,
+        "temperature": 30.0,
+        "humidity": 80.0,
+        "pm25": 55.0,
+        "pm10": 150.0,
         "tvoc": 2.0,
-        "co2": 2000
+        "co2": 2000.0
       }
     }
   ],
   "critical_levels": [
+    "Moderate",
     "Unhealthy"
   ],
-  "floor_plans": {},
+  "floor_plans": {
+    "GF": "static/uploads/B01.png",
+    "MF": "static/uploads/B01.png",
+    "1F": "static/uploads/B01.png",
+    "2F": "static/uploads/B01.png",
+    "3F": "static/uploads/A01.png",
+    "4F": "static/uploads/A01.png",
+    "5F": "static/uploads/A01.png",
+    "6F": "static/uploads/A01.png",
+    "7F": "static/uploads/A01.png",
+    "8F": "static/uploads/A01.png"
+  },
   "sensor_icon": "static/uploads/sensor_icon.svg",
-  "sensor_icon_size": 28,
-  "floor_logo_icon": "static/uploads/logo_icon.svg",
-  "logo_icon_size": 32,
-  "project_logo": "",
-  "floor_plan_logos": {},
-  "card_header_color": "#ffffff",
-  "card_body_color": "#ffffff",
-  "page_background_color": "#f8f9fa",
+  "sensor_icon_size": 18,
+  "floor_logo_icon": "static/uploads/logo_true_hall.png",
+  "logo_icon_size": 18,
+  "project_logo": "static/uploads/ICON_SIAM_logo.png",
+  "floor_plan_logos": {
+    "GF": [
+      {
+        "logo_id": "04ea2c5a73c649949ccc801ae057dae3",
+        "floor_id": "GF",
+        "location_x": 42.1988,
+        "location_y": 18.1686,
+        "logo_icon": "static/uploads/logo_7.png"
+      },
+      {
+        "logo_id": "34f139c408014bb2a733a443b0bcc92c",
+        "floor_id": "GF",
+        "location_x": 54.4697,
+        "location_y": 22.804,
+        "logo_icon": "static/uploads/logo_SIAM_Takashimaya.png"
+      },
+      {
+        "logo_id": "b59f8a7e0d9e42f69b49dabbd17f708f",
+        "floor_id": "GF",
+        "location_x": 38.6452,
+        "location_y": 39.7676,
+        "logo_icon": "static/uploads/logo_SOOK_SIAM.png"
+      }
+    ],
+    "MF": [
+      {
+        "logo_id": "b8fa3c983c1e41b1b499a4b528205fe3",
+        "floor_id": "MF",
+        "location_x": 39.9223,
+        "location_y": 77.5411,
+        "logo_icon": "static/uploads/logo_ICONLUXE.png"
+      },
+      {
+        "logo_id": "2981a4d84c4f49c793acb65dc53491f7",
+        "floor_id": "MF",
+        "location_x": 53.859,
+        "location_y": 21.5219,
+        "logo_icon": "static/uploads/logo_SIAM_Takashimaya.png"
+      }
+    ],
+    "1F": [
+      {
+        "logo_id": "8ee9f4985cba4905b2aef394790be461",
+        "floor_id": "1F",
+        "location_x": 52.6374,
+        "location_y": 20.3631,
+        "logo_icon": "static/uploads/logo_SIAM_Takashimaya.png"
+      }
+    ],
+    "2F": [
+      {
+        "logo_id": "2b8ef1aba5494bf699a0d12cf2e2f07e",
+        "floor_id": "2F",
+        "location_x": 52.804,
+        "location_y": 19.6727,
+        "logo_icon": "static/uploads/logo_SIAM_Takashimaya.png"
+      },
+      {
+        "logo_id": "103d503eb2524ee28f7b5d5a76b1dbc3",
+        "floor_id": "2F",
+        "location_x": 33.3148,
+        "location_y": 22.1383,
+        "logo_icon": "static/uploads/logo_UNICLO.png"
+      },
+      {
+        "logo_id": "795beb0e87d54a24a14a7d4da481e321",
+        "floor_id": "2F",
+        "location_x": 39.256,
+        "location_y": 74.607,
+        "logo_icon": "static/uploads/logo_apple.png"
+      }
+    ],
+    "3F": [
+      {
+        "logo_id": "d14e436fb9fe4184897aac1561afbba2",
+        "floor_id": "3F",
+        "location_x": 40.1444,
+        "location_y": 27.5381,
+        "logo_icon": "static/uploads/logo_loft.png"
+      },
+      {
+        "logo_id": "121c9710548941ffba37f73f4852ab6f",
+        "floor_id": "3F",
+        "location_x": 35.0361,
+        "location_y": 74.4838,
+        "logo_icon": "static/uploads/logo_true.png"
+      }
+    ],
+    "4F": [
+      {
+        "logo_id": "13496c95541a45c1a1dfa9c8c6f3ff49",
+        "floor_id": "4F",
+        "location_x": 42.3653,
+        "location_y": 59.1968,
+        "logo_icon": "static/uploads/logo_iconcraft.png"
+      }
+    ],
+    "7F": [
+      {
+        "logo_id": "3c97f5d40ca9469196fcbdaacf4159a7",
+        "floor_id": "7F",
+        "location_x": 40.1999,
+        "location_y": 43.3181,
+        "logo_icon": "static/uploads/logo_true_hall.png"
+      }
+    ]
+  },
+  "card_header_color": "#f9fbff",
+  "card_body_color": "transparent",
+  "page_background_color": "#e8f1ff",
   "modules": {
     "top_definition": {
       "iaq": {
         "enabled": true,
-        "title": "Top Definition",
+        "title": "Color Definition",
         "header": "Average Indoor/Outdoor IAQ",
         "columns": {
           "indoor": "Indoor",
@@ -231,5 +362,315 @@
     }
   },
   "admin_username": "admin",
-  "admin_password": "admin123"
+  "admin_password": "admin123",
+  "endpoint_sources": [
+    {
+      "name": "LIV-24 IAQ",
+      "format": "api",
+      "base_url": "http://100.70.55.161:8000",
+      "token": "ext_39057456243c0c35_Jx6ovO6nyW88OsW8ROJyfLAXTwajQlzO",
+      "api": {
+        "template_id": "",
+        "request_headers": "{}",
+        "auth_type": "bearer_token",
+        "token_url": "",
+        "token_method": "POST",
+        "token_field": "access_token",
+        "auth_username": "",
+        "auth_password": "",
+        "auth_headers": "{}",
+        "auth_body": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+        "api_key_name": "",
+        "api_key_value": "",
+        "custom_auth_headers": "{}",
+        "requests": [
+          {
+            "id": "organizations",
+            "role": "organizations",
+            "name": "Organizations",
+            "method": "GET",
+            "path": "/api/external/v1/organizations",
+            "params": [],
+            "body": "",
+            "use_auth": true,
+            "max_round_times": 1,
+            "max_interval_minutes": 1,
+            "interval_unlimited": false,
+            "run_every_times": 0,
+            "run_interval_minutes": 0
+          },
+          {
+            "id": "devices",
+            "role": "devices",
+            "name": "Devices",
+            "method": "GET",
+            "path": "/api/external/v1/devices",
+            "params": [
+              {
+                "key": "org_uuid",
+                "values": [
+                  "019ce2a0-3dd8-7c92-86a4-c3558f56d840"
+                ],
+                "value": "019ce2a0-3dd8-7c92-86a4-c3558f56d840"
+              }
+            ],
+            "body": "",
+            "use_auth": true,
+            "max_round_times": 1,
+            "max_interval_minutes": 1,
+            "interval_unlimited": false,
+            "run_every_times": 0,
+            "run_interval_minutes": 0
+          },
+          {
+            "id": "latest_values",
+            "role": "latest_values",
+            "name": "Latest Values",
+            "method": "GET",
+            "path": "/api/external/v1/latest-values",
+            "params": [
+              {
+                "key": "device_uuid",
+                "values": [
+                  "{{device_uuids}}"
+                ],
+                "value": "{{device_uuids}}"
+              }
+            ],
+            "body": "",
+            "use_auth": true,
+            "max_round_times": 0,
+            "max_interval_minutes": 0,
+            "interval_unlimited": true,
+            "run_every_times": 5,
+            "run_interval_minutes": 5
+          }
+        ]
+      },
+      "mqtt": {
+        "host": "",
+        "port": 1883,
+        "username": "",
+        "password": "",
+        "topic": ""
+      }
+    }
+  ],
+  "floor_names": {},
+  "endpoint_token_store": {
+    "100.70.55.161:8000": {
+      "token": "ext_39057456243c0c35_Jx6ovO6nyW88OsW8ROJyfLAXTwajQlzO",
+      "updated_at": "2026-03-17T19:59:27.370548+00:00",
+      "source_names": [
+        "LIV-24 IAQ"
+      ]
+    }
+  },
+  "endpoint_api_templates": [],
+  "project_timezone": "Asia/Bangkok",
+  "project_time_format": "24h",
+  "source_metric_fields": [
+    {
+      "key": "atmospheric_pressure",
+      "source_field": "atmospheric_pressure",
+      "label": "Atmospheric Pressure",
+      "channel": "telemetry",
+      "unit": "hPa",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "battery",
+      "source_field": "battery",
+      "label": "Battery",
+      "channel": "telemetry",
+      "unit": "%",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "co2",
+      "source_field": "co2",
+      "label": "CO\u2082",
+      "channel": "telemetry",
+      "unit": "ppm",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": true,
+      "save_to_db": true,
+      "enable_severity": true,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "humidity",
+      "source_field": "humidity",
+      "label": "Humidity",
+      "channel": "telemetry",
+      "unit": "%RH",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": true,
+      "save_to_db": true,
+      "enable_severity": true,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "illuminance",
+      "source_field": "illuminance",
+      "label": "Illuminance",
+      "channel": "telemetry",
+      "unit": "lux",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "pir",
+      "source_field": "pir",
+      "label": "Pir",
+      "channel": "status",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "pm10",
+      "source_field": "pm10",
+      "label": "PM10",
+      "channel": "telemetry",
+      "unit": "\u00b5g/m\u00b3",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": true,
+      "save_to_db": true,
+      "enable_severity": true,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "pm25",
+      "source_field": "pm2_5",
+      "label": "PM2.5",
+      "channel": "telemetry",
+      "unit": "\u00b5g/m\u00b3",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": true,
+      "save_to_db": true,
+      "enable_severity": true,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "rssi",
+      "source_field": "rssi",
+      "label": "Rssi",
+      "channel": "telemetry",
+      "unit": "dBm",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "snr",
+      "source_field": "snr",
+      "label": "Snr",
+      "channel": "telemetry",
+      "unit": "dB",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "_status",
+      "source_field": "_status",
+      "label": "Status",
+      "channel": "status",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "temperature",
+      "source_field": "temperature",
+      "label": "Temperature",
+      "channel": "telemetry",
+      "unit": "\u00b0C",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": true,
+      "save_to_db": true,
+      "enable_severity": true,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    },
+    {
+      "key": "tvoc",
+      "source_field": "tvoc",
+      "label": "TVOC",
+      "channel": "telemetry",
+      "unit": "mg/m\u00b3",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": true,
+      "save_to_db": true,
+      "enable_severity": true,
+      "sources": [
+        "LIV-24 IAQ"
+      ]
+    }
+  ],
+  "role_permissions": {
+    "admin": {
+      "home": true,
+      "alarms": true,
+      "map": true,
+      "settings": true
+    },
+    "manager": {
+      "home": true,
+      "alarms": true,
+      "map": true,
+      "settings": false
+    },
+    "user": {
+      "home": false,
+      "alarms": false,
+      "map": true,
+      "settings": false
+    }
+  }
 }

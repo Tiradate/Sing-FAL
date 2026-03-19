@@ -6,7 +6,23 @@
     <h5 class="mb-0">Settings</h5>
   </div>
   <div class="card-body settings-card-body">
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" id="settingsForm">
+      <input type="hidden" name="settings_section" id="settingsSectionInput" value="{{ active_settings_tab or 'project' }}">
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        <button class="btn btn-outline-dark" type="button" data-settings-tab="project">
+          <i class="bi bi-building me-1"></i>Project
+        </button>
+        <button class="btn btn-outline-dark" type="button" data-settings-tab="source">
+          <i class="bi bi-hdd-network me-1"></i>Source
+        </button>
+        <button class="btn btn-outline-dark" type="button" data-settings-tab="design">
+          <i class="bi bi-palette me-1"></i>Design
+        </button>
+        <button class="btn btn-outline-dark" type="button" data-settings-tab="user">
+          <i class="bi bi-people me-1"></i>User Manage
+        </button>
+      </div>
+      <div data-settings-tab-panel="project"{% if (active_settings_tab or 'project') != 'project' %} class="d-none"{% endif %}>
       <div class="row g-3">
         <div class="col-12 col-md-6">
           <label class="form-label">Project Name</label>
@@ -15,6 +31,22 @@
         <div class="col-12 col-md-6">
           <label class="form-label">Location Label</label>
           <input class="form-control" type="text" name="location_label" value="{{ settings.location_label }}">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Project Time Zone</label>
+          <select class="form-select" name="project_timezone">
+            {% for timezone_value, timezone_label in project_timezone_options %}
+            <option value="{{ timezone_value }}" {% if settings.project_timezone == timezone_value %}selected{% endif %}>{{ timezone_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Time Format</label>
+          <select class="form-select" name="project_time_format">
+            {% for format_value, format_label in project_time_format_options %}
+            <option value="{{ format_value }}" {% if settings.project_time_format == format_value %}selected{% endif %}>{{ format_label }}</option>
+            {% endfor %}
+          </select>
         </div>
         <div class="col-12 col-md-6">
           <label class="form-label">Floor Auto-Rotate Interval (seconds)</label>
@@ -147,10 +179,13 @@
           </div>
         </div>
       </div>
+      <div class="mt-4 d-flex justify-content-end">
+        <button class="btn btn-primary" type="submit" data-save-settings-section="project">Save Project</button>
+      </div>
+      </div>
 
-
+      <div data-settings-tab-panel="source"{% if (active_settings_tab or 'project') != 'source' %} class="d-none"{% endif %}>
       <hr class="my-4">
-
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
           <h6 class="mb-0">API / MQTT Endpoint Settings</h6>
@@ -161,77 +196,43 @@
 
       <div id="endpointSourceList" class="vstack gap-3">
         {% set source_list = endpoint_sources if endpoint_sources is defined and endpoint_sources else settings.endpoint_sources %}
-        {% for source in source_list %}
-        {% set mqtt = source.mqtt if source.mqtt is defined and source.mqtt else {} %}
-        <div class="card" data-endpoint-source-row>
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h6 class="mb-0">Source {{ loop.index }}</h6>
-              <div class="d-flex gap-2">
-                <button class="btn btn-outline-secondary btn-sm" type="button" data-use-api-source {% if (source.format or "api") != "api" %}disabled{% endif %}>Use API</button>
-                <button class="btn btn-outline-danger btn-sm" type="button" data-remove-endpoint-source {% if loop.first %}disabled{% endif %}>Remove</button>
-              </div>
-            </div>
-            <div class="row g-3">
-              <div class="col-12 col-md-4">
-                <label class="form-label">Source Name</label>
-                <input class="form-control" type="text" name="endpoint_name" value="{{ source.name or '' }}" placeholder="LIV-24 IAQ">
-              </div>
-              <div class="col-12 col-md-2">
-                <label class="form-label">Format</label>
-                <select class="form-select" name="endpoint_format" data-endpoint-format-select>
-                  <option value="api" {% if (source.format or 'api') == 'api' %}selected{% endif %}>API</option>
-                  <option value="mqtt" {% if source.format == 'mqtt' %}selected{% endif %}>MQTT</option>
-                </select>
-              </div>
-              <div class="col-12 col-md-6" data-endpoint-api-fields>
-                <label class="form-label">API Base URL</label>
-                <input class="form-control" type="url" name="endpoint_base_url" value="{{ source.base_url or '' }}" placeholder="https://your-server.com">
-              </div>
-              <div class="col-12 col-md-6" data-endpoint-api-fields>
-                <label class="form-label">Bearer Token</label>
-                <input class="form-control" type="text" name="endpoint_token" value="{{ source.token or '' }}" placeholder="optional token">
-              </div>
-              <div class="col-12 col-md-4" data-endpoint-mqtt-fields>
-                <label class="form-label">MQTT Host</label>
-                <input class="form-control" type="text" name="endpoint_mqtt_host" value="{{ mqtt.host or '' }}">
-              </div>
-              <div class="col-12 col-md-2" data-endpoint-mqtt-fields>
-                <label class="form-label">MQTT Port</label>
-                <input class="form-control" type="number" name="endpoint_mqtt_port" value="{{ mqtt.port or 1883 }}">
-              </div>
-              <div class="col-12 col-md-3" data-endpoint-mqtt-fields>
-                <label class="form-label">MQTT Username</label>
-                <input class="form-control" type="text" name="endpoint_mqtt_username" value="{{ mqtt.username or '' }}">
-              </div>
-              <div class="col-12 col-md-3" data-endpoint-mqtt-fields>
-                <label class="form-label">MQTT Password</label>
-                <input class="form-control" type="password" name="endpoint_mqtt_password" value="{{ mqtt.password or '' }}">
-              </div>
-              <div class="col-12" data-endpoint-mqtt-fields>
-                <label class="form-label">MQTT Topic</label>
-                <input class="form-control" type="text" name="endpoint_mqtt_topic" value="{{ mqtt.topic or '' }}">
-              </div>
-            </div>
-          </div>
-        </div>
-        {% endfor %}
+        {% set api_templates = settings.endpoint_api_templates if settings.endpoint_api_templates is defined else [] %}
       </div>
+      <input type="hidden" name="endpoint_sources_json" id="endpointSourcesJson">
 
       <div class="mt-3 d-flex gap-2 align-items-center">
-        <button class="btn btn-outline-secondary btn-sm" type="button" id="previewLiv24DataBtn">API Data</button>
-        <small class="text-muted">Load organizations, devices, and latest values from source: LIV-24 IAQ.</small>
+        <button class="btn btn-outline-secondary btn-sm" type="button" id="previewLiv24DataBtn">Source Data</button>
+        <small class="text-muted">Load organizations, devices, and latest values from the selected source.</small>
       </div>
-      <pre id="previewLiv24DataOutput" class="mt-2 p-3 bg-light border rounded small" style="max-height: 320px; overflow: auto;">Click "API Data" to load source structure preview.</pre>
+      <div class="row g-2 align-items-end mt-2">
+        <div class="col-12 col-md-3">
+          <label class="form-label form-label-sm" for="sourceDataExportStartDate">Start Date</label>
+          <input class="form-control form-control-sm" type="date" id="sourceDataExportStartDate">
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label form-label-sm" for="sourceDataExportEndDate">End Date</label>
+          <input class="form-control form-control-sm" type="date" id="sourceDataExportEndDate">
+        </div>
+        <div class="col-12 col-md-3">
+          <button class="btn btn-outline-primary btn-sm w-100" type="button" id="downloadSourceDataBtn">Download Source Data CSV</button>
+        </div>
+      </div>
+      <pre id="previewLiv24DataOutput" class="mt-2 p-3 bg-light border rounded small" style="max-height: 320px; overflow: auto;">Click "Use Source" or "Source Data" to load a source preview.</pre>
+      <div class="mt-4 d-flex justify-content-end">
+        <button class="btn btn-primary" type="submit" data-save-settings-section="source">Save Source</button>
+      </div>
 
       <template id="endpointSourceRowTemplate">
         <div class="card" data-endpoint-source-row>
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <h6 class="mb-0">New Source</h6>
-              <div class="d-flex gap-2">
-                <button class="btn btn-outline-secondary btn-sm" type="button" data-use-api-source>Use API</button>
-                <button class="btn btn-outline-danger btn-sm" type="button" data-remove-endpoint-source>Remove</button>
+              <h6 class="mb-0" data-endpoint-source-title>New Source</h6>
+              <div class="d-flex flex-column align-items-end gap-1">
+                <div class="d-flex gap-2">
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-use-source>Use Source</button>
+                  <button class="btn btn-outline-danger btn-sm" type="button" data-remove-endpoint-source>Remove</button>
+                </div>
+                <small class="text-muted text-end" data-source-auto-refresh-status></small>
               </div>
             </div>
             <div class="row g-3">
@@ -248,11 +249,108 @@
               </div>
               <div class="col-12 col-md-6" data-endpoint-api-fields>
                 <label class="form-label">API Base URL</label>
-                <input class="form-control" type="url" name="endpoint_base_url" placeholder="https://your-server.com">
+                <input class="form-control" type="url" name="endpoint_base_url" placeholder="https://your-server.com" data-endpoint-base-url-input>
               </div>
-              <div class="col-12 col-md-6" data-endpoint-api-fields>
-                <label class="form-label">Bearer Token</label>
-                <input class="form-control" type="text" name="endpoint_token" placeholder="optional token">
+              <div class="col-12" data-endpoint-api-fields>
+                <div class="border rounded p-3 bg-light-subtle">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                      <label class="form-label">Imported API Template</label>
+                      <select class="form-select" name="endpoint_api_template_id" data-endpoint-api-template-select>
+                        <option value="">Manual</option>
+                        {% for template in api_templates %}
+                        <option value="{{ template.id }}">{{ template.name }}</option>
+                        {% endfor %}
+                      </select>
+                      <small class="text-muted">Choose a Postman collection template to prefill auth and request paths.</small>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label">Auth Type</label>
+                      <select class="form-select" name="endpoint_api_auth_type" data-endpoint-auth-type-select>
+                        <option value="none">No Auth</option>
+                        <option value="bearer_token">Bearer Token</option>
+                        <option value="bearer_login">Bearer Login</option>
+                        <option value="basic">Basic Auth</option>
+                        <option value="api_key_header">API Key Header</option>
+                        <option value="api_key_query">API Key Query</option>
+                        <option value="custom_headers">Custom Headers</option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-4" data-endpoint-auth-fields="bearer_token,bearer_login">
+                      <label class="form-label">Bearer Token</label>
+                      <input class="form-control" type="text" name="endpoint_token" placeholder="optional token" data-endpoint-token-input>
+                    </div>
+                    <div class="col-12 col-md-8">
+                      <label class="form-label">Common Request Headers</label>
+                      <textarea class="form-control" name="endpoint_api_request_headers" rows="4" placeholder='{"X-Tenant-Id": "value"}'>{}</textarea>
+                    </div>
+                    <div class="col-12" data-endpoint-auth-fields="none">
+                      <small class="text-muted">Requests for this source will be sent without auth.</small>
+                    </div>
+                    <div class="col-12" data-endpoint-auth-fields="bearer_token,bearer_login">
+                      <small class="text-muted">Sources that share the same API host/IP will reuse one saved bearer token automatically.</small>
+                    </div>
+                    <div class="col-12 col-md-6" data-endpoint-auth-fields="basic,bearer_login">
+                      <label class="form-label">Auth Username</label>
+                      <input class="form-control" type="text" name="endpoint_api_auth_username" placeholder="username">
+                    </div>
+                    <div class="col-12 col-md-6" data-endpoint-auth-fields="basic,bearer_login">
+                      <label class="form-label">Auth Password</label>
+                      <input class="form-control" type="password" name="endpoint_api_auth_password" placeholder="password">
+                    </div>
+                    <div class="col-12 col-md-4" data-endpoint-auth-fields="bearer_login">
+                      <label class="form-label">Token URL</label>
+                      <input class="form-control" type="text" name="endpoint_api_token_url" placeholder="/api/login" data-endpoint-token-url-input>
+                    </div>
+                    <div class="col-12 col-md-4" data-endpoint-auth-fields="bearer_login">
+                      <label class="form-label">Token Method</label>
+                      <select class="form-select" name="endpoint_api_token_method">
+                        <option value="POST" selected>POST</option>
+                        <option value="GET">GET</option>
+                        <option value="PUT">PUT</option>
+                        <option value="PATCH">PATCH</option>
+                        <option value="DELETE">DELETE</option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-4" data-endpoint-auth-fields="bearer_login">
+                      <label class="form-label">Token Field</label>
+                      <input class="form-control" type="text" name="endpoint_api_token_field" value="access_token" placeholder="access_token">
+                    </div>
+                    <div class="col-12 col-md-6" data-endpoint-auth-fields="bearer_login">
+                      <label class="form-label">Auth Headers</label>
+                      <textarea class="form-control" name="endpoint_api_auth_headers" rows="4" placeholder='{"Content-Type": "application/json"}'>{}</textarea>
+                    </div>
+                    <div class="col-12 col-md-6" data-endpoint-auth-fields="bearer_login">
+                      <label class="form-label">Auth Body</label>
+                      <textarea class="form-control" name="endpoint_api_auth_body" rows="4" placeholder='{% raw %}{"username": "{{username}}", "password": "{{password}}"}{% endraw %}'></textarea>
+                    </div>
+                    <div class="col-12 col-md-6" data-endpoint-auth-fields="api_key_header,api_key_query">
+                      <label class="form-label">API Key Name</label>
+                      <input class="form-control" type="text" name="endpoint_api_key_name" placeholder="X-API-Key">
+                    </div>
+                    <div class="col-12 col-md-6" data-endpoint-auth-fields="api_key_header,api_key_query">
+                      <label class="form-label">API Key Value</label>
+                      <input class="form-control" type="text" name="endpoint_api_key_value" placeholder="API key">
+                    </div>
+                    <div class="col-12" data-endpoint-auth-fields="custom_headers">
+                      <label class="form-label">Custom Auth Headers</label>
+                      <textarea class="form-control" name="endpoint_api_custom_auth_headers" rows="4" placeholder='{"Authorization": "Custom value"}'>{}</textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12" data-endpoint-api-fields>
+                <div class="border rounded p-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      <div class="fw-semibold">API Request Flow</div>
+                      <small class="text-muted">Use one row per path. Roles used by preview are Organizations, Devices, and Latest Values.</small>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" type="button" data-add-api-request>+ Add Path</button>
+                  </div>
+                  <div class="small text-muted mb-3">Template variables: <code>{% raw %}{{organization_uuid}}{% endraw %}</code>, <code>{% raw %}{{device_uuid}}{% endraw %}</code>, <code>{% raw %}{{device_uuids}}{% endraw %}</code>, <code>{% raw %}{{organization.uuid}}{% endraw %}</code>, <code>{% raw %}{{device.uuid}}{% endraw %}</code>.</div>
+                  <div class="vstack gap-3" data-endpoint-api-request-list></div>
+                </div>
               </div>
               <div class="col-12 col-md-4" data-endpoint-mqtt-fields>
                 <label class="form-label">MQTT Host</label>
@@ -279,6 +377,135 @@
         </div>
       </template>
 
+      <template id="endpointApiRequestRowTemplate">
+        <div class="border rounded-3 p-3 bg-body-tertiary" data-endpoint-api-request-row>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="fw-semibold" data-endpoint-request-title>Request</div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-dark btn-sm" type="button" data-toggle-api-history>History</button>
+              <button class="btn btn-outline-secondary btn-sm" type="button" data-test-api-request>Test Request</button>
+              <button class="btn btn-outline-danger btn-sm" type="button" data-remove-api-request>Remove Path</button>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-12 col-md-3">
+              <label class="form-label">Use For</label>
+              <select class="form-select" name="endpoint_api_request_role" data-endpoint-request-role-select>
+                <option value="organizations">Organizations</option>
+                <option value="devices">Devices</option>
+                <option value="latest_values">Latest Values</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label">Request Name</label>
+              <input class="form-control" type="text" name="endpoint_api_request_name" placeholder="Devices request">
+            </div>
+            <div class="col-12 col-md-2">
+              <label class="form-label">Method</label>
+              <select class="form-select" name="endpoint_api_request_method">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end">
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="endpoint_api_request_use_auth" checked>
+                <label class="form-check-label">Use Auth</label>
+              </div>
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end justify-content-md-end">
+              <button class="btn btn-outline-secondary btn-sm mb-2" type="button" data-add-api-request-param>+ Param</button>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Path / URL</label>
+              <input class="form-control" type="text" name="endpoint_api_request_path" placeholder="/api/external/v1/devices">
+            </div>
+            <div class="col-12">
+              <div class="small text-muted mb-2">Parameters are sent as query string for GET, POST, PUT, PATCH, and DELETE.</div>
+              <div class="vstack gap-2" data-endpoint-api-request-param-list></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Body</label>
+              <textarea class="form-control" name="endpoint_api_request_body" rows="3" placeholder='{% raw %}{"device_uuid": "{{device_uuid}}"}{% endraw %}'></textarea>
+            </div>
+            <div class="col-12 col-md-3" data-request-max-interval-group>
+              <label class="form-label">Round Max Time</label>
+              <input class="form-control" type="number" min="0" step="1" name="endpoint_api_request_max_round_times" placeholder="0">
+            </div>
+            <div class="col-12 col-md-3 d-flex align-items-end">
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="endpoint_api_request_interval_unlimited" checked>
+                <label class="form-check-label">Unlimited</label>
+              </div>
+            </div>
+            <div class="col-12 col-md-3 d-none" data-request-run-interval-group>
+              <label class="form-label">Run Every Time</label>
+              <input class="form-control" type="number" min="0" step="1" name="endpoint_api_request_run_every_times" placeholder="0">
+            </div>
+            <div class="col-12">
+              <small class="text-muted">Auto run only. Set <code>1</code> to allow this path to send request 1 time in each auto round. <code>Test Request</code> does not use this setting.</small>
+            </div>
+            <div class="col-12 d-none" data-api-history-panel>
+              <div class="border rounded-3 bg-white p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div>
+                    <div class="fw-semibold">Request History</div>
+                    <small class="text-muted">Saved request and response records from <code>api.db</code>.</small>
+                  </div>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-refresh-api-history>Refresh</button>
+                </div>
+                <div class="row g-2 align-items-end mb-3">
+                  <div class="col-12 col-md-3">
+                    <label class="form-label form-label-sm">Start Date</label>
+                    <input class="form-control form-control-sm" type="date" data-api-history-start-date>
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label form-label-sm">End Date</label>
+                    <input class="form-control form-control-sm" type="date" data-api-history-end-date>
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <button class="btn btn-outline-primary btn-sm w-100" type="button" data-export-api-history>Download CSV</button>
+                  </div>
+                </div>
+                <div class="vstack gap-2" data-api-history-list>
+                  <div class="small text-muted">Click History to load saved request runs.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template id="endpointApiRequestParamRowTemplate">
+        <div class="row g-2 align-items-end" data-endpoint-api-request-param-row>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Param Key</label>
+            <input class="form-control" type="text" name="endpoint_api_request_param_key" placeholder="device_uuid">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Param Value</label>
+            <div class="vstack gap-2" data-endpoint-api-request-value-list></div>
+            <button class="btn btn-outline-secondary btn-sm mt-2" type="button" data-add-api-request-value>+ Value</button>
+          </div>
+          <div class="col-12 col-md-2 d-grid">
+            <button class="btn btn-outline-danger" type="button" data-remove-api-request-param>Remove</button>
+          </div>
+        </div>
+      </template>
+
+      <template id="endpointApiRequestValueRowTemplate">
+        <div class="input-group" data-endpoint-api-request-value-row>
+          <input class="form-control" type="text" name="endpoint_api_request_param_value" placeholder="{% raw %}{{device_uuid}}{% endraw %}">
+          <button class="btn btn-outline-danger" type="button" data-remove-api-request-value>Remove</button>
+        </div>
+      </template>
+      </div>
+
+      <div data-settings-tab-panel="design"{% if (active_settings_tab or 'project') != 'design' %} class="d-none"{% endif %}>
       {% set top_definition_by_system = settings.modules.top_definition if settings.modules and settings.modules.top_definition is defined else {} %}
       {% set iaq_top_definition = top_definition_by_system.get('iaq', {}) %}
       {% set iaq_top_definition_legend = iaq_top_definition.legend if iaq_top_definition.legend is defined and iaq_top_definition.legend else settings.severity_levels %}
@@ -495,6 +722,12 @@
                 <label class="form-check-label small" for="iaqTagCo2">Show</label>
               </div>
             </div>
+            {% for field in dynamic_severity_fields %}
+            <div class="col-6 col-md-2 col-xl-1">
+              <div>{{ field.label }}</div>
+              <div class="small text-muted">{{ field.source_field or field.key }}{% if field.unit %} ({{ field.unit }}){% endif %}</div>
+            </div>
+            {% endfor %}
             <div class="col-12 col-md-2">Critical</div>
           </div>
           <div id="severityRows" data-severity-rows="iaq">
@@ -538,6 +771,18 @@
                 <input class="form-control" type="number" name="severity_co2" step="1" placeholder="ppm"
                   value="{{ level.thresholds.co2 if level.thresholds is defined else '' }}">
               </div>
+              {% for field in dynamic_severity_fields %}
+              <div class="col-6 col-md-2 col-xl-1">
+                <input
+                  class="form-control"
+                  type="number"
+                  name="severity_dynamic__{{ field.key }}"
+                  step="any"
+                  placeholder="{{ field.unit or field.source_field or field.label }}"
+                  value="{{ level.thresholds.get(field.key, '') if level.thresholds is defined else '' }}"
+                >
+              </div>
+              {% endfor %}
               <div class="col-12 col-md-2">
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" name="critical_levels" value="{{ level.label }}" {% if level.label in settings.critical_levels %}checked{% endif %}>
@@ -734,8 +979,16 @@
               <div class="col-12 col-md-6">
                 <label class="form-label mb-1" for="bulkSensorZone">Zone</label>
                 <input class="form-control form-control-sm" id="bulkSensorZone" type="text" placeholder="Zone">
-                <label class="form-label mb-1" for="bulkSensorType">Sensor type</label>
-                <input class="form-control form-control-sm" id="bulkSensorType" type="text" placeholder="Sensor type">
+                <label class="form-label mb-1" for="bulkSensorType">Sensor type(s)</label>
+                <input class="form-control form-control-sm" id="bulkSensorType" type="text" list="bulkSensorTypeOptions" placeholder="Sensor types (comma-separated)">
+                <datalist id="bulkSensorTypeOptions">
+                  {% for option in bulk_sensor_type_options %}
+                  {% if option %}
+                  <option value="{{ option }}"></option>
+                  {% endif %}
+                  {% endfor %}
+                </datalist>
+                <div class="form-text">Choose one or more Incoming Source Fields separated by commas.</div>
                 <label class="form-label mb-1" for="bulkSourceName">Mapping source</label>
                 <select class="form-select form-select-sm" id="bulkSourceName">
                   <option value="">Select source</option>
@@ -744,8 +997,9 @@
                   {% endfor %}
                 </select>
                 <label class="form-label mb-1" for="bulkSourceDeviceName">Source device name</label>
-                <input class="form-control form-control-sm" id="bulkSourceDeviceName" list="bulkSourceDeviceNameList" type="text" placeholder="Incoming API device name">
-                <datalist id="bulkSourceDeviceNameList"></datalist>
+                <select class="form-select form-select-sm" id="bulkSourceDeviceName">
+                  <option value="">Select source device</option>
+                </select>
                 <div class="form-text">Use mapping fields to keep source-device identity in <code>sensordata.db</code>.</div>
                 <div class="d-flex flex-wrap gap-2 mt-2">
                   <button class="btn btn-sm btn-outline-primary" type="button" id="applyBulkZoneBtn">
@@ -903,10 +1157,287 @@
 
       <div class="mt-4">
         <div class="d-flex flex-wrap gap-2">
-          <button class="btn btn-primary" type="submit">Save Settings</button>
+          <button class="btn btn-primary" type="submit" data-save-settings-section="design">Save Design</button>
           <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_csv') }}">Export Settings CSV</a>
           <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_assets_zip') }}">Export Assets ZIP</a>
         </div>
+
+        <div class="card mt-3">
+          <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div>
+                <div class="fw-semibold">Incoming Source Fields</div>
+                <div class="form-text mb-0">Admin can choose which mapped source fields are available in bulk type, tooltip, severity, and <code>sensordata.db</code>. Monitor tooltip and severity data come from saved readings. Enable <strong>Severity</strong>, save Design, then the field appears in IAQ Severity Mapping.</div>
+              </div>
+            </div>
+            {% if source_metric_fields %}
+            <div class="table-responsive" id="sourceMetricFieldsTableWrap">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Label</th>
+                    <th>Channel</th>
+                    <th>Unit</th>
+                    <th>Bulk Type</th>
+                    <th>Tooltip</th>
+                    <th>Save DB</th>
+                    <th>Severity</th>
+                  </tr>
+                </thead>
+                <tbody id="sourceMetricFieldsTableBody">
+                  {% for field in source_metric_fields %}
+                  <tr data-source-metric-key="{{ field.key }}">
+                    <td>
+                      <div class="fw-semibold">{{ field.source_field or field.key }}</div>
+                      <div class="small text-muted">{{ (field.sources or []) | join(', ') }}</div>
+                      <input type="hidden" name="source_metric_field_key" value="{{ field.key }}">
+                      <input type="hidden" name="source_metric_source_field__{{ field.key }}" value="{{ field.source_field or field.key }}">
+                      <input type="hidden" name="source_metric_sources__{{ field.key }}" value="{{ (field.sources or []) | join(',') }}">
+                    </td>
+                    <td>
+                      <input class="form-control form-control-sm" type="text" name="source_metric_label__{{ field.key }}" value="{{ field.label or field.key }}">
+                    </td>
+                    <td>
+                      <input class="form-control form-control-sm" type="text" name="source_metric_channel__{{ field.key }}" value="{{ field.channel or '' }}">
+                    </td>
+                    <td>
+                      <input class="form-control form-control-sm" type="text" name="source_metric_unit__{{ field.key }}" value="{{ field.unit or '' }}">
+                    </td>
+                    <td class="text-center">
+                      <input class="form-check-input" type="checkbox" name="source_metric_show_in_bulk_type__{{ field.key }}" {% if field.show_in_bulk_type %}checked{% endif %}>
+                    </td>
+                    <td class="text-center">
+                      <input class="form-check-input" type="checkbox" name="source_metric_show_in_tooltip__{{ field.key }}" {% if field.show_in_tooltip %}checked{% endif %}>
+                    </td>
+                    <td class="text-center">
+                      <input class="form-check-input" type="checkbox" name="source_metric_save_to_db__{{ field.key }}" {% if field.save_to_db %}checked{% endif %}>
+                    </td>
+                    <td class="text-center">
+                      <input class="form-check-input" type="checkbox" name="source_metric_enable_severity__{{ field.key }}" {% if field.enable_severity %}checked{% endif %}>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="alert alert-light border mb-0 d-none" id="sourceMetricFieldsEmptyState">No incoming source fields discovered yet. Click <code>Use Source</code> after loading a mapped source to build the field catalog.</div>
+            {% else %}
+            <div class="table-responsive d-none" id="sourceMetricFieldsTableWrap">
+              <table class="table table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Label</th>
+                    <th>Channel</th>
+                    <th>Unit</th>
+                    <th>Bulk Type</th>
+                    <th>Tooltip</th>
+                    <th>Save DB</th>
+                    <th>Severity</th>
+                  </tr>
+                </thead>
+                <tbody id="sourceMetricFieldsTableBody"></tbody>
+              </table>
+            </div>
+            <div class="alert alert-light border mb-0" id="sourceMetricFieldsEmptyState">No incoming source fields discovered yet. Click <code>Use Source</code> after loading a mapped source to build the field catalog.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <div data-settings-tab-panel="user"{% if (active_settings_tab or 'project') != 'user' %} class="d-none"{% endif %}>
+      <hr class="my-4">
+      <div class="row g-4">
+        <div class="col-12 col-xl-5">
+          <div class="card">
+            <div class="card-body">
+              <h6 class="mb-3">{{ 'เพิ่มผู้ใช้' if current_lang == 'th' else 'Add User' }}</h6>
+              <div class="mb-3">
+                <label class="form-label">{{ 'ชื่อเต็ม' if current_lang == 'th' else 'Full Name' }}</label>
+                <input class="form-control" type="text" name="new_user_full_name" placeholder="{{ 'ชื่อที่แสดง' if current_lang == 'th' else 'Display name' }}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">{{ t('username') }}</label>
+                <input class="form-control" type="text" name="new_user_username" placeholder="{{ t('username') }}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">{{ t('password') }}</label>
+                <input class="form-control" type="password" name="new_user_password" placeholder="{{ t('password') }}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">{{ 'บทบาท' if current_lang == 'th' else 'Role' }}</label>
+                <select class="form-select" name="new_user_role">
+                  {% for role_name in role_permissions.keys()|sort %}
+                  <option value="{{ role_name }}">{{ role_name.replace('_', ' ').replace('-', ' ')|title }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <button class="btn btn-primary" type="submit" data-save-settings-section="user" name="user_action" value="create_user">{{ 'เพิ่มผู้ใช้' if current_lang == 'th' else 'Add User' }}</button>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-xl-7">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">{{ 'จัดการผู้ใช้' if current_lang == 'th' else 'Manage Users' }}</h6>
+                <small class="text-muted">{{ 'เปลี่ยนรหัสผ่านหรือลบผู้ใช้' if current_lang == 'th' else 'Change passwords or delete users.' }}</small>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>{{ t('username') }}</th>
+                      <th>{{ 'ชื่อ' if current_lang == 'th' else 'Name' }}</th>
+                      <th>{{ 'บทบาท' if current_lang == 'th' else 'Role' }}</th>
+                      <th>{{ 'เข้าสู่ระบบล่าสุด' if current_lang == 'th' else 'Last Login' }}</th>
+                      <th>{{ 'รหัสผ่านใหม่' if current_lang == 'th' else 'New Password' }}</th>
+                      <th class="text-end">{{ 'การทำงาน' if current_lang == 'th' else 'Action' }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for user in managed_users %}
+                    <tr>
+                      <td>{{ user.username }}</td>
+                      <td>{{ user.full_name or '-' }}</td>
+                      <td style="min-width: 170px;">
+                        <div class="d-flex gap-2">
+                          <select class="form-select form-select-sm" name="user_role__{{ user.id }}">
+                            {% for role_name in role_permissions.keys()|sort %}
+                            <option value="{{ role_name }}" {% if user.role == role_name %}selected{% endif %}>{{ role_name.replace('_', ' ').replace('-', ' ')|title }}</option>
+                            {% endfor %}
+                          </select>
+                          <button class="btn btn-sm btn-outline-secondary" type="submit" data-save-settings-section="user" name="user_action" value="change_role:{{ user.id }}">{{ 'บันทึกบทบาท' if current_lang == 'th' else 'Save Role' }}</button>
+                        </div>
+                      </td>
+                      <td>{{ format_project_datetime(user.last_login_at) if user.last_login_at else '-' }}</td>
+                      <td style="min-width: 220px;">
+                        <input class="form-control form-control-sm" type="password" name="user_password__{{ user.id }}" placeholder="{{ 'รหัสผ่านใหม่' if current_lang == 'th' else 'New password' }}">
+                      </td>
+                      <td class="text-end">
+                        <div class="d-flex justify-content-end gap-2">
+                          <button class="btn btn-sm btn-outline-primary" type="submit" data-save-settings-section="user" name="user_action" value="change_password:{{ user.id }}">{{ 'เปลี่ยนรหัสผ่าน' if current_lang == 'th' else 'Change Password' }}</button>
+                          <button class="btn btn-sm btn-outline-danger" type="submit" data-save-settings-section="user" name="user_action" value="delete_user:{{ user.id }}" {% if session.get('user_id') == user.id %}disabled{% endif %}>{{ 'ลบ' if current_lang == 'th' else 'Delete' }}</button>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div>
+                  <h6 class="mb-0">{{ 'สิทธิ์ของบทบาท' if current_lang == 'th' else 'Role Permissions' }}</h6>
+                  <small class="text-muted">{{ 'เลือกหน้าที่แต่ละบทบาทสามารถเห็นได้' if current_lang == 'th' else 'Check pages that each role can see.' }}</small>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <div class="input-group" style="max-width: 320px;">
+                    <span class="input-group-text">+</span>
+                    <input class="form-control" type="text" name="new_role_name" placeholder="{{ 'ชื่อบทบาทใหม่' if current_lang == 'th' else 'New role name' }}">
+                  </div>
+                  {% for page_key in role_page_keys %}
+                  <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="newRolePermission{{ page_key|title }}" name="new_role_permission__{{ page_key }}">
+                    <label class="form-check-label small" for="newRolePermission{{ page_key|title }}">{{ 'ดูได้' if current_lang == 'th' else 'Can See' }} {{ page_key.replace('_', ' ')|title }}</label>
+                  </div>
+                  {% endfor %}
+                  <button class="btn btn-outline-primary" type="submit" data-save-settings-section="user" name="user_action" value="create_role">{{ 'เพิ่มบทบาท' if current_lang == 'th' else 'Add Role' }}</button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>{{ 'บทบาท' if current_lang == 'th' else 'Role' }}</th>
+                      {% for page_key in role_page_keys %}
+                      <th class="text-center">{{ 'ดูได้' if current_lang == 'th' else 'Can See' }} {{ page_key.replace('_', ' ')|title }}</th>
+                      {% endfor %}
+                      <th class="text-end">{{ 'การทำงาน' if current_lang == 'th' else 'Action' }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for role_name, permissions in role_permissions|dictsort %}
+                    <tr>
+                      <td class="fw-semibold">{{ role_name.replace('_', ' ').replace('-', ' ')|title }}</td>
+                      {% for page_key in role_page_keys %}
+                      <td class="text-center">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          name="role_permission__{{ role_name }}__{{ page_key }}"
+                          {% if permissions.get(page_key) %}checked{% endif %}
+                          {% if role_name == 'admin' %}checked disabled{% endif %}>
+                      </td>
+                      {% endfor %}
+                      <td class="text-end">
+                        <div class="d-flex justify-content-end gap-2">
+                          <button class="btn btn-sm btn-outline-secondary" type="submit" data-save-settings-section="user" name="user_action" value="save_role_permissions:{{ role_name }}">{{ 'บันทึก' if current_lang == 'th' else 'Save' }}</button>
+                          <button class="btn btn-sm btn-outline-danger" type="submit" data-save-settings-section="user" name="user_action" value="delete_role:{{ role_name }}" {% if role_name == 'admin' %}disabled{% endif %}>{{ 'ลบ' if current_lang == 'th' else 'Delete' }}</button>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">{{ 'ประวัติการเข้าสู่ระบบ' if current_lang == 'th' else 'Login History' }}</h6>
+                <small class="text-muted">{{ 'IP, location headers, and request details for login attempts.' if current_lang != 'th' else 'IP, ตำแหน่ง, และรายละเอียดคำขอสำหรับการพยายามเข้าสู่ระบบ' }}</small>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>{{ 'เวลา' if current_lang == 'th' else 'Time' }}</th>
+                      <th>{{ 'ผู้ใช้' if current_lang == 'th' else 'User' }}</th>
+                      <th>{{ 'สถานะ' if current_lang == 'th' else 'Status' }}</th>
+                      <th>IP</th>
+                      <th>{{ 'ตำแหน่ง' if current_lang == 'th' else 'Location' }}</th>
+                      <th>{{ 'คำขอ' if current_lang == 'th' else 'Request' }}</th>
+                      <th>{{ 'User Agent' if current_lang == 'th' else 'User Agent' }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for entry in login_history %}
+                    <tr>
+                      <td>{{ format_project_datetime(entry.ts) }}</td>
+                      <td>{{ entry.username or entry.attempted_username or '-' }}</td>
+                      <td>
+                        <span class="badge {% if entry.success %}text-bg-success{% else %}text-bg-danger{% endif %}">
+                          {{ 'Success' if entry.success else 'Failed' }}
+                        </span>
+                      </td>
+                      <td>{{ entry.ip_address or '-' }}</td>
+                      <td>{{ entry.location_text or '-' }}</td>
+                      <td>{{ entry.request_method or '-' }} {{ entry.request_path or '' }}</td>
+                      <td class="small text-muted">{{ entry.user_agent or '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                      <td colspan="7" class="text-muted">{{ 'ยังไม่มีประวัติการเข้าสู่ระบบ' if current_lang == 'th' else 'No login history yet.' }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
     </form>
     <form class="mt-3" method="post" action="{{ url_for('import_settings_csv') }}" enctype="multipart/form-data" id="importSettingsForm">
@@ -919,6 +1450,32 @@
       <div class="d-flex flex-wrap gap-2">
         <input class="form-control" type="file" name="settings_assets_zip" accept=".zip">
         <button class="btn btn-outline-primary" type="submit">Import ZIP</button>
+      </div>
+      <label class="form-label mt-3">Import Postman Collection JSON</label>
+      <div class="d-flex flex-wrap gap-2">
+        <input class="form-control" type="file" name="postman_collection" accept=".json">
+        <button class="btn btn-outline-primary" type="submit">Import Collection</button>
+      </div>
+      <small class="text-muted d-block mt-2">Imported collections are saved in <code>settings.json</code> and can be applied from each API source row.</small>
+      {% set imported_api_templates = settings.endpoint_api_templates if settings.endpoint_api_templates is defined else [] %}
+      <div class="mt-3">
+        <label class="form-label">Saved API Templates</label>
+        {% if imported_api_templates %}
+        <div class="list-group">
+          {% for template in imported_api_templates %}
+          <div class="list-group-item">
+            <div class="fw-semibold">{{ template.name }}</div>
+            <small class="text-muted">
+              {{ template.requests | length }} requests
+              {% if template.base_url %} | Base URL: {{ template.base_url }}{% endif %}
+              {% if template.source %} | File: {{ template.source }}{% endif %}
+            </small>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <small class="text-muted">No imported Postman collection yet.</small>
+        {% endif %}
       </div>
     </form>
   </div>
@@ -957,12 +1514,237 @@
   bindColorToggle('cardBodyTransparent', 'cardBodyColor');
   bindColorToggle('pageBackgroundTransparent', 'pageBackgroundColor');
 
+  if (false) {
   const endpointSourceList = document.getElementById('endpointSourceList');
   const endpointSourceRowTemplate = document.getElementById('endpointSourceRowTemplate');
   const addEndpointSourceBtn = document.getElementById('addEndpointSourceBtn');
   const previewLiv24DataBtn = document.getElementById('previewLiv24DataBtn');
+  const downloadSourceDataBtn = document.getElementById('downloadSourceDataBtn');
+  const sourceDataExportStartDate = document.getElementById('sourceDataExportStartDate');
+  const sourceDataExportEndDate = document.getElementById('sourceDataExportEndDate');
   const previewLiv24DataOutput = document.getElementById('previewLiv24DataOutput');
   const sourceDeviceCatalog = {};
+  const endpointApiTemplates = editorData.endpointApiTemplates || [];
+  const endpointApiTemplateMap = new Map(
+    endpointApiTemplates.map((template) => [template.id, template])
+  );
+
+  const getEndpointRowField = (row, name) => row?.querySelector(`[name="${name}"]`);
+
+  const getRequestErrorMessage = (error) =>
+    error instanceof Error ? error.message : String(error || 'Unknown error');
+
+  const projectDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+    timeZone: {{ settings.project_timezone | tojson }},
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: {{ (settings.project_time_format == '12h') | tojson }},
+  });
+
+  const formatProjectDateTime = (value) => {
+    if (!value) {
+      return '';
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return String(value);
+    }
+    return projectDateTimeFormatter.format(parsed);
+  };
+
+  const buildSourceHistoryExportUrl = ({ sourceName, requestDefinition = null, startDate = '', endDate = '' }) => {
+    const params = new URLSearchParams();
+    if (sourceName) {
+      params.set('source_name', sourceName);
+    }
+    if (requestDefinition) {
+      const normalizedRequest = normalizeEndpointRequestData(requestDefinition, 0);
+      if (normalizedRequest.role) {
+        params.set('request_role', normalizedRequest.role);
+      }
+      if (normalizedRequest.name) {
+        params.set('request_name', normalizedRequest.name);
+      }
+      if (normalizedRequest.method) {
+        params.set('request_method', normalizedRequest.method);
+      }
+      if (normalizedRequest.path) {
+        params.set('request_path', normalizedRequest.path);
+      }
+    }
+    if (startDate) {
+      params.set('start_date', startDate);
+    }
+    if (endDate) {
+      params.set('end_date', endDate);
+    }
+    return `${editorData.sourceRequestHistoryExportRoute}?${params.toString()}`;
+  };
+
+  const normalizeEndpointCacheKey = (value) => {
+    const text = (value || '').trim();
+    if (!text) {
+      return '';
+    }
+    try {
+      const normalized = text.includes('://') ? text : `https://${text.replace(/^\/+/, '')}`;
+      return new URL(normalized).host.toLowerCase();
+    } catch (error) {
+      return text
+        .replace(/^https?:\/\//i, '')
+        .split('/')[0]
+        .toLowerCase();
+    }
+  };
+
+  const getEndpointSourceCacheKey = (row) => {
+    const tokenUrlValue = getEndpointRowField(row, 'endpoint_api_token_url')?.value;
+    const baseUrlValue = getEndpointRowField(row, 'endpoint_base_url')?.value;
+    return normalizeEndpointCacheKey(tokenUrlValue) || normalizeEndpointCacheKey(baseUrlValue);
+  };
+
+  const collectEndpointSourceRow = (row) => ({
+    name: (getEndpointRowField(row, 'endpoint_name')?.value || '').trim(),
+    format: (getEndpointRowField(row, 'endpoint_format')?.value || 'api').trim(),
+    base_url: (getEndpointRowField(row, 'endpoint_base_url')?.value || '').trim(),
+    token: (getEndpointRowField(row, 'endpoint_token')?.value || '').trim(),
+    api: {
+      template_id: (getEndpointRowField(row, 'endpoint_api_template_id')?.value || '').trim(),
+      organizations_path: (getEndpointRowField(row, 'endpoint_api_organizations_path')?.value || '').trim(),
+      devices_path: (getEndpointRowField(row, 'endpoint_api_devices_path')?.value || '').trim(),
+      devices_org_param: (getEndpointRowField(row, 'endpoint_api_devices_org_param')?.value || '').trim(),
+      latest_values_path: (getEndpointRowField(row, 'endpoint_api_latest_values_path')?.value || '').trim(),
+      latest_values_device_param: (getEndpointRowField(row, 'endpoint_api_latest_values_device_param')?.value || '').trim(),
+      request_headers: getEndpointRowField(row, 'endpoint_api_request_headers')?.value || '{}',
+      token_url: (getEndpointRowField(row, 'endpoint_api_token_url')?.value || '').trim(),
+      token_method: (getEndpointRowField(row, 'endpoint_api_token_method')?.value || 'POST').trim(),
+      token_field: (getEndpointRowField(row, 'endpoint_api_token_field')?.value || 'access_token').trim(),
+      auth_username: (getEndpointRowField(row, 'endpoint_api_auth_username')?.value || '').trim(),
+      auth_password: getEndpointRowField(row, 'endpoint_api_auth_password')?.value || '',
+      auth_headers: getEndpointRowField(row, 'endpoint_api_auth_headers')?.value || '{}',
+      auth_body: getEndpointRowField(row, 'endpoint_api_auth_body')?.value || '',
+    },
+    mqtt: {
+      host: (getEndpointRowField(row, 'endpoint_mqtt_host')?.value || '').trim(),
+      port: Number.parseInt(getEndpointRowField(row, 'endpoint_mqtt_port')?.value || '1883', 10) || 1883,
+      username: (getEndpointRowField(row, 'endpoint_mqtt_username')?.value || '').trim(),
+      password: getEndpointRowField(row, 'endpoint_mqtt_password')?.value || '',
+      topic: (getEndpointRowField(row, 'endpoint_mqtt_topic')?.value || '').trim(),
+    },
+  });
+
+  const collectAllEndpointSources = () => {
+    if (!endpointSourceList) {
+      return [];
+    }
+    return Array.from(endpointSourceList.querySelectorAll('[data-endpoint-source-row]'))
+      .map((row) => collectEndpointSourceRow(row))
+      .filter((source) => source.name);
+  };
+
+  const getMissingGetTokenFields = (source) => {
+    const missingFields = [];
+    if (!(source?.name || '').trim()) {
+      missingFields.push('Source Name');
+    }
+    if (!(source?.base_url || '').trim()) {
+      missingFields.push('API Base URL');
+    }
+    if (!(source?.api?.organizations_path || '').trim()) {
+      missingFields.push('Organizations Path');
+    }
+    if (!(source?.api?.token_url || '').trim()) {
+      missingFields.push('Token URL');
+    }
+    return missingFields;
+  };
+
+  const applyTextValue = (row, name, value) => {
+    const input = getEndpointRowField(row, name);
+    if (input && value !== undefined && value !== null && value !== '') {
+      input.value = String(value);
+    }
+  };
+
+  const applyJsonValue = (row, name, value) => {
+    const input = getEndpointRowField(row, name);
+    if (!input || value === undefined || value === null) {
+      return;
+    }
+    input.value = JSON.stringify(value, null, 2);
+  };
+
+  const getTemplateRequest = (template, requestId) =>
+    (template?.requests || []).find((request) => request.id === requestId);
+
+  const getTemplateRequestValue = (template, requestId, fallbackKey) => {
+    const request = getTemplateRequest(template, requestId);
+    if (request) {
+      return request.path || request.url || '';
+    }
+    return template?.suggested?.[fallbackKey] || '';
+  };
+
+  const applyEndpointTemplateToRow = (row, templateId) => {
+    const template = endpointApiTemplateMap.get(templateId);
+    if (!row || !template) {
+      return;
+    }
+    applyTextValue(row, 'endpoint_base_url', template.base_url || '');
+    applyTextValue(
+      row,
+      'endpoint_api_organizations_path',
+      getTemplateRequestValue(template, template.suggested?.organizations_request_id, 'organizations_path')
+    );
+    applyTextValue(
+      row,
+      'endpoint_api_devices_path',
+      getTemplateRequestValue(template, template.suggested?.devices_request_id, 'devices_path')
+    );
+    applyTextValue(
+      row,
+      'endpoint_api_latest_values_path',
+      getTemplateRequestValue(template, template.suggested?.latest_values_request_id, 'latest_values_path')
+    );
+    applyTextValue(
+      row,
+      'endpoint_api_devices_org_param',
+      template.suggested?.devices_org_param || 'org_uuid'
+    );
+    applyTextValue(
+      row,
+      'endpoint_api_latest_values_device_param',
+      template.suggested?.latest_values_device_param || 'device_uuid'
+    );
+    applyJsonValue(row, 'endpoint_api_request_headers', template.suggested?.request_headers || {});
+    applyTextValue(
+      row,
+      'endpoint_api_token_url',
+      getTemplateRequestValue(template, template.suggested?.token_request_id, 'token_url')
+    );
+    applyTextValue(row, 'endpoint_api_token_method', template.suggested?.token_method || 'POST');
+    applyTextValue(row, 'endpoint_api_token_field', template.suggested?.token_field || 'access_token');
+    applyJsonValue(row, 'endpoint_api_auth_headers', template.suggested?.token_headers || {});
+    applyTextValue(row, 'endpoint_api_auth_body', template.suggested?.token_body || '');
+  };
+
+  const syncSharedTokenInputs = (sourceRow, token, cacheKey) => {
+    if (!endpointSourceList) {
+      return;
+    }
+    endpointSourceList.querySelectorAll('[data-endpoint-source-row]').forEach((row) => {
+      const matchesCache = cacheKey && getEndpointSourceCacheKey(row) === cacheKey;
+      if (row === sourceRow || matchesCache) {
+        const tokenInput = getEndpointRowField(row, 'endpoint_token');
+        if (tokenInput) {
+          tokenInput.value = token;
+        }
+      }
+    });
+  };
 
   const updateEndpointSourceVisibility = (row) => {
     if (!row) {
@@ -984,15 +1766,66 @@
     }
     const formatSelect = row.querySelector('[data-endpoint-format-select]');
     const sourceNameInput = row.querySelector('input[name="endpoint_name"]');
+    const templateSelect = row.querySelector('[data-endpoint-api-template-select]');
+    const getTokenBtn = row.querySelector('[data-get-source-token]');
     const useApiBtn = row.querySelector('[data-use-api-source]');
     const applyFormatState = () => {
       updateEndpointSourceVisibility(row);
-      if (useApiBtn && formatSelect) {
-        useApiBtn.disabled = formatSelect.value !== 'api';
+      if (formatSelect) {
+        const isApi = formatSelect.value === 'api';
+        if (useApiBtn) {
+          useApiBtn.disabled = !isApi;
+        }
+        if (getTokenBtn) {
+          getTokenBtn.disabled = !isApi;
+        }
       }
     };
     if (formatSelect) {
       formatSelect.addEventListener('change', applyFormatState);
+    }
+    if (templateSelect) {
+      templateSelect.addEventListener('change', () => {
+        applyEndpointTemplateToRow(row, templateSelect.value);
+      });
+    }
+    if (getTokenBtn) {
+      getTokenBtn.addEventListener('click', async () => {
+        const draftSource = collectEndpointSourceRow(row);
+        const missingFields = getMissingGetTokenFields(draftSource);
+        if (missingFields.length) {
+          alert(`Please fill required API fields before getting a token: ${missingFields.join(', ')}`);
+          return;
+        }
+        getTokenBtn.disabled = true;
+        getTokenBtn.textContent = 'Loading...';
+        try {
+          const response = await fetch(editorData.sourceTokenRoute, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              source_name: draftSource.name,
+              source: draftSource,
+              sources: collectAllEndpointSources(),
+            }),
+          });
+          const payload = await response.json();
+          if (!response.ok || payload.error) {
+            throw new Error(payload.error || 'Failed to fetch bearer token');
+          }
+          syncSharedTokenInputs(row, payload.token || '', payload.cache_key || '');
+          if (previewLiv24DataOutput) {
+            previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
+          }
+        } catch (error) {
+          alert(`Get Token failed: ${getRequestErrorMessage(error)}`);
+        } finally {
+          getTokenBtn.disabled = formatSelect && formatSelect.value !== 'api';
+          getTokenBtn.textContent = 'Get Token';
+        }
+      });
     }
     if (useApiBtn) {
       useApiBtn.addEventListener('click', async () => {
@@ -1001,24 +1834,31 @@
           alert('Please enter source name before using API.');
           return;
         }
+        const draftSource = collectEndpointSourceRow(row);
         useApiBtn.disabled = true;
         useApiBtn.textContent = 'Loading...';
         try {
-          const response = await fetch(`/api/settings/source-devices?source_name=${encodeURIComponent(sourceName)}`);
+          const response = await fetch(editorData.sourceDevicesRoute, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ source: draftSource }),
+          });
           const payload = await response.json();
           if (!response.ok || payload.error) {
             throw new Error(payload.error || 'Failed to fetch source devices');
           }
-          sourceDeviceCatalog[sourceName] = payload.devices || [];
+          sourceDeviceCatalog[payload.source || sourceName] = payload.ready_device_items || payload.device_items || payload.devices || [];
           if (bulkSourceName) {
-            bulkSourceName.value = sourceName;
+            bulkSourceName.value = payload.source || sourceName;
             refreshBulkSourceDeviceOptions();
           }
           if (previewLiv24DataOutput) {
             previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
           }
         } catch (error) {
-          alert(`Use API failed: ${error}`);
+          alert(`Use API failed: ${getRequestErrorMessage(error)}`);
         } finally {
           useApiBtn.disabled = formatSelect && formatSelect.value !== 'api';
           useApiBtn.textContent = 'Use API';
@@ -1060,6 +1900,1536 @@
       }
     });
   }
+
+  }
+
+  const settingsForm = document.getElementById('settingsForm');
+  const settingsSectionInput = document.getElementById('settingsSectionInput');
+  const endpointSourceList = document.getElementById('endpointSourceList');
+  const endpointSourceRowTemplate = document.getElementById('endpointSourceRowTemplate');
+  const endpointApiRequestRowTemplate = document.getElementById('endpointApiRequestRowTemplate');
+  const endpointApiRequestParamRowTemplate = document.getElementById('endpointApiRequestParamRowTemplate');
+  const endpointApiRequestValueRowTemplate = document.getElementById('endpointApiRequestValueRowTemplate');
+  const endpointSourcesJson = document.getElementById('endpointSourcesJson');
+  const addEndpointSourceBtn = document.getElementById('addEndpointSourceBtn');
+  const previewLiv24DataBtn = document.getElementById('previewLiv24DataBtn');
+  const previewLiv24DataOutput = document.getElementById('previewLiv24DataOutput');
+  const sourceDeviceCatalog = {};
+  let endpointApiTemplates = [];
+  let endpointApiTemplateMap = new Map();
+  let defaultEndpointSource = {
+    format: 'api',
+    api: { auth_type: 'none', requests: [] },
+    mqtt: { port: 1883 },
+  };
+  let defaultEndpointApiRequests = Array.isArray(defaultEndpointSource.api?.requests)
+    ? defaultEndpointSource.api.requests
+    : [];
+
+  const getEndpointRowField = (row, name) => row?.querySelector(`[name="${name}"]`);
+  const getEndpointRequestField = (row, name) => row?.querySelector(`[name="${name}"]`);
+
+  const getRequestErrorMessage = (error) =>
+    error instanceof Error ? error.message : String(error || 'Unknown error');
+
+  const projectDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+    timeZone: {{ settings.project_timezone | tojson }},
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: {{ (settings.project_time_format == '12h') | tojson }},
+  });
+
+  const formatProjectDateTime = (value) => {
+    if (!value) {
+      return '';
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return String(value);
+    }
+    return projectDateTimeFormatter.format(parsed);
+  };
+
+  const deepClone = (value) => JSON.parse(JSON.stringify(value));
+
+  const updateSettingsTabs = (activeTab) => {
+    document.querySelectorAll('[data-settings-tab]').forEach((button) => {
+      const isActive = button.dataset.settingsTab === activeTab;
+      button.classList.toggle('btn-dark', isActive);
+      button.classList.toggle('btn-outline-dark', !isActive);
+    });
+    document.querySelectorAll('[data-settings-tab-panel]').forEach((panel) => {
+      panel.classList.toggle('d-none', panel.dataset.settingsTabPanel !== activeTab);
+    });
+    if (settingsSectionInput) {
+      settingsSectionInput.value = activeTab;
+    }
+  };
+
+  const createEndpointRequestId = () =>
+    `request_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+  const createDefaultEndpointRequest = (role = 'custom', index = 0) => {
+    const matchedDefault = defaultEndpointApiRequests.find((request) => request.role === role);
+    if (matchedDefault) {
+      return {
+        ...deepClone(matchedDefault),
+        id: matchedDefault.id || `${role}_${index + 1}`,
+      };
+    }
+    return {
+      id: createEndpointRequestId(),
+      role: 'custom',
+      name: `Request ${index + 1}`,
+      method: 'GET',
+      path: '',
+      params: [],
+      body: '',
+      use_auth: true,
+      max_round_times: 0,
+      max_interval_minutes: 0,
+      interval_unlimited: true,
+      run_every_times: 0,
+      run_interval_minutes: 0,
+    };
+  };
+
+  const normalizeEndpointRequestData = (request, index = 0) => {
+    const role = ['organizations', 'devices', 'latest_values', 'custom'].includes(request?.role)
+      ? request.role
+      : 'custom';
+    const defaults = createDefaultEndpointRequest(role, index);
+    const maxRoundTimes = Number.parseInt(
+      request?.max_round_times ?? request?.max_interval_minutes ?? defaults.max_round_times ?? defaults.max_interval_minutes ?? 0,
+      10
+    ) || 0;
+    const runEveryTimes = Number.parseInt(
+      request?.run_every_times ?? request?.run_interval_minutes ?? defaults.run_every_times ?? defaults.run_interval_minutes ?? 0,
+      10
+    ) || 0;
+    return {
+      id: (request?.id || defaults.id || createEndpointRequestId()).trim(),
+      role,
+      name: (request?.name || defaults.name || `Request ${index + 1}`).trim(),
+      method: ((request?.method || defaults.method || 'GET').trim() || 'GET').toUpperCase(),
+      path: (request?.path || defaults.path || '').trim(),
+      params: Array.isArray(request?.params)
+        ? request.params
+            .map((param) => ({
+              key: (param?.key || '').trim(),
+              values: Array.isArray(param?.values)
+                ? param.values.map((value) => String(value || ''))
+                : [String(param?.value || '')].filter((value) => value !== ''),
+            }))
+            .filter((param) => param.key || param.values.length)
+        : deepClone(defaults.params || []),
+      body: String(request?.body || defaults.body || ''),
+      use_auth: request?.use_auth !== undefined ? Boolean(request.use_auth) : Boolean(defaults.use_auth),
+      max_round_times: maxRoundTimes,
+      max_interval_minutes: maxRoundTimes,
+      interval_unlimited: request?.interval_unlimited !== undefined
+        ? Boolean(request.interval_unlimited)
+        : Boolean(defaults.interval_unlimited ?? true),
+      run_every_times: runEveryTimes,
+      run_interval_minutes: runEveryTimes,
+    };
+  };
+
+  const normalizeEndpointSourceData = (source) => {
+    const normalized = deepClone(defaultEndpointSource);
+    const incoming = source && typeof source === 'object' ? source : {};
+    normalized.name = (incoming.name || normalized.name || '').trim();
+    normalized.format = incoming.format === 'mqtt' ? 'mqtt' : 'api';
+    normalized.base_url = (incoming.base_url || normalized.base_url || '').trim();
+    normalized.token = (incoming.token || normalized.token || '').trim();
+    normalized.api = {
+      ...(normalized.api || {}),
+      ...(incoming.api || {}),
+    };
+    normalized.mqtt = {
+      ...(normalized.mqtt || {}),
+      ...(incoming.mqtt || {}),
+    };
+    normalized.api.template_id = (normalized.api.template_id || '').trim();
+    normalized.api.request_headers = String(normalized.api.request_headers || '{}');
+    normalized.api.auth_type = (
+      normalized.api.auth_type ||
+      (normalized.api.token_url ? 'bearer_login' : 'none')
+    ).trim();
+    if (normalized.token && normalized.api.auth_type === 'none' && !normalized.api.token_url) {
+      normalized.api.auth_type = 'bearer_token';
+    }
+    normalized.api.token_url = (normalized.api.token_url || '').trim();
+    normalized.api.token_method = ((normalized.api.token_method || 'POST').trim() || 'POST').toUpperCase();
+    normalized.api.token_field = (normalized.api.token_field || 'access_token').trim();
+    normalized.api.auth_username = (normalized.api.auth_username || '').trim();
+    normalized.api.auth_password = String(normalized.api.auth_password || '');
+    normalized.api.auth_headers = String(normalized.api.auth_headers || '{}');
+    normalized.api.auth_body = String(normalized.api.auth_body || '');
+    normalized.api.api_key_name = (normalized.api.api_key_name || '').trim();
+    normalized.api.api_key_value = String(normalized.api.api_key_value || '');
+    normalized.api.custom_auth_headers = String(normalized.api.custom_auth_headers || '{}');
+    const requestSource = Array.isArray(incoming?.api?.requests) && incoming.api.requests.length
+      ? incoming.api.requests
+      : defaultEndpointApiRequests;
+    normalized.api.requests = requestSource.map((request, index) =>
+      normalizeEndpointRequestData(request, index)
+    );
+    if (!normalized.api.requests.length) {
+      normalized.api.requests = [
+        createDefaultEndpointRequest('organizations', 0),
+        createDefaultEndpointRequest('devices', 1),
+        createDefaultEndpointRequest('latest_values', 2),
+      ];
+    }
+    normalized.mqtt.host = (normalized.mqtt.host || '').trim();
+    normalized.mqtt.port = Number.parseInt(normalized.mqtt.port || 1883, 10) || 1883;
+    normalized.mqtt.username = (normalized.mqtt.username || '').trim();
+    normalized.mqtt.password = String(normalized.mqtt.password || '');
+    normalized.mqtt.topic = (normalized.mqtt.topic || '').trim();
+    return normalized;
+  };
+
+  const normalizeEndpointCacheKey = (value) => {
+    const text = (value || '').trim();
+    if (!text) {
+      return '';
+    }
+    try {
+      const normalized = text.includes('://') ? text : `https://${text.replace(/^\/+/, '')}`;
+      return new URL(normalized).host.toLowerCase();
+    } catch (error) {
+      return text
+        .replace(/^https?:\/\//i, '')
+        .split('/')[0]
+        .toLowerCase();
+    }
+  };
+
+  const getEndpointSourceCacheKey = (row) => {
+    const tokenUrlValue = getEndpointRowField(row, 'endpoint_api_token_url')?.value;
+    const baseUrlValue = getEndpointRowField(row, 'endpoint_base_url')?.value;
+    return normalizeEndpointCacheKey(tokenUrlValue) || normalizeEndpointCacheKey(baseUrlValue);
+  };
+
+  const applyTextValue = (row, name, value) => {
+    const input = getEndpointRowField(row, name);
+    if (input && value !== undefined && value !== null) {
+      input.value = String(value);
+    }
+  };
+
+  const applyJsonValue = (row, name, value) => {
+    const input = getEndpointRowField(row, name);
+    if (!input || value === undefined || value === null) {
+      return;
+    }
+    input.value = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  };
+
+  const getTemplateRequest = (template, requestId) =>
+    (template?.requests || []).find((request) => request.id === requestId);
+
+  const getTemplateRequestValue = (template, requestId, fallbackKey) => {
+    const request = getTemplateRequest(template, requestId);
+    if (request) {
+      return request.path || request.url || '';
+    }
+    return template?.suggested?.[fallbackKey] || '';
+  };
+
+  const updateEndpointSourceTitles = () => {
+    if (!endpointSourceList) {
+      return;
+    }
+    Array.from(endpointSourceList.querySelectorAll('[data-endpoint-source-row]')).forEach((row, index) => {
+      const title = row.querySelector('[data-endpoint-source-title]');
+      const sourceName = (getEndpointRowField(row, 'endpoint_name')?.value || '').trim();
+      if (title) {
+        title.textContent = sourceName || `Source ${index + 1}`;
+      }
+    });
+  };
+
+  const updateEndpointRemoveButtons = () => {
+    if (!endpointSourceList) {
+      return;
+    }
+    const rows = Array.from(endpointSourceList.querySelectorAll('[data-endpoint-source-row]'));
+    rows.forEach((row) => {
+      const removeBtn = row.querySelector('[data-remove-endpoint-source]');
+      if (removeBtn) {
+        removeBtn.disabled = rows.length <= 1;
+      }
+    });
+  };
+
+  const collectEndpointRequestParamRow = (row) => ({
+    key: (getEndpointRequestField(row, 'endpoint_api_request_param_key')?.value || '').trim(),
+    values: Array.from(
+      row?.querySelectorAll('[data-endpoint-api-request-value-row] input[name="endpoint_api_request_param_value"]') || []
+    )
+      .map((input) => input.value || '')
+      .filter((value) => value !== ''),
+  });
+
+  const collectEndpointRequestRow = (row) => ({
+    id: row?.dataset.requestId || createEndpointRequestId(),
+    role: (getEndpointRequestField(row, 'endpoint_api_request_role')?.value || 'custom').trim(),
+    name: (getEndpointRequestField(row, 'endpoint_api_request_name')?.value || '').trim(),
+    method: (getEndpointRequestField(row, 'endpoint_api_request_method')?.value || 'GET').trim(),
+    path: (getEndpointRequestField(row, 'endpoint_api_request_path')?.value || '').trim(),
+    params: Array.from(
+      row?.querySelectorAll('[data-endpoint-api-request-param-row]') || []
+    )
+      .map((paramRow) => collectEndpointRequestParamRow(paramRow))
+      .map((param) => ({
+        ...param,
+        value: param.values[0] || '',
+      }))
+      .filter((param) => param.key || param.values.length),
+    body: getEndpointRequestField(row, 'endpoint_api_request_body')?.value || '',
+    use_auth: Boolean(getEndpointRequestField(row, 'endpoint_api_request_use_auth')?.checked),
+    max_round_times: Number.parseInt(
+      getEndpointRequestField(row, 'endpoint_api_request_max_round_times')?.value || '0',
+      10
+    ) || 0,
+    interval_unlimited: Boolean(
+      getEndpointRequestField(row, 'endpoint_api_request_interval_unlimited')?.checked
+    ),
+    run_every_times: Number.parseInt(
+      getEndpointRequestField(row, 'endpoint_api_request_run_every_times')?.value || '0',
+      10
+    ) || 0,
+  });
+
+  const collectEndpointSourceRow = (row) => ({
+    name: (getEndpointRowField(row, 'endpoint_name')?.value || '').trim(),
+    format: (getEndpointRowField(row, 'endpoint_format')?.value || 'api').trim(),
+    base_url: (getEndpointRowField(row, 'endpoint_base_url')?.value || '').trim(),
+    token: (getEndpointRowField(row, 'endpoint_token')?.value || '').trim(),
+    api: {
+      template_id: (getEndpointRowField(row, 'endpoint_api_template_id')?.value || '').trim(),
+      request_headers: getEndpointRowField(row, 'endpoint_api_request_headers')?.value || '{}',
+      auth_type: (getEndpointRowField(row, 'endpoint_api_auth_type')?.value || 'none').trim(),
+      token_url: (getEndpointRowField(row, 'endpoint_api_token_url')?.value || '').trim(),
+      token_method: (getEndpointRowField(row, 'endpoint_api_token_method')?.value || 'POST').trim(),
+      token_field: (getEndpointRowField(row, 'endpoint_api_token_field')?.value || 'access_token').trim(),
+      auth_username: (getEndpointRowField(row, 'endpoint_api_auth_username')?.value || '').trim(),
+      auth_password: getEndpointRowField(row, 'endpoint_api_auth_password')?.value || '',
+      auth_headers: getEndpointRowField(row, 'endpoint_api_auth_headers')?.value || '{}',
+      auth_body: getEndpointRowField(row, 'endpoint_api_auth_body')?.value || '',
+      api_key_name: (getEndpointRowField(row, 'endpoint_api_key_name')?.value || '').trim(),
+      api_key_value: getEndpointRowField(row, 'endpoint_api_key_value')?.value || '',
+      custom_auth_headers: getEndpointRowField(row, 'endpoint_api_custom_auth_headers')?.value || '{}',
+      requests: Array.from(
+        row?.querySelectorAll('[data-endpoint-api-request-row]') || []
+      ).map((requestRow) => collectEndpointRequestRow(requestRow)),
+    },
+    mqtt: {
+      host: (getEndpointRowField(row, 'endpoint_mqtt_host')?.value || '').trim(),
+      port: Number.parseInt(getEndpointRowField(row, 'endpoint_mqtt_port')?.value || '1883', 10) || 1883,
+      username: (getEndpointRowField(row, 'endpoint_mqtt_username')?.value || '').trim(),
+      password: getEndpointRowField(row, 'endpoint_mqtt_password')?.value || '',
+      topic: (getEndpointRowField(row, 'endpoint_mqtt_topic')?.value || '').trim(),
+    },
+  });
+
+  const collectAllEndpointSources = () => {
+    if (!endpointSourceList) {
+      return [];
+    }
+    return Array.from(endpointSourceList.querySelectorAll('[data-endpoint-source-row]'))
+      .map((row) => normalizeEndpointSourceData(collectEndpointSourceRow(row)))
+      .filter((source) => source.name);
+  };
+
+  const refreshBulkSourceNameOptions = (selectedName = '') => {
+    const bulkSourceSelect = document.getElementById('bulkSourceName');
+    if (!bulkSourceSelect) {
+      return;
+    }
+    const currentSelection = selectedName || bulkSourceSelect.value || '';
+    const sourceNames = collectAllEndpointSources()
+      .map((source) => source.name)
+      .filter(Boolean);
+    bulkSourceSelect.innerHTML = '<option value="">Select source</option>';
+    sourceNames.forEach((sourceName) => {
+      const option = document.createElement('option');
+      option.value = sourceName;
+      option.textContent = sourceName;
+      bulkSourceSelect.appendChild(option);
+    });
+    if (currentSelection && sourceNames.includes(currentSelection)) {
+      bulkSourceSelect.value = currentSelection;
+    }
+  };
+
+  const syncSharedTokenInputs = (sourceRow, token, cacheKey) => {
+    if (!endpointSourceList) {
+      return;
+    }
+    endpointSourceList.querySelectorAll('[data-endpoint-source-row]').forEach((row) => {
+      const matchesCache = cacheKey && getEndpointSourceCacheKey(row) === cacheKey;
+      if (row === sourceRow || matchesCache) {
+        const tokenInput = getEndpointRowField(row, 'endpoint_token');
+        if (tokenInput) {
+          tokenInput.value = token;
+        }
+      }
+    });
+  };
+
+  const bindEndpointRequestValueRow = (valueRow) => {
+    const removeBtn = valueRow?.querySelector('[data-remove-api-request-value]');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        const valueList = valueRow.parentElement;
+        valueRow.remove();
+        if (valueList && !valueList.querySelector('[data-endpoint-api-request-value-row]')) {
+          appendEndpointRequestValueRow(valueList, '');
+        }
+      });
+    }
+  };
+
+  const appendEndpointRequestValueRow = (valueList, value = '') => {
+    if (!valueList || !endpointApiRequestValueRowTemplate) {
+      return;
+    }
+    const fragment = endpointApiRequestValueRowTemplate.content.cloneNode(true);
+    const valueRow = fragment.querySelector('[data-endpoint-api-request-value-row]');
+    const valueInput = valueRow?.querySelector('input[name="endpoint_api_request_param_value"]');
+    if (valueInput) {
+      valueInput.value = value || '';
+    }
+    bindEndpointRequestValueRow(valueRow);
+    valueList.appendChild(fragment);
+  };
+
+  const updateEndpointRequestTitle = (requestRow) => {
+    const title = requestRow?.querySelector('[data-endpoint-request-title]');
+    if (!title) {
+      return;
+    }
+    const role = getEndpointRequestField(requestRow, 'endpoint_api_request_role')?.value || 'custom';
+    const customName = (getEndpointRequestField(requestRow, 'endpoint_api_request_name')?.value || '').trim();
+    const labelMap = {
+      organizations: 'Organizations',
+      devices: 'Devices',
+      latest_values: 'Latest Values',
+      custom: 'Custom',
+    };
+    title.textContent = customName || labelMap[role] || 'Request';
+  };
+
+  const bindEndpointRequestParamRow = (paramRow) => {
+    const removeBtn = paramRow?.querySelector('[data-remove-api-request-param]');
+    const addValueBtn = paramRow?.querySelector('[data-add-api-request-value]');
+    const valueList = paramRow?.querySelector('[data-endpoint-api-request-value-list]');
+    if (addValueBtn && valueList) {
+      addValueBtn.addEventListener('click', () => {
+        appendEndpointRequestValueRow(valueList, '');
+      });
+    }
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        paramRow.remove();
+      });
+    }
+  };
+
+  const appendEndpointRequestParamRow = (requestRow, param = {}) => {
+    const paramList = requestRow?.querySelector('[data-endpoint-api-request-param-list]');
+    if (!paramList || !endpointApiRequestParamRowTemplate) {
+      return;
+    }
+    const fragment = endpointApiRequestParamRowTemplate.content.cloneNode(true);
+    const paramRow = fragment.querySelector('[data-endpoint-api-request-param-row]');
+    if (paramRow) {
+      const keyInput = getEndpointRequestField(paramRow, 'endpoint_api_request_param_key');
+      const valueList = paramRow.querySelector('[data-endpoint-api-request-value-list]');
+      if (keyInput) {
+        keyInput.value = param.key || '';
+      }
+      const values = Array.isArray(param?.values)
+        ? param.values
+        : [param?.value || ''].filter((value) => value !== '');
+      if (valueList) {
+        if (values.length) {
+          values.forEach((value) => appendEndpointRequestValueRow(valueList, value));
+        } else {
+          appendEndpointRequestValueRow(valueList, '');
+        }
+      }
+      bindEndpointRequestParamRow(paramRow);
+    }
+    paramList.appendChild(fragment);
+  };
+
+  const bindEndpointRequestRow = (requestRow) => {
+    if (!requestRow) {
+      return;
+    }
+    const roleSelect = getEndpointRequestField(requestRow, 'endpoint_api_request_role');
+    const nameInput = getEndpointRequestField(requestRow, 'endpoint_api_request_name');
+    const addParamBtn = requestRow.querySelector('[data-add-api-request-param]');
+    const historyBtn = requestRow.querySelector('[data-toggle-api-history]');
+    const refreshHistoryBtn = requestRow.querySelector('[data-refresh-api-history]');
+    const exportHistoryBtn = requestRow.querySelector('[data-export-api-history]');
+    const testBtn = requestRow.querySelector('[data-test-api-request]');
+    const removeBtn = requestRow.querySelector('[data-remove-api-request]');
+    const maxIntervalInput = getEndpointRequestField(requestRow, 'endpoint_api_request_max_round_times');
+    const intervalUnlimitedCheckbox = getEndpointRequestField(requestRow, 'endpoint_api_request_interval_unlimited');
+    const runIntervalInput = getEndpointRequestField(requestRow, 'endpoint_api_request_run_every_times');
+    const maxIntervalGroup = requestRow.querySelector('[data-request-max-interval-group]');
+    const runIntervalGroup = requestRow.querySelector('[data-request-run-interval-group]');
+
+    const syncIntervalState = () => {
+      if (!maxIntervalInput || !intervalUnlimitedCheckbox) {
+        return;
+      }
+      const isUnlimited = intervalUnlimitedCheckbox.checked;
+      maxIntervalInput.disabled = isUnlimited;
+      if (runIntervalInput) {
+        runIntervalInput.disabled = !isUnlimited;
+      }
+      if (maxIntervalGroup) {
+        maxIntervalGroup.classList.toggle('d-none', isUnlimited);
+      }
+      if (runIntervalGroup) {
+        runIntervalGroup.classList.toggle('d-none', !isUnlimited);
+      }
+    };
+
+    if (roleSelect) {
+      roleSelect.addEventListener('change', () => {
+        updateEndpointRequestTitle(requestRow);
+      });
+    }
+    if (nameInput) {
+      nameInput.addEventListener('input', () => {
+        updateEndpointRequestTitle(requestRow);
+      });
+    }
+    if (intervalUnlimitedCheckbox) {
+      intervalUnlimitedCheckbox.addEventListener('change', syncIntervalState);
+    }
+    if (addParamBtn) {
+      addParamBtn.addEventListener('click', () => {
+        appendEndpointRequestParamRow(requestRow, {});
+      });
+    }
+    if (testBtn) {
+      testBtn.addEventListener('click', async () => {
+        const sourceRow = requestRow.closest('[data-endpoint-source-row]');
+        const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(sourceRow));
+        const draftRequest = collectEndpointRequestRow(requestRow);
+        if (!draftSource.name) {
+          alert('Please enter source name before testing this request.');
+          return;
+        }
+        if (draftSource.format !== 'api') {
+          alert('Request testing is available for API sources only.');
+          return;
+        }
+        testBtn.disabled = true;
+        testBtn.textContent = 'Testing...';
+        try {
+          const payload = await requestApiRequestTest(draftSource, draftRequest);
+          syncSharedTokenInputs(sourceRow, payload.source?.token || '', payload.cache_key || '');
+          if (payload.device_items?.length || payload.ready_device_items?.length) {
+            sourceDeviceCatalog[draftSource.name] = payload.ready_device_items || payload.device_items || [];
+            const bulkSourceSelect = document.getElementById('bulkSourceName');
+            if (bulkSourceSelect) {
+              bulkSourceSelect.value = draftSource.name;
+            }
+            refreshBulkSourceNameOptions(draftSource.name);
+            if (typeof refreshBulkSourceDeviceOptions === 'function') {
+              refreshBulkSourceDeviceOptions();
+            }
+          }
+          renderRequestHistoryEntries(requestRow, payload.history || []);
+          if (previewLiv24DataOutput) {
+            previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
+          }
+        } catch (error) {
+          alert(`Test Request failed: ${getRequestErrorMessage(error)}`);
+        } finally {
+          testBtn.disabled = false;
+          testBtn.textContent = 'Test Request';
+        }
+      });
+    }
+    if (historyBtn) {
+      historyBtn.addEventListener('click', async () => {
+        const sourceRow = requestRow.closest('[data-endpoint-source-row]');
+        const historyPanel = requestRow.querySelector('[data-api-history-panel]');
+        if (!historyPanel) {
+          return;
+        }
+        const willShow = historyPanel.classList.contains('d-none');
+        historyPanel.classList.toggle('d-none', !willShow);
+        historyBtn.textContent = willShow ? 'Hide History' : 'History';
+        if (!willShow) {
+          return;
+        }
+        try {
+          await loadRequestHistory(requestRow, sourceRow);
+        } catch (error) {
+          renderRequestHistoryEntries(requestRow, []);
+          alert(`History failed: ${getRequestErrorMessage(error)}`);
+        }
+      });
+    }
+    if (refreshHistoryBtn) {
+      refreshHistoryBtn.addEventListener('click', async () => {
+        const sourceRow = requestRow.closest('[data-endpoint-source-row]');
+        try {
+          refreshHistoryBtn.disabled = true;
+          await loadRequestHistory(requestRow, sourceRow);
+        } catch (error) {
+          alert(`History failed: ${getRequestErrorMessage(error)}`);
+        } finally {
+          refreshHistoryBtn.disabled = false;
+        }
+      });
+    }
+    if (exportHistoryBtn) {
+      exportHistoryBtn.addEventListener('click', () => {
+        const sourceRow = requestRow.closest('[data-endpoint-source-row]');
+        const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(sourceRow));
+        const draftRequest = collectEndpointRequestRow(requestRow);
+        const startDate = requestRow.querySelector('[data-api-history-start-date]')?.value || '';
+        const endDate = requestRow.querySelector('[data-api-history-end-date]')?.value || '';
+        if (!draftSource.name) {
+          alert('Please enter source name before downloading CSV.');
+          return;
+        }
+        window.location.href = buildSourceHistoryExportUrl({
+          sourceName: draftSource.name,
+          requestDefinition: draftRequest,
+          startDate,
+          endDate,
+        });
+      });
+    }
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        requestRow.remove();
+      });
+    }
+    requestRow.addEventListener('click', async (event) => {
+      const deleteBtn = event.target.closest('[data-delete-api-history]');
+      if (!deleteBtn) {
+        return;
+      }
+      event.preventDefault();
+      try {
+        deleteBtn.disabled = true;
+        await deleteApiRequestHistory(deleteBtn.dataset.deleteApiHistory);
+        const sourceRow = requestRow.closest('[data-endpoint-source-row]');
+        await loadRequestHistory(requestRow, sourceRow);
+      } catch (error) {
+        deleteBtn.disabled = false;
+        alert(`Delete history failed: ${getRequestErrorMessage(error)}`);
+      }
+    });
+    updateEndpointRequestTitle(requestRow);
+    syncIntervalState();
+  };
+
+  const renderEndpointRequestRows = (sourceRow, requests) => {
+    const requestList = sourceRow?.querySelector('[data-endpoint-api-request-list]');
+    if (!requestList || !endpointApiRequestRowTemplate) {
+      return;
+    }
+    requestList.innerHTML = '';
+    const normalizedRequests = Array.isArray(requests) && requests.length
+      ? requests
+      : [
+          createDefaultEndpointRequest('organizations', 0),
+          createDefaultEndpointRequest('devices', 1),
+          createDefaultEndpointRequest('latest_values', 2),
+        ];
+    normalizedRequests.forEach((request, index) => {
+      const normalizedRequest = normalizeEndpointRequestData(request, index);
+      const fragment = endpointApiRequestRowTemplate.content.cloneNode(true);
+      const requestRow = fragment.querySelector('[data-endpoint-api-request-row]');
+      if (!requestRow) {
+        return;
+      }
+      requestRow.dataset.requestId = normalizedRequest.id || createEndpointRequestId();
+      applyTextValue(requestRow, 'endpoint_api_request_name', normalizedRequest.name || '');
+      applyTextValue(requestRow, 'endpoint_api_request_path', normalizedRequest.path || '');
+      applyTextValue(requestRow, 'endpoint_api_request_body', normalizedRequest.body || '');
+      const roleSelect = getEndpointRequestField(requestRow, 'endpoint_api_request_role');
+      const methodSelect = getEndpointRequestField(requestRow, 'endpoint_api_request_method');
+      const authCheckbox = getEndpointRequestField(requestRow, 'endpoint_api_request_use_auth');
+      const maxIntervalInput = getEndpointRequestField(requestRow, 'endpoint_api_request_max_round_times');
+      const intervalUnlimitedCheckbox = getEndpointRequestField(requestRow, 'endpoint_api_request_interval_unlimited');
+      const runIntervalInput = getEndpointRequestField(requestRow, 'endpoint_api_request_run_every_times');
+      if (roleSelect) {
+        roleSelect.value = normalizedRequest.role || 'custom';
+      }
+      if (methodSelect) {
+        methodSelect.value = normalizedRequest.method || 'GET';
+      }
+      if (authCheckbox) {
+        authCheckbox.checked = Boolean(normalizedRequest.use_auth);
+      }
+      if (maxIntervalInput) {
+        maxIntervalInput.value = normalizedRequest.max_round_times || normalizedRequest.max_interval_minutes || 0;
+      }
+      if (intervalUnlimitedCheckbox) {
+        intervalUnlimitedCheckbox.checked = Boolean(normalizedRequest.interval_unlimited);
+      }
+      if (runIntervalInput) {
+        runIntervalInput.value = normalizedRequest.run_every_times || normalizedRequest.run_interval_minutes || 0;
+      }
+      requestList.appendChild(fragment);
+      const appendedRequestRow = requestList.lastElementChild;
+      (normalizedRequest.params || []).forEach((param) => {
+        appendEndpointRequestParamRow(appendedRequestRow, param);
+      });
+      bindEndpointRequestRow(appendedRequestRow);
+    });
+  };
+
+  const updateEndpointAuthVisibility = (row) => {
+    if (!row) {
+      return;
+    }
+    const authType = getEndpointRowField(row, 'endpoint_api_auth_type')?.value || 'none';
+    row.querySelectorAll('[data-endpoint-auth-fields]').forEach((field) => {
+      const targets = (field.dataset.endpointAuthFields || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+      field.classList.toggle('d-none', targets.length > 0 && !targets.includes(authType));
+    });
+  };
+
+  const updateEndpointSourceVisibility = (row) => {
+    if (!row) {
+      return;
+    }
+    const formatSelect = row.querySelector('[data-endpoint-format-select]');
+    const selectedFormat = formatSelect ? formatSelect.value : 'api';
+    row.querySelectorAll('[data-endpoint-api-fields]').forEach((field) => {
+      field.classList.toggle('d-none', selectedFormat !== 'api');
+    });
+    row.querySelectorAll('[data-endpoint-mqtt-fields]').forEach((field) => {
+      field.classList.toggle('d-none', selectedFormat !== 'mqtt');
+    });
+    const useSourceBtn = row.querySelector('[data-use-source]');
+    if (useSourceBtn) {
+      useSourceBtn.disabled = selectedFormat !== 'api';
+    }
+    updateEndpointAuthVisibility(row);
+  };
+
+  const buildTemplateRequests = (template) => {
+    const organizationsRequest = getTemplateRequest(template, template?.suggested?.organizations_request_id);
+    const devicesRequest = getTemplateRequest(template, template?.suggested?.devices_request_id);
+    const latestValuesRequest = getTemplateRequest(template, template?.suggested?.latest_values_request_id);
+    const devicesParam = template?.suggested?.devices_org_param || 'org_uuid';
+    const latestValuesParam = template?.suggested?.latest_values_device_param || 'device_uuid';
+    return [
+      {
+        ...createDefaultEndpointRequest('organizations', 0),
+        name: organizationsRequest?.name || 'Organizations',
+        method: organizationsRequest?.method || 'GET',
+        path: getTemplateRequestValue(template, template?.suggested?.organizations_request_id, 'organizations_path'),
+      },
+      {
+        ...createDefaultEndpointRequest('devices', 1),
+        name: devicesRequest?.name || 'Devices',
+        method: devicesRequest?.method || 'GET',
+        path: getTemplateRequestValue(template, template?.suggested?.devices_request_id, 'devices_path'),
+        params: devicesParam ? [{ key: devicesParam, value: '{% raw %}{{organization_uuid}}{% endraw %}' }] : [],
+      },
+      {
+        ...createDefaultEndpointRequest('latest_values', 2),
+        name: latestValuesRequest?.name || 'Latest Values',
+        method: latestValuesRequest?.method || 'GET',
+        path: getTemplateRequestValue(template, template?.suggested?.latest_values_request_id, 'latest_values_path'),
+        params: latestValuesParam ? [{ key: latestValuesParam, values: ['{% raw %}{{device_uuid}}{% endraw %}'] }] : [],
+      },
+    ];
+  };
+
+  const applyEndpointTemplateToRow = (row, templateId) => {
+    const template = endpointApiTemplateMap.get(templateId);
+    if (!row || !template) {
+      return;
+    }
+    applyTextValue(row, 'endpoint_base_url', template.base_url || '');
+    applyJsonValue(row, 'endpoint_api_request_headers', template.suggested?.request_headers || {});
+    applyTextValue(
+      row,
+      'endpoint_api_token_url',
+      getTemplateRequestValue(template, template.suggested?.token_request_id, 'token_url')
+    );
+    applyTextValue(row, 'endpoint_api_token_method', template.suggested?.token_method || 'POST');
+    applyTextValue(row, 'endpoint_api_token_field', template.suggested?.token_field || 'access_token');
+    applyTextValue(row, 'endpoint_api_auth_type', template.suggested?.token_url ? 'bearer_login' : 'none');
+    applyJsonValue(row, 'endpoint_api_auth_headers', template.suggested?.token_headers || {});
+    applyTextValue(row, 'endpoint_api_auth_body', template.suggested?.token_body || '');
+    renderEndpointRequestRows(row, buildTemplateRequests(template));
+    updateEndpointAuthVisibility(row);
+  };
+
+  const populateEndpointSourceRow = (row, source) => {
+    const normalizedSource = normalizeEndpointSourceData(source);
+    applyTextValue(row, 'endpoint_name', normalizedSource.name || '');
+    applyTextValue(row, 'endpoint_format', normalizedSource.format || 'api');
+    applyTextValue(row, 'endpoint_base_url', normalizedSource.base_url || '');
+    applyTextValue(row, 'endpoint_token', normalizedSource.token || '');
+    applyTextValue(row, 'endpoint_api_template_id', normalizedSource.api?.template_id || '');
+    applyTextValue(row, 'endpoint_api_auth_type', normalizedSource.api?.auth_type || 'none');
+    applyJsonValue(row, 'endpoint_api_request_headers', normalizedSource.api?.request_headers || '{}');
+    applyTextValue(row, 'endpoint_api_token_url', normalizedSource.api?.token_url || '');
+    applyTextValue(row, 'endpoint_api_token_method', normalizedSource.api?.token_method || 'POST');
+    applyTextValue(row, 'endpoint_api_token_field', normalizedSource.api?.token_field || 'access_token');
+    applyTextValue(row, 'endpoint_api_auth_username', normalizedSource.api?.auth_username || '');
+    applyTextValue(row, 'endpoint_api_auth_password', normalizedSource.api?.auth_password || '');
+    applyJsonValue(row, 'endpoint_api_auth_headers', normalizedSource.api?.auth_headers || '{}');
+    applyTextValue(row, 'endpoint_api_auth_body', normalizedSource.api?.auth_body || '');
+    applyTextValue(row, 'endpoint_api_key_name', normalizedSource.api?.api_key_name || '');
+    applyTextValue(row, 'endpoint_api_key_value', normalizedSource.api?.api_key_value || '');
+    applyJsonValue(row, 'endpoint_api_custom_auth_headers', normalizedSource.api?.custom_auth_headers || '{}');
+    applyTextValue(row, 'endpoint_mqtt_host', normalizedSource.mqtt?.host || '');
+    applyTextValue(row, 'endpoint_mqtt_port', normalizedSource.mqtt?.port || 1883);
+    applyTextValue(row, 'endpoint_mqtt_username', normalizedSource.mqtt?.username || '');
+    applyTextValue(row, 'endpoint_mqtt_password', normalizedSource.mqtt?.password || '');
+    applyTextValue(row, 'endpoint_mqtt_topic', normalizedSource.mqtt?.topic || '');
+    renderEndpointRequestRows(row, normalizedSource.api?.requests || []);
+    updateEndpointSourceVisibility(row);
+  };
+
+  const requestSourcePreview = async (source, options = {}) => {
+    const response = await fetch(editorData.sourcePreviewRoute, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        source_name: source.name,
+        source,
+        sources: collectAllEndpointSources(),
+        execution_state: options.executionState || {},
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.error) {
+      throw new Error(payload.error || 'Failed to load source data');
+    }
+    return payload;
+  };
+
+  const endpointSourceAutoRefreshState = new WeakMap();
+  const endpointSourceAutoRefreshStorageKey = 'icon_milesight_endpoint_source_autorefresh';
+  const endpointSourceUseSourceActivatedStorageKey = 'icon_milesight_endpoint_source_use_source_activated';
+
+  const loadStoredEndpointSourceAutoRefreshStates = () => {
+    try {
+      const rawValue = window.localStorage.getItem(endpointSourceAutoRefreshStorageKey);
+      const parsedValue = rawValue ? JSON.parse(rawValue) : {};
+      return parsedValue && typeof parsedValue === 'object' ? parsedValue : {};
+    } catch (error) {
+      return {};
+    }
+  };
+
+  const saveStoredEndpointSourceAutoRefreshStates = (storedStates) => {
+    try {
+      window.localStorage.setItem(
+        endpointSourceAutoRefreshStorageKey,
+        JSON.stringify(storedStates && typeof storedStates === 'object' ? storedStates : {})
+      );
+    } catch (error) {
+      // Ignore storage quota or browser privacy errors.
+    }
+  };
+
+  const loadStoredEndpointSourceUseSourceActivatedStates = () => {
+    try {
+      const rawValue = window.localStorage.getItem(endpointSourceUseSourceActivatedStorageKey);
+      const parsedValue = rawValue ? JSON.parse(rawValue) : {};
+      return parsedValue && typeof parsedValue === 'object' ? parsedValue : {};
+    } catch (error) {
+      return {};
+    }
+  };
+
+  const saveStoredEndpointSourceUseSourceActivatedStates = (storedStates) => {
+    try {
+      window.localStorage.setItem(
+        endpointSourceUseSourceActivatedStorageKey,
+        JSON.stringify(storedStates && typeof storedStates === 'object' ? storedStates : {})
+      );
+    } catch (error) {
+      // Ignore storage quota or browser privacy errors.
+    }
+  };
+
+  const getEndpointSourceAutoRefreshStorageName = (row) => {
+    const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
+    return (draftSource.name || '').trim();
+  };
+
+  const clearStoredEndpointSourceAutoRefreshState = (row) => {
+    const sourceName = (row?.dataset.autoRefreshSourceName || getEndpointSourceAutoRefreshStorageName(row) || '').trim();
+    if (!sourceName) {
+      return;
+    }
+    const storedStates = loadStoredEndpointSourceAutoRefreshStates();
+    if (!(sourceName in storedStates)) {
+      if (row?.dataset.autoRefreshSourceName) {
+        delete row.dataset.autoRefreshSourceName;
+      }
+      return;
+    }
+    delete storedStates[sourceName];
+    saveStoredEndpointSourceAutoRefreshStates(storedStates);
+    if (row?.dataset.autoRefreshSourceName) {
+      delete row.dataset.autoRefreshSourceName;
+    }
+  };
+
+  const rememberEndpointSourceAutoRefreshState = (row, refreshState) => {
+    const sourceName = getEndpointSourceAutoRefreshStorageName(row);
+    if (!sourceName) {
+      return;
+    }
+    const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
+    const storedStates = loadStoredEndpointSourceAutoRefreshStates();
+    storedStates[sourceName] = {
+      source: draftSource,
+      executionState: refreshState?.executionState || {},
+      nextRunAt: Number.isFinite(refreshState?.nextRunAt) ? refreshState.nextRunAt : 0,
+      updatedAt: new Date().toISOString(),
+    };
+    saveStoredEndpointSourceAutoRefreshStates(storedStates);
+    if (row) {
+      row.dataset.autoRefreshSourceName = sourceName;
+    }
+  };
+
+  const setUseSourceButtonActivated = (row, isActivated) => {
+    const useSourceBtn = row?.querySelector('[data-use-source]');
+    if (!useSourceBtn) {
+      return;
+    }
+    useSourceBtn.classList.toggle('btn-success', Boolean(isActivated));
+    useSourceBtn.classList.toggle('btn-outline-secondary', !isActivated);
+    if (row) {
+      row.dataset.useSourceActivated = isActivated ? 'true' : 'false';
+    }
+  };
+
+  const syncStoredUseSourceButtonState = (row) => {
+    const sourceName = getEndpointSourceAutoRefreshStorageName(row);
+    const activatedStates = loadStoredEndpointSourceUseSourceActivatedStates();
+    setUseSourceButtonActivated(row, Boolean(sourceName && activatedStates[sourceName]));
+  };
+
+  const rememberUseSourceButtonActivated = (row) => {
+    const sourceName = getEndpointSourceAutoRefreshStorageName(row);
+    if (!sourceName) {
+      return;
+    }
+    const activatedStates = loadStoredEndpointSourceUseSourceActivatedStates();
+    activatedStates[sourceName] = {
+      activated: true,
+      updatedAt: new Date().toISOString(),
+    };
+    saveStoredEndpointSourceUseSourceActivatedStates(activatedStates);
+    if (row) {
+      row.dataset.useSourceActivatedName = sourceName;
+    }
+    setUseSourceButtonActivated(row, true);
+  };
+
+  const setEndpointSourceAutoRefreshStatus = (row, message = '', isError = false) => {
+    const statusEl = row?.querySelector('[data-source-auto-refresh-status]');
+    if (!statusEl) {
+      return;
+    }
+    statusEl.textContent = message;
+    statusEl.classList.toggle('text-danger', Boolean(message) && isError);
+    statusEl.classList.toggle('text-muted', !isError);
+  };
+
+  const stopEndpointSourceAutoRefresh = (row, message = '', options = {}) => {
+    const settings = {
+      clearStoredState: true,
+      ...options,
+    };
+    const refreshState = endpointSourceAutoRefreshState.get(row);
+    if (refreshState?.timerId) {
+      window.clearTimeout(refreshState.timerId);
+    }
+    endpointSourceAutoRefreshState.delete(row);
+    if (settings.clearStoredState) {
+      clearStoredEndpointSourceAutoRefreshState(row);
+    }
+    setEndpointSourceAutoRefreshStatus(row, message);
+  };
+
+  const getLatestValuesAutoRefreshMinutes = (source) => {
+    const requestDefinitions = Array.isArray(source?.api?.requests) ? source.api.requests : [];
+    const latestValuesRequest = requestDefinitions
+      .map((requestDefinition, index) => normalizeEndpointRequestData(requestDefinition, index))
+      .find((requestDefinition) => requestDefinition.role === 'latest_values');
+    if (!latestValuesRequest || !latestValuesRequest.interval_unlimited) {
+      return 0;
+    }
+    return Number.parseInt(
+      latestValuesRequest.run_every_times ?? latestValuesRequest.run_interval_minutes ?? 0,
+      10
+    ) || 0;
+  };
+
+  const applySourcePreviewPayload = (row, draftSource, payload, options = {}) => {
+    const settings = {
+      updatePreviewOutput: true,
+      ...options,
+    };
+    syncSharedTokenInputs(row, payload.source?.token || '', payload.cache_key || '');
+    syncSourceMetricFieldsFromPayload(payload.source_metric_fields || []);
+    const sourceName = payload.source?.name || draftSource.name;
+    sourceDeviceCatalog[sourceName] = payload.ready_device_items || payload.device_items || [];
+    refreshBulkSourceNameOptions(sourceName);
+    const bulkSourceSelect = document.getElementById('bulkSourceName');
+    if (bulkSourceSelect) {
+      bulkSourceSelect.value = sourceName;
+    }
+    if (typeof refreshBulkSourceDeviceOptions === 'function') {
+      refreshBulkSourceDeviceOptions();
+    }
+    if (settings.updatePreviewOutput && previewLiv24DataOutput) {
+      previewLiv24DataOutput.dataset.sourceName = sourceName;
+      previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
+    }
+  };
+
+  const startEndpointSourceAutoRefresh = (row, initialExecutionState = {}, options = {}) => {
+    const settings = {
+      nextRunAt: 0,
+      ...options,
+    };
+    const refreshSourcePreview = async () => {
+      const refreshState = endpointSourceAutoRefreshState.get(row);
+      if (!refreshState || !document.body.contains(row)) {
+        stopEndpointSourceAutoRefresh(row);
+        return;
+      }
+
+      const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
+      const intervalMinutes = getLatestValuesAutoRefreshMinutes(draftSource);
+      if (!intervalMinutes) {
+        stopEndpointSourceAutoRefresh(row);
+        return;
+      }
+
+      refreshState.intervalMinutes = intervalMinutes;
+
+      try {
+        const payload = await requestSourcePreview(draftSource, {
+          executionState: refreshState.executionState || {},
+        });
+        refreshState.executionState = payload.execution_state || refreshState.executionState || {};
+        applySourcePreviewPayload(row, draftSource, payload, {
+          updatePreviewOutput: previewLiv24DataOutput?.dataset.sourceName === (payload.source?.name || draftSource.name),
+        });
+        await refreshVisibleSourceRequestHistoryPanels(row);
+        setEndpointSourceAutoRefreshStatus(
+          row,
+          `Latest Values auto refresh every ${intervalMinutes} min while this page is open.`
+        );
+      } catch (error) {
+        setEndpointSourceAutoRefreshStatus(
+          row,
+          `Latest Values auto refresh failed: ${getRequestErrorMessage(error)}`,
+          true
+        );
+      } finally {
+        const nextState = endpointSourceAutoRefreshState.get(row);
+        if (!nextState || !document.body.contains(row)) {
+          stopEndpointSourceAutoRefresh(row);
+          return;
+        }
+        const nextSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
+        const nextIntervalMinutes = getLatestValuesAutoRefreshMinutes(nextSource);
+        if (!nextIntervalMinutes) {
+          stopEndpointSourceAutoRefresh(row);
+          return;
+        }
+        nextState.intervalMinutes = nextIntervalMinutes;
+        nextState.nextRunAt = Date.now() + (nextIntervalMinutes * 60 * 1000);
+        nextState.timerId = window.setTimeout(refreshSourcePreview, nextIntervalMinutes * 60 * 1000);
+        rememberEndpointSourceAutoRefreshState(row, nextState);
+      }
+    };
+
+    const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
+    const intervalMinutes = getLatestValuesAutoRefreshMinutes(draftSource);
+    if (!intervalMinutes) {
+      stopEndpointSourceAutoRefresh(row);
+      return;
+    }
+
+    stopEndpointSourceAutoRefresh(row, '', { clearStoredState: false });
+    const initialNextRunAt = Number.isFinite(settings.nextRunAt) && settings.nextRunAt > Date.now()
+      ? settings.nextRunAt
+      : Date.now() + (intervalMinutes * 60 * 1000);
+    const refreshState = {
+      intervalMinutes,
+      executionState: initialExecutionState || {},
+      nextRunAt: initialNextRunAt,
+      timerId: window.setTimeout(
+        refreshSourcePreview,
+        Math.max(1000, initialNextRunAt - Date.now())
+      ),
+    };
+    endpointSourceAutoRefreshState.set(row, refreshState);
+    rememberEndpointSourceAutoRefreshState(row, refreshState);
+    setEndpointSourceAutoRefreshStatus(
+      row,
+      `Latest Values auto refresh every ${intervalMinutes} min while this page is open.`
+    );
+  };
+
+  const requestApiRequestTest = async (source, requestDefinition) => {
+    const response = await fetch(editorData.sourceRequestTestRoute, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        source_name: source.name,
+        source,
+        request: requestDefinition,
+        sources: collectAllEndpointSources(),
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.error) {
+      throw new Error(payload.error || 'Failed to test request');
+    }
+    return payload;
+  };
+
+  const requestApiRequestHistory = async (source, requestDefinition, options = {}) => {
+    const response = await fetch(editorData.sourceRequestHistoryRoute, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        source_name: source.name,
+        source,
+        request: requestDefinition,
+        start_date: options.startDate || '',
+        end_date: options.endDate || '',
+        limit: options.limit || 150,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.error) {
+      throw new Error(payload.error || 'Failed to load request history');
+    }
+    return payload.history || [];
+  };
+
+  const requestSourceDeviceCache = async (sourceName) => {
+    const response = await fetch(
+      `${editorData.sourceDeviceCacheRoute}?source_name=${encodeURIComponent(sourceName)}`
+    );
+    const payload = await response.json();
+    if (!response.ok || payload.error) {
+      throw new Error(payload.error || 'Failed to load source device cache');
+    }
+    return payload;
+  };
+
+  const deleteApiRequestHistory = async (historyId) => {
+    const response = await fetch(editorData.sourceRequestHistoryDeleteRoute, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ history_id: historyId }),
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.error) {
+      throw new Error(payload.error || 'Failed to delete request history');
+    }
+    return payload;
+  };
+
+  const escapeHtml = (value) =>
+    String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+
+  const formatHistoryValue = (value) => {
+    if (value === null || value === undefined || value === '') {
+      return '';
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch (error) {
+      return String(value);
+    }
+  };
+
+  const renderRequestHistoryEntries = (requestRow, historyEntries) => {
+    const historyList = requestRow?.querySelector('[data-api-history-list]');
+    if (!historyList) {
+      return;
+    }
+    const entries = Array.isArray(historyEntries) ? historyEntries : [];
+    if (!entries.length) {
+      historyList.innerHTML = '<div class="small text-muted">No request history saved yet.</div>';
+      return;
+    }
+    historyList.innerHTML = entries.map((entry) => {
+      const title = entry.request_name || entry.request_role || entry.request_path || 'Request';
+      const statusLabel = entry.response_status === 'success' ? 'Success' : 'Error';
+      const badgeClass = entry.response_status === 'success' ? 'success' : 'danger';
+      const responseValue = entry.response_status === 'success'
+        ? (entry.response_payload || {})
+        : { error: entry.error_message || '', payload: entry.response_payload || {} };
+      return `
+        <details class="border rounded-2 p-2">
+          <summary class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span><strong>${escapeHtml(title)}</strong> <span class="text-muted">${escapeHtml(entry.request_method || 'GET')} ${escapeHtml(entry.request_path || '')}</span></span>
+            <span class="d-flex align-items-center gap-2">
+              <span class="badge text-bg-${badgeClass}">${escapeHtml(statusLabel)}${entry.response_code ? ` ${escapeHtml(entry.response_code)}` : ''}</span>
+              <small class="text-muted">${escapeHtml(formatProjectDateTime(entry.created_at || ''))}</small>
+              <button class="btn btn-outline-danger btn-sm" type="button" data-delete-api-history="${escapeHtml(entry.id)}">Delete</button>
+            </span>
+          </summary>
+          <div class="mt-2 small text-muted">${escapeHtml(entry.request_url || '')}</div>
+          <div class="row g-2 mt-1">
+            <div class="col-12 col-lg-6">
+              <label class="form-label small mb-1">Request</label>
+              <pre class="small bg-body-tertiary border rounded p-2 mb-0" style="max-height: 220px; overflow: auto;">${escapeHtml(formatHistoryValue({
+                headers: entry.request_headers || {},
+                query: entry.request_query || {},
+                body: entry.request_body || '',
+                use_auth: entry.use_auth,
+              }))}</pre>
+            </div>
+            <div class="col-12 col-lg-6">
+              <label class="form-label small mb-1">Response</label>
+              <pre class="small bg-body-tertiary border rounded p-2 mb-0" style="max-height: 220px; overflow: auto;">${escapeHtml(formatHistoryValue(responseValue))}</pre>
+            </div>
+          </div>
+        </details>
+      `;
+    }).join('');
+  };
+
+  const loadRequestHistory = async (requestRow, sourceRow) => {
+    const historyList = requestRow?.querySelector('[data-api-history-list]');
+    const startDate = requestRow?.querySelector('[data-api-history-start-date]')?.value || '';
+    const endDate = requestRow?.querySelector('[data-api-history-end-date]')?.value || '';
+    if (historyList) {
+      historyList.innerHTML = '<div class="small text-muted">Loading request history...</div>';
+    }
+    const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(sourceRow));
+    const draftRequest = collectEndpointRequestRow(requestRow);
+    const history = await requestApiRequestHistory(draftSource, draftRequest, {
+      startDate,
+      endDate,
+      limit: 150,
+    });
+    renderRequestHistoryEntries(requestRow, history);
+  };
+
+  const refreshVisibleSourceRequestHistoryPanels = async (sourceRow) => {
+    const requestRows = Array.from(
+      sourceRow?.querySelectorAll('[data-endpoint-api-request-row]') || []
+    );
+    for (const requestRow of requestRows) {
+      const historyPanel = requestRow.querySelector('[data-api-history-panel]');
+      if (!historyPanel || historyPanel.classList.contains('d-none')) {
+        continue;
+      }
+      try {
+        await loadRequestHistory(requestRow, sourceRow);
+      } catch (error) {
+        renderRequestHistoryEntries(requestRow, []);
+      }
+    }
+  };
+
+  const appendEndpointSource = (source) => {
+    if (!endpointSourceList || !endpointSourceRowTemplate) {
+      return null;
+    }
+    const fragment = endpointSourceRowTemplate.content.cloneNode(true);
+    endpointSourceList.appendChild(fragment);
+    const row = endpointSourceList.lastElementChild;
+    populateEndpointSourceRow(row, source);
+    bindEndpointSourceRow(row);
+    updateEndpointSourceTitles();
+    updateEndpointRemoveButtons();
+    refreshBulkSourceNameOptions();
+    return row;
+  };
+
+  const bindEndpointSourceRow = (row) => {
+    if (!row) {
+      return;
+    }
+    const formatSelect = row.querySelector('[data-endpoint-format-select]');
+    const authTypeSelect = row.querySelector('[data-endpoint-auth-type-select]');
+    const templateSelect = row.querySelector('[data-endpoint-api-template-select]');
+    const sourceNameInput = getEndpointRowField(row, 'endpoint_name');
+    const addRequestBtn = row.querySelector('[data-add-api-request]');
+    const useSourceBtn = row.querySelector('[data-use-source]');
+    const removeBtn = row.querySelector('[data-remove-endpoint-source]');
+
+    if (formatSelect) {
+      formatSelect.addEventListener('change', () => {
+        if ((formatSelect.value || 'api') !== 'api') {
+          stopEndpointSourceAutoRefresh(row);
+        }
+        updateEndpointSourceVisibility(row);
+      });
+    }
+    if (authTypeSelect) {
+      authTypeSelect.addEventListener('change', () => {
+        updateEndpointAuthVisibility(row);
+      });
+    }
+    if (templateSelect) {
+      templateSelect.addEventListener('change', () => {
+        applyEndpointTemplateToRow(row, templateSelect.value);
+      });
+    }
+    if (sourceNameInput) {
+      sourceNameInput.addEventListener('input', () => {
+        updateEndpointSourceTitles();
+        refreshBulkSourceNameOptions();
+        syncStoredUseSourceButtonState(row);
+      });
+    }
+    row.addEventListener('input', (event) => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        stopEndpointSourceAutoRefresh(row, 'Source changed. Click Use Source to restart auto refresh.');
+      }
+    });
+    row.addEventListener('change', (event) => {
+      if (event.target instanceof HTMLSelectElement) {
+        stopEndpointSourceAutoRefresh(row, 'Source changed. Click Use Source to restart auto refresh.');
+      }
+    });
+    if (addRequestBtn) {
+      addRequestBtn.addEventListener('click', () => {
+        const requestList = row.querySelector('[data-endpoint-api-request-list]');
+        const nextIndex = requestList?.querySelectorAll('[data-endpoint-api-request-row]').length || 0;
+        renderEndpointRequestRows(row, [
+          ...Array.from(requestList?.querySelectorAll('[data-endpoint-api-request-row]') || []).map((entry) =>
+            collectEndpointRequestRow(entry)
+          ),
+          createDefaultEndpointRequest('custom', nextIndex),
+        ]);
+      });
+    }
+    if (useSourceBtn) {
+      useSourceBtn.addEventListener('click', async () => {
+        const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
+        if (!draftSource.name) {
+          alert('Please enter source name before using this source.');
+          return;
+        }
+        if (draftSource.format !== 'api') {
+          alert('Use Source preview is available for API sources only.');
+          return;
+        }
+        useSourceBtn.disabled = true;
+        useSourceBtn.textContent = 'Loading...';
+        try {
+          const payload = await requestSourcePreview(draftSource);
+          applySourcePreviewPayload(row, draftSource, payload);
+          await refreshVisibleSourceRequestHistoryPanels(row);
+          rememberUseSourceButtonActivated(row);
+          startEndpointSourceAutoRefresh(row, payload.execution_state || {});
+        } catch (error) {
+          alert(`Use Source failed: ${getRequestErrorMessage(error)}`);
+        } finally {
+          useSourceBtn.textContent = 'Use Source';
+          updateEndpointSourceVisibility(row);
+        }
+      });
+    }
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        stopEndpointSourceAutoRefresh(row);
+        row.remove();
+        if (!endpointSourceList?.querySelector('[data-endpoint-source-row]')) {
+          appendEndpointSource(normalizeEndpointSourceData({}));
+        }
+        updateEndpointSourceTitles();
+        updateEndpointRemoveButtons();
+        refreshBulkSourceNameOptions();
+      });
+    }
+    updateEndpointSourceVisibility(row);
+    syncStoredUseSourceButtonState(row);
+  };
+
+  const renderEndpointSources = (sources) => {
+    if (!endpointSourceList) {
+      return;
+    }
+    endpointSourceList.innerHTML = '';
+    const normalizedSources = Array.isArray(sources) && sources.length
+      ? sources.map((source) => normalizeEndpointSourceData(source))
+      : [normalizeEndpointSourceData({})];
+    normalizedSources.forEach((source) => {
+      appendEndpointSource(source);
+    });
+    updateEndpointSourceTitles();
+    updateEndpointRemoveButtons();
+    refreshBulkSourceNameOptions();
+  };
+
+  const restoreEndpointSourceAutoRefreshStates = () => {
+    const storedStates = loadStoredEndpointSourceAutoRefreshStates();
+    Array.from(endpointSourceList?.querySelectorAll('[data-endpoint-source-row]') || []).forEach((row) => {
+      const sourceName = getEndpointSourceAutoRefreshStorageName(row);
+      if (!sourceName) {
+        return;
+      }
+      syncStoredUseSourceButtonState(row);
+      const storedState = storedStates[sourceName];
+      if (!storedState || typeof storedState !== 'object') {
+        return;
+      }
+      const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
+      if (draftSource.format !== 'api' || !getLatestValuesAutoRefreshMinutes(draftSource)) {
+        clearStoredEndpointSourceAutoRefreshState(row);
+        return;
+      }
+      startEndpointSourceAutoRefresh(
+        row,
+        storedState.executionState || {},
+        { nextRunAt: Number.parseInt(storedState.nextRunAt || 0, 10) || 0 }
+      );
+    });
+  };
+
+  const bindSettingsTabs = () => {
+    if (document.body.dataset.settingsTabsBound) {
+      updateSettingsTabs({{ (active_settings_tab or 'project') | tojson }});
+      return;
+    }
+    document.body.dataset.settingsTabsBound = 'true';
+    document.querySelectorAll('[data-settings-tab]').forEach((button) => {
+      button.addEventListener('click', () => {
+        updateSettingsTabs(button.dataset.settingsTab || 'project');
+      });
+    });
+    document.querySelectorAll('[data-save-settings-section]').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (settingsSectionInput) {
+          settingsSectionInput.value = button.dataset.saveSettingsSection || 'project';
+        }
+      });
+    });
+    updateSettingsTabs({{ (active_settings_tab or 'project') | tojson }});
+  };
+
+  const initializeEndpointSettings = () => {
+    bindSettingsTabs();
+    endpointApiTemplates = editorData.endpointApiTemplates || [];
+    endpointApiTemplateMap = new Map(
+      endpointApiTemplates.map((template) => [template.id, template])
+    );
+    defaultEndpointSource = editorData.defaultEndpointSource || defaultEndpointSource;
+    defaultEndpointApiRequests = Array.isArray(defaultEndpointSource.api?.requests)
+      ? defaultEndpointSource.api.requests
+      : [];
+
+    if (endpointSourceList) {
+      renderEndpointSources(editorData.endpointSources || []);
+      restoreEndpointSourceAutoRefreshStates();
+    }
+
+    if (addEndpointSourceBtn && !addEndpointSourceBtn.dataset.endpointBound) {
+      addEndpointSourceBtn.dataset.endpointBound = 'true';
+      addEndpointSourceBtn.addEventListener('click', () => {
+        appendEndpointSource(normalizeEndpointSourceData({}));
+      });
+    }
+
+    if (previewLiv24DataBtn && previewLiv24DataOutput && !previewLiv24DataBtn.dataset.endpointBound) {
+      previewLiv24DataBtn.dataset.endpointBound = 'true';
+      previewLiv24DataBtn.addEventListener('click', async () => {
+        previewLiv24DataOutput.textContent = 'Loading source data...';
+        try {
+          const bulkSourceSelect = document.getElementById('bulkSourceName');
+          const selectedSourceName = (bulkSourceSelect?.value || '').trim();
+          const draftSource = collectAllEndpointSources().find((source) => source.name === selectedSourceName);
+          const payload = draftSource
+            ? await requestSourcePreview(draftSource)
+            : await fetch(
+                `${editorData.sourcePreviewRoute}?source_name=${encodeURIComponent(selectedSourceName || 'LIV-24 IAQ')}`
+              ).then(async (response) => {
+                const data = await response.json();
+                if (!response.ok || data.error) {
+                  throw new Error(data.error || 'Failed to load source data');
+                }
+                return data;
+              });
+          previewLiv24DataOutput.dataset.sourceName = payload.source?.name || selectedSourceName || '';
+          previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
+        } catch (error) {
+          previewLiv24DataOutput.textContent = `Failed to load source data: ${getRequestErrorMessage(error)}`;
+        }
+      });
+    }
+
+    if (downloadSourceDataBtn && !downloadSourceDataBtn.dataset.endpointBound) {
+      downloadSourceDataBtn.dataset.endpointBound = 'true';
+      downloadSourceDataBtn.addEventListener('click', () => {
+        const bulkSourceSelect = document.getElementById('bulkSourceName');
+        const selectedSourceName = (bulkSourceSelect?.value || '').trim();
+        if (!selectedSourceName) {
+          alert('Please select source before downloading CSV.');
+          return;
+        }
+        window.location.href = buildSourceHistoryExportUrl({
+          sourceName: selectedSourceName,
+          startDate: sourceDataExportStartDate?.value || '',
+          endDate: sourceDataExportEndDate?.value || '',
+        });
+      });
+    }
+
+    if (settingsForm && endpointSourcesJson && !settingsForm.dataset.endpointBound) {
+      settingsForm.dataset.endpointBound = 'true';
+      settingsForm.addEventListener('submit', () => {
+        endpointSourcesJson.value = JSON.stringify(collectAllEndpointSources());
+      });
+    }
+  };
 
   const systemPageSelect = document.getElementById('systemPageSelect');
   const systemSections = document.querySelectorAll('[data-system-section]');
@@ -1173,6 +3543,21 @@
     container.appendChild(row);
   });
 
+  const dynamicSeverityFields = {{ dynamic_severity_fields | tojson }};
+
+  const renderDynamicSeverityInputsMarkup = () =>
+    (Array.isArray(dynamicSeverityFields) ? dynamicSeverityFields : []).map((field) => `
+      <div class="col-6 col-md-2 col-xl-1">
+        <input
+          class="form-control"
+          type="number"
+          name="severity_dynamic__${escapeHtml(field.key || '')}"
+          step="any"
+          placeholder="${escapeHtml(field.unit || field.source_field || field.label || '')}"
+        >
+      </div>
+    `).join('');
+
   document.getElementById('addSeverity').addEventListener('click', () => {
     const container = document.getElementById('severityRows');
     const row = document.createElement('div');
@@ -1210,6 +3595,7 @@
       <div class="col-6 col-md-2 col-xl-1">
         <input class="form-control" type="number" name="severity_co2" step="1" placeholder="ppm">
       </div>
+      ${renderDynamicSeverityInputsMarkup()}
       <div class="col-12 col-md-2">
         <div class="form-check">
           <input class="form-check-input" type="checkbox" name="critical_levels" value="">
@@ -1395,9 +3781,18 @@
     updateDeviceRoute: {{ url_for('update_device_position', device_id='__device__') | tojson }},
     updateDeviceZoneRoute: {{ url_for('update_device_zone', device_id='__device__') | tojson }},
     updateDeviceLabelRoute: {{ url_for('update_device_label', device_id='__device__') | tojson }},
+    updateDeviceSensorTypesRoute: {{ url_for('update_device_sensor_types', device_id='__device__') | tojson }},
     updateDeviceSourceMappingRoute: {{ url_for('update_device_source_mapping', device_id='__device__') | tojson }},
-    sourceDevicesRoute: {{ url_for('get_endpoint_source_devices') | tojson }},
+    sourcePreviewRoute: {{ url_for('preview_endpoint_source_data') | tojson }},
+    sourceRequestTestRoute: {{ url_for('test_endpoint_source_request') | tojson }},
+    sourceDeviceCacheRoute: {{ url_for('get_endpoint_source_device_cache') | tojson }},
+    sourceRequestHistoryRoute: {{ url_for('get_endpoint_source_request_history') | tojson }},
+    sourceRequestHistoryExportRoute: {{ url_for('export_endpoint_source_request_history') | tojson }},
+    sourceRequestHistoryDeleteRoute: {{ url_for('delete_endpoint_source_request_history') | tojson }},
     endpointSources: {{ (endpoint_sources if endpoint_sources is defined else settings.endpoint_sources) | default([]) | tojson }},
+    defaultEndpointSource: {{ default_endpoint_source | tojson }},
+    endpointApiTemplates: {{ settings.endpoint_api_templates | default([]) | tojson }},
+    sourceMetricFields: {{ source_metric_fields | default([]) | tojson }},
     deleteDeviceRoute: {{ url_for('delete_device', device_id='__device__') | tojson }},
     clearFloorDevicesRoute: {{ url_for('delete_floor_devices', floor_id='__floor__') | tojson }},
     clearFloorPlanRoute: {{ url_for('delete_floor_plan', floor_id='__floor__') | tojson }},
@@ -1406,6 +3801,9 @@
     updateLogoLabelRoute: {{ url_for('update_floor_logo_label', logo_id='__logo__') | tojson }},
     deleteLogoRoute: {{ url_for('delete_floor_logo', logo_id='__logo__') | tojson }},
   };
+
+  bindSettingsTabs();
+  initializeEndpointSettings();
 
   const floorLogoSelect = document.getElementById('floorLogoSelect');
   const projectLogoSelect = document.getElementById('projectLogoSelect');
@@ -1745,27 +4143,320 @@
   const bulkSensorType = document.getElementById('bulkSensorType');
   const bulkSourceName = document.getElementById('bulkSourceName');
   const bulkSourceDeviceName = document.getElementById('bulkSourceDeviceName');
-  const bulkSourceDeviceNameList = document.getElementById('bulkSourceDeviceNameList');
   const applyBulkZoneBtn = document.getElementById('applyBulkZoneBtn');
   const bulkSelectedCount = document.getElementById('bulkSelectedCount');
   const bulkSelectionHint = document.getElementById('bulkSelectionHint');
   const bulkClearSelectionBtn = document.getElementById('bulkClearSelectionBtn');
   const bulkSmartFillSelectBtn = document.getElementById('bulkSmartFillSelectBtn');
   const bulkDeselectAllBtn = document.getElementById('bulkDeselectAllBtn');
+  const bulkSensorTypeOptions = document.getElementById('bulkSensorTypeOptions');
+  const sourceMetricFieldsTableWrap = document.getElementById('sourceMetricFieldsTableWrap');
+  const sourceMetricFieldsTableBody = document.getElementById('sourceMetricFieldsTableBody');
+  const sourceMetricFieldsEmptyState = document.getElementById('sourceMetricFieldsEmptyState');
+  let sourceMetricFieldCatalog = Array.isArray(editorData.sourceMetricFields)
+    ? editorData.sourceMetricFields
+    : [];
 
-  const refreshBulkSourceDeviceOptions = () => {
-    if (!bulkSourceDeviceNameList) {
+  const normalizeSourceMetricField = (field) => {
+    const key = String(field?.key || field?.field || '').trim();
+    const sourceField = String(field?.source_field || field?.field || key).trim() || key;
+    return {
+      key,
+      source_field: sourceField,
+      label: String(field?.label || sourceField || key).trim() || key,
+      channel: String(field?.channel || '').trim(),
+      unit: String(field?.unit || '').trim(),
+      show_in_bulk_type: Boolean(field?.show_in_bulk_type),
+      show_in_tooltip: Boolean(field?.show_in_tooltip),
+      save_to_db: Boolean(field?.save_to_db),
+      enable_severity: Boolean(field?.enable_severity),
+      sources: Array.isArray(field?.sources)
+        ? Array.from(new Set(field.sources.map((value) => String(value || '').trim()).filter(Boolean)))
+        : [],
+    };
+  };
+
+  const sortSourceMetricFields = (fields) =>
+    fields
+      .map((field) => normalizeSourceMetricField(field))
+      .filter((field) => field.key)
+      .sort((left, right) => {
+        const leftLabel = (left.label || left.source_field || left.key).toLowerCase();
+        const rightLabel = (right.label || right.source_field || right.key).toLowerCase();
+        return leftLabel.localeCompare(rightLabel);
+      });
+
+  const collectSourceMetricFieldsFromDom = () => {
+    if (!sourceMetricFieldsTableBody) {
+      return [];
+    }
+    return Array.from(sourceMetricFieldsTableBody.querySelectorAll('[data-source-metric-key]')).map((row) => {
+      const key = row.dataset.sourceMetricKey || '';
+      return normalizeSourceMetricField({
+        key,
+        source_field: row.querySelector(`[name="source_metric_source_field__${key}"]`)?.value || key,
+        label: row.querySelector(`[name="source_metric_label__${key}"]`)?.value || key,
+        channel: row.querySelector(`[name="source_metric_channel__${key}"]`)?.value || '',
+        unit: row.querySelector(`[name="source_metric_unit__${key}"]`)?.value || '',
+        show_in_bulk_type: row.querySelector(`[name="source_metric_show_in_bulk_type__${key}"]`)?.checked,
+        show_in_tooltip: row.querySelector(`[name="source_metric_show_in_tooltip__${key}"]`)?.checked,
+        save_to_db: row.querySelector(`[name="source_metric_save_to_db__${key}"]`)?.checked,
+        enable_severity: row.querySelector(`[name="source_metric_enable_severity__${key}"]`)?.checked,
+        sources: (row.querySelector(`[name="source_metric_sources__${key}"]`)?.value || '')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean),
+      });
+    });
+  };
+
+  const mergeSourceMetricFields = (currentFields, incomingFields) => {
+    const merged = new Map(
+      sortSourceMetricFields(Array.isArray(currentFields) ? currentFields : []).map((field) => [field.key, field])
+    );
+    sortSourceMetricFields(Array.isArray(incomingFields) ? incomingFields : []).forEach((incomingField) => {
+      const existingField = merged.get(incomingField.key);
+      if (!existingField) {
+        merged.set(incomingField.key, incomingField);
+        return;
+      }
+      merged.set(incomingField.key, {
+        ...incomingField,
+        ...existingField,
+        source_field: existingField.source_field || incomingField.source_field,
+        channel: existingField.channel || incomingField.channel,
+        unit: existingField.unit || incomingField.unit,
+        sources: Array.from(
+          new Set([...(existingField.sources || []), ...(incomingField.sources || [])].filter(Boolean))
+        ).sort(),
+      });
+    });
+    return sortSourceMetricFields(Array.from(merged.values()));
+  };
+
+  const parseBulkSensorTypes = (value) =>
+    Array.from(
+      new Set(
+        String(value || '')
+          .split(/[,;\n]+/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
+
+  const getDeviceSensorTypes = (device) => {
+    if (Array.isArray(device?.sensor_types) && device.sensor_types.length) {
+      return Array.from(new Set(device.sensor_types.map((value) => String(value || '').trim()).filter(Boolean)));
+    }
+    const segments = String(device?.label || '')
+      .split('-')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const labelType = segments.length >= 4 ? segments[3] : '';
+    return labelType ? [labelType] : [];
+  };
+
+  const getSensorTypeSignature = (device) => getDeviceSensorTypes(device).join(', ');
+
+  const renderBulkSensorTypeOptions = (fields) => {
+    if (!bulkSensorTypeOptions) {
+      return;
+    }
+    const deviceTypeValues = Array.isArray(editorData.devices)
+      ? editorData.devices
+          .flatMap((device) => getDeviceSensorTypes(device))
+          .filter(Boolean)
+      : [];
+    const optionValues = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(fields) ? fields : [])
+            .filter((field) => field?.show_in_bulk_type)
+            .map((field) => String(field?.source_field || field?.key || '').trim())
+            .filter(Boolean),
+          ...deviceTypeValues,
+        ]
+      )
+    ).sort((left, right) => left.localeCompare(right));
+    bulkSensorTypeOptions.innerHTML = optionValues
+      .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+      .join('');
+  };
+
+  const renderSourceMetricFields = (fields) => {
+    const normalizedFields = sortSourceMetricFields(fields);
+    sourceMetricFieldCatalog = normalizedFields;
+    editorData.sourceMetricFields = normalizedFields;
+    renderBulkSensorTypeOptions(normalizedFields);
+    if (!sourceMetricFieldsTableWrap || !sourceMetricFieldsTableBody || !sourceMetricFieldsEmptyState) {
+      return;
+    }
+    if (!normalizedFields.length) {
+      sourceMetricFieldsTableWrap.classList.add('d-none');
+      sourceMetricFieldsEmptyState.classList.remove('d-none');
+      sourceMetricFieldsTableBody.innerHTML = '';
+      return;
+    }
+    sourceMetricFieldsTableWrap.classList.remove('d-none');
+    sourceMetricFieldsEmptyState.classList.add('d-none');
+    sourceMetricFieldsTableBody.innerHTML = normalizedFields.map((field) => `
+      <tr data-source-metric-key="${escapeHtml(field.key)}">
+        <td>
+          <div class="fw-semibold">${escapeHtml(field.source_field || field.key)}</div>
+          <div class="small text-muted">${escapeHtml((field.sources || []).join(', '))}</div>
+          <input type="hidden" name="source_metric_field_key" value="${escapeHtml(field.key)}">
+          <input type="hidden" name="source_metric_source_field__${escapeHtml(field.key)}" value="${escapeHtml(field.source_field || field.key)}">
+          <input type="hidden" name="source_metric_sources__${escapeHtml(field.key)}" value="${escapeHtml((field.sources || []).join(','))}">
+        </td>
+        <td>
+          <input class="form-control form-control-sm" type="text" name="source_metric_label__${escapeHtml(field.key)}" value="${escapeHtml(field.label || field.key)}">
+        </td>
+        <td>
+          <input class="form-control form-control-sm" type="text" name="source_metric_channel__${escapeHtml(field.key)}" value="${escapeHtml(field.channel || '')}">
+        </td>
+        <td>
+          <input class="form-control form-control-sm" type="text" name="source_metric_unit__${escapeHtml(field.key)}" value="${escapeHtml(field.unit || '')}">
+        </td>
+        <td class="text-center">
+          <input class="form-check-input" type="checkbox" name="source_metric_show_in_bulk_type__${escapeHtml(field.key)}" ${field.show_in_bulk_type ? 'checked' : ''}>
+        </td>
+        <td class="text-center">
+          <input class="form-check-input" type="checkbox" name="source_metric_show_in_tooltip__${escapeHtml(field.key)}" ${field.show_in_tooltip ? 'checked' : ''}>
+        </td>
+        <td class="text-center">
+          <input class="form-check-input" type="checkbox" name="source_metric_save_to_db__${escapeHtml(field.key)}" ${field.save_to_db ? 'checked' : ''}>
+        </td>
+        <td class="text-center">
+          <input class="form-check-input" type="checkbox" name="source_metric_enable_severity__${escapeHtml(field.key)}" ${field.enable_severity ? 'checked' : ''}>
+        </td>
+      </tr>
+    `).join('');
+  };
+
+  const syncSourceMetricFieldsFromPayload = (fields) => {
+    if (!Array.isArray(fields)) {
+      return;
+    }
+    const currentFields = collectSourceMetricFieldsFromDom();
+    renderSourceMetricFields(
+      mergeSourceMetricFields(currentFields.length ? currentFields : sourceMetricFieldCatalog, fields)
+    );
+  };
+
+  const getSourceDeviceOptionValue = (device) => (
+    device?.display_name
+    || device?.name
+    || device?.device_name
+    || device?.label
+    || device?.uuid
+    || device?.device_uuid
+    || device?.device_id
+    || device?.id
+    || ''
+  );
+
+  const getSourceDeviceUuid = (device) => (
+    device?.uuid
+    || device?.device_uuid
+    || device?.device_id
+    || device?.id
+    || ''
+  );
+
+  const getSourceDeviceCandidateValues = (device) =>
+    [
+      getSourceDeviceOptionValue(device),
+      device?.display_name,
+      device?.name,
+      device?.device_name,
+      device?.label,
+      device?.uuid,
+      device?.device_uuid,
+      device?.device_id,
+      device?.id,
+    ]
+      .filter(Boolean)
+      .map((value) => String(value).trim());
+
+  const findSourceDeviceRecordByValue = (sourceName, value) => {
+    if (!sourceName || !value) {
+      return null;
+    }
+    const normalizedValue = String(value).trim().toLowerCase();
+    return (sourceDeviceCatalog[sourceName] || []).find((device) =>
+      getSourceDeviceCandidateValues(device).some(
+        (candidateValue) => candidateValue.toLowerCase() === normalizedValue
+      )
+    ) || null;
+  };
+
+  const refreshBulkSourceDeviceOptions = async () => {
+    if (!bulkSourceDeviceName) {
       return;
     }
     const sourceName = (bulkSourceName?.value || '').trim();
+    if (sourceName && !sourceDeviceCatalog[sourceName]?.length) {
+      try {
+        const payload = await requestSourceDeviceCache(sourceName);
+        sourceDeviceCatalog[sourceName] = payload.ready_device_items || payload.device_items || [];
+      } catch (error) {
+        sourceDeviceCatalog[sourceName] = [];
+      }
+    }
     const sourceDevices = sourceDeviceCatalog[sourceName] || [];
-    bulkSourceDeviceNameList.innerHTML = '';
+    const currentValue = (bulkSourceDeviceName.value || '').trim();
+    bulkSourceDeviceName.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = sourceDevices.length ? 'Select source device' : 'No device list loaded';
+    bulkSourceDeviceName.appendChild(placeholderOption);
     sourceDevices.forEach((device) => {
+      const optionValue = getSourceDeviceOptionValue(device);
+      if (!optionValue) {
+        return;
+      }
       const option = document.createElement('option');
-      option.value = device.display_name || device.uuid || '';
-      bulkSourceDeviceNameList.appendChild(option);
+      option.value = optionValue;
+      option.textContent = optionValue;
+      bulkSourceDeviceName.appendChild(option);
     });
+    if (currentValue && Array.from(bulkSourceDeviceName.options).some((option) => option.value === currentValue)) {
+      bulkSourceDeviceName.value = currentValue;
+    }
   };
+
+  const setBulkSourceDeviceValue = (value) => {
+    if (!bulkSourceDeviceName) {
+      return;
+    }
+    const normalizedValue = String(value || '').trim();
+    if (!normalizedValue) {
+      bulkSourceDeviceName.value = '';
+      return;
+    }
+    const existingOption = Array.from(bulkSourceDeviceName.options).find(
+      (option) => option.value === normalizedValue
+    );
+    if (existingOption) {
+      bulkSourceDeviceName.value = normalizedValue;
+      return;
+    }
+    const option = document.createElement('option');
+    option.value = normalizedValue;
+    option.textContent = normalizedValue;
+    bulkSourceDeviceName.appendChild(option);
+    bulkSourceDeviceName.value = normalizedValue;
+  };
+
+  renderSourceMetricFields(sourceMetricFieldCatalog);
+  if (sourceMetricFieldsTableBody) {
+    sourceMetricFieldsTableBody.addEventListener('input', () => {
+      renderBulkSensorTypeOptions(collectSourceMetricFieldsFromDom());
+    });
+    sourceMetricFieldsTableBody.addEventListener('change', () => {
+      renderBulkSensorTypeOptions(collectSourceMetricFieldsFromDom());
+    });
+  }
 
   const updateSensorCount = (floorId) => {
     const count = editorData.devices.filter((device) => device.floor_id === floorId).length;
@@ -1822,7 +4513,7 @@
     return segments.length >= 4 ? segments[3] : null;
   };
 
-  const findAutoMappedSourceDeviceName = (device, sourceName) => {
+  const findAutoMappedSourceDevice = (device, sourceName) => {
     if (!device || !sourceName) {
       return null;
     }
@@ -1830,18 +4521,25 @@
     if (!sourceDevices.length) {
       return null;
     }
-    const candidates = [device.label, device.device_id]
+    const candidates = [device.label, device.device_id, device.source_device_name, device.source_device_uuid]
       .filter(Boolean)
-      .map((value) => value.trim().toLowerCase());
+      .map((value) => String(value).trim().toLowerCase());
     const match = sourceDevices.find((sourceDevice) => {
-      const sourceDisplay = (sourceDevice.display_name || '').trim().toLowerCase();
-      const sourceUuid = (sourceDevice.uuid || '').trim().toLowerCase();
-      return candidates.includes(sourceDisplay) || candidates.includes(sourceUuid);
+      const candidateValues = getSourceDeviceCandidateValues(sourceDevice)
+        .map((value) => value.toLowerCase());
+      return candidateValues.some((value) => candidates.includes(value));
     });
-    if (!match) {
-      return null;
-    }
-    return match.display_name || match.uuid || null;
+    return match || null;
+  };
+
+  const findAutoMappedSourceDeviceName = (device, sourceName) => {
+    const sourceDevice = findAutoMappedSourceDevice(device, sourceName);
+    return sourceDevice ? getSourceDeviceOptionValue(sourceDevice) : null;
+  };
+
+  const findAutoMappedSourceDeviceUuid = (device, sourceName) => {
+    const sourceDevice = findAutoMappedSourceDevice(device, sourceName);
+    return sourceDevice ? getSourceDeviceUuid(sourceDevice) : null;
   };
 
   const isSensorLabelValid = (labelValue) => {
@@ -1867,10 +4565,10 @@
         bulkSensorZone.placeholder = 'Zone';
       }
       if (bulkSensorType) {
-        bulkSensorType.placeholder = 'Sensor type';
+        bulkSensorType.placeholder = 'Sensor types (comma-separated)';
       }
       if (bulkSourceDeviceName) {
-        bulkSourceDeviceName.placeholder = 'Incoming API device name';
+        setBulkSourceDeviceValue('');
       }
       return;
     }
@@ -1878,11 +4576,18 @@
       .map((input) => editorData.devices.find((device) => device.device_id === input.value))
       .filter(Boolean);
     const zones = new Set(devices.map((device) => device.zone).filter((zone) => zone));
-    const types = new Set(
-      devices.map((device) => getSensorTypeFromLabel(device.label)).filter((type) => type)
+    const typeSignatures = Array.from(
+      new Set(
+        devices
+          .map((device) => getSensorTypeSignature(device))
+          .filter(Boolean)
+      )
     );
+    const types = new Set(devices.flatMap((device) => getDeviceSensorTypes(device)));
     const sourceDevices = new Set(
-      devices.map((device) => device.source_device_name).filter((value) => value)
+      devices
+        .map((device) => device.source_device_name || device.source_device_uuid)
+        .filter((value) => value)
     );
     if (bulkSelectionHint) {
       const zoneSummary = zones.size === 1 ? Array.from(zones)[0] : 'Mixed';
@@ -1897,13 +4602,18 @@
       }
     }
     if (bulkSensorType) {
-      bulkSensorType.placeholder = types.size === 1 ? Array.from(types)[0] : 'Mixed';
-      if (!bulkSensorType.value && types.size === 1) {
-        bulkSensorType.value = Array.from(types)[0];
+      const typeSummary = typeSignatures.length === 1 ? typeSignatures[0] : 'Mixed';
+      bulkSensorType.placeholder = typeSummary || 'Sensor types (comma-separated)';
+      if (typeSignatures.length === 1) {
+        bulkSensorType.value = typeSignatures[0];
       }
     }
     if (bulkSourceDeviceName) {
-      bulkSourceDeviceName.placeholder = sourceDevices.size === 1 ? Array.from(sourceDevices)[0] : (sourceDevices.size ? 'Mixed' : 'Incoming API device name');
+      if (!bulkSourceDeviceName.value && sourceDevices.size === 1) {
+        setBulkSourceDeviceValue(Array.from(sourceDevices)[0]);
+      } else if (!bulkSourceDeviceName.value && sourceDevices.size !== 1) {
+        setBulkSourceDeviceValue('');
+      }
     }
   };
 
@@ -1951,10 +4661,14 @@
       input.checked = checked.has(device.device_id);
       label.className = 'form-check-label';
       label.htmlFor = inputId;
-      const mapping = device.source_name && device.source_device_name
-        ? ` · ${device.source_name}: ${device.source_device_name}`
-        : (device.source_name ? ` · ${device.source_name}` : "");
+      const mappedSourceDevice = device.source_device_name || device.source_device_uuid;
+      const mapping = device.source_name && mappedSourceDevice
+        ? ` - ${device.source_name}: ${mappedSourceDevice}`
+        : (device.source_name ? ` - ${device.source_name}` : "");
       label.textContent = `${getDeviceDisplayName(device)}${mapping}`;
+      if (device.source_name && mappedSourceDevice) {
+        label.textContent = `${getDeviceDisplayName(device)} - ${device.source_name}: ${mappedSourceDevice}`;
+      }
       wrapper.appendChild(input);
       wrapper.appendChild(label);
       bulkSensorList.appendChild(wrapper);
@@ -2323,6 +5037,7 @@
   if (bulkSourceName) {
     bulkSourceName.addEventListener('change', () => {
       refreshBulkSourceDeviceOptions();
+      setBulkSourceDeviceValue('');
     });
     refreshBulkSourceDeviceOptions();
   }
@@ -2339,8 +5054,8 @@
   if (bulkSmartFillSelectBtn && bulkSensorList) {
     bulkSmartFillSelectBtn.addEventListener('click', () => {
       const zoneValue = (bulkSensorZone?.value || '').trim().toLowerCase();
-      const typeValue = (bulkSensorType?.value || '').trim().toLowerCase();
-      if (!zoneValue && !typeValue) {
+      const typeValues = parseBulkSensorTypes(bulkSensorType?.value || '').map((value) => value.toLowerCase());
+      if (!zoneValue && !typeValues.length) {
         return;
       }
       bulkSensorList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
@@ -2352,8 +5067,9 @@
         const zoneMatch = zoneValue
           ? (device.zone || '').toLowerCase().includes(zoneValue)
           : true;
-        const typeMatch = typeValue
-          ? (getSensorTypeFromLabel(device.label) || '').toLowerCase().includes(typeValue)
+        const deviceTypes = getDeviceSensorTypes(device).map((value) => value.toLowerCase());
+        const typeMatch = typeValues.length
+          ? typeValues.every((value) => deviceTypes.some((deviceType) => deviceType.includes(value)))
           : true;
         input.checked = zoneMatch && typeMatch;
       });
@@ -2376,13 +5092,23 @@
         return;
       }
       const zoneValue = (bulkSensorZone.value || '').trim();
-      const typeValue = (bulkSensorType?.value || '').trim();
+      const sensorTypeValues = parseBulkSensorTypes(bulkSensorType?.value || '');
+      const primaryTypeValue = sensorTypeValues[0] || '';
       const sourceNameValue = (bulkSourceName?.value || '').trim();
       const sourceDeviceNameValue = (bulkSourceDeviceName?.value || '').trim();
+      const selectedSourceDevice = sourceNameValue
+        ? findSourceDeviceRecordByValue(sourceNameValue, sourceDeviceNameValue)
+        : null;
+      const selectedSourceDeviceName = selectedSourceDevice
+        ? getSourceDeviceOptionValue(selectedSourceDevice)
+        : (sourceDeviceNameValue || null);
+      const selectedSourceDeviceUuid = selectedSourceDevice
+        ? getSourceDeviceUuid(selectedSourceDevice)
+        : null;
       const selectedInputs = Array.from(
         bulkSensorList.querySelectorAll('input[type="checkbox"]:checked')
       );
-      if (!selectedInputs.length || (!zoneValue && !typeValue && !sourceNameValue && !sourceDeviceNameValue)) {
+      if (!selectedInputs.length || (!zoneValue && !sensorTypeValues.length && !sourceNameValue && !sourceDeviceNameValue)) {
         return;
       }
       const results = await Promise.all(
@@ -2410,8 +5136,8 @@
                 nextLabel = zoneUpdate;
               }
             }
-            if (typeValue) {
-              const typeUpdate = updateSensorTypeSegment(nextLabel, typeValue);
+            if (primaryTypeValue) {
+              const typeUpdate = updateSensorTypeSegment(nextLabel, primaryTypeValue);
               if (typeUpdate) {
                 nextLabel = typeUpdate;
               }
@@ -2419,6 +5145,18 @@
             if (nextLabel !== currentLabel) {
               labelUpdate = nextLabel;
             }
+          }
+          let sensorTypesOk = true;
+          if (sensorTypeValues.length) {
+            const sensorTypesResponse = await fetch(
+              editorData.updateDeviceSensorTypesRoute.replace('__device__', deviceId),
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sensor_types: sensorTypeValues }),
+              }
+            );
+            sensorTypesOk = sensorTypesResponse.ok;
           }
           if (labelUpdate !== null) {
             const labelResponse = await fetch(
@@ -2434,11 +5172,13 @@
             }
           }
           let mappingOk = true;
-          let mappedSourceDeviceName = sourceDeviceNameValue || null;
+          let mappedSourceDeviceName = selectedSourceDeviceName;
+          let mappedSourceDeviceUuid = selectedSourceDeviceUuid;
           if (!mappedSourceDeviceName && sourceNameValue) {
             mappedSourceDeviceName = findAutoMappedSourceDeviceName(device, sourceNameValue);
+            mappedSourceDeviceUuid = findAutoMappedSourceDeviceUuid(device, sourceNameValue);
           }
-          if (sourceNameValue || mappedSourceDeviceName) {
+          if (sourceNameValue || mappedSourceDeviceName || mappedSourceDeviceUuid) {
             const mappingResponse = await fetch(
               editorData.updateDeviceSourceMappingRoute.replace('__device__', deviceId),
               {
@@ -2447,6 +5187,7 @@
                 body: JSON.stringify({
                   source_name: sourceNameValue || null,
                   source_device_name: mappedSourceDeviceName || null,
+                  source_device_uuid: mappedSourceDeviceUuid || null,
                 }),
               }
             );
@@ -2454,13 +5195,15 @@
           }
           return {
             deviceId,
-            ok: response.ok && mappingOk,
+            ok: response.ok && mappingOk && sensorTypesOk,
             labelUpdate,
+            sensorTypeValues,
             mappedSourceDeviceName,
+            mappedSourceDeviceUuid,
           };
         })
       );
-      results.forEach(({ deviceId, ok, labelUpdate, mappedSourceDeviceName }) => {
+      results.forEach(({ deviceId, ok, labelUpdate, sensorTypeValues, mappedSourceDeviceName, mappedSourceDeviceUuid }) => {
         if (!ok) {
           return;
         }
@@ -2472,9 +5215,13 @@
           if (labelUpdate !== null) {
             device.label = labelUpdate;
           }
-          if (sourceNameValue || mappedSourceDeviceName) {
+          if (sensorTypeValues?.length) {
+            device.sensor_types = [...sensorTypeValues];
+          }
+          if (sourceNameValue || mappedSourceDeviceName || mappedSourceDeviceUuid) {
             device.source_name = sourceNameValue || null;
             device.source_device_name = mappedSourceDeviceName || null;
+            device.source_device_uuid = mappedSourceDeviceUuid || null;
           }
         }
         if (labelUpdate !== null) {

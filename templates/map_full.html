@@ -1,12 +1,28 @@
 {% extends 'base.html' %}
 
+{% macro render_sensor_metric_value(metric, reading) -%}
+  {% if reading %}
+    {% if metric.key == 'motion' %}
+      {{ 'Occupied' if reading.value else 'Vacant' }}
+    {% elif reading.value is not none %}
+      {{ '%.1f'|format(reading.value or 0) }} {{ reading.unit or metric.unit }}
+    {% elif reading.raw_value %}
+      {{ reading.raw_value }}{% if reading.unit or metric.unit %} {{ reading.unit or metric.unit }}{% endif %}
+    {% else %}
+      --
+    {% endif %}
+  {% else %}
+    --
+  {% endif %}
+{%- endmacro %}
+
 {% block header %}{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <div>
-    <h5 class="mb-0">Map</h5>
-    <small class="text-muted">Floor plan &amp; sensors</small>
+    <h5 class="mb-0">{{ t('map') }}</h5>
+    <small class="text-muted">{{ t('floor_plan_sensors') }}</small>
   </div>
   <div class="d-flex align-items-center gap-2">
     <select id="floorSelect" class="form-select form-select-sm">
@@ -14,7 +30,13 @@
       <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
       {% endfor %}
     </select>
-    <button id="floorRotate" class="btn btn-sm btn-outline-secondary">Auto</button>
+    <button id="floorRotate" class="btn btn-sm btn-outline-secondary">{{ 'อัตโนมัติ' if current_lang == 'th' else 'Auto' }}</button>
+    <a
+      class="btn btn-sm btn-outline-secondary"
+      href="{% if has_page_access('home') %}{% if current_system is defined %}{{ url_for('index', system=current_system) }}{% else %}{{ url_for('index') }}{% endif %}{% else %}{{ url_for('login') }}{% endif %}"
+      title="{{ t('home') }}">
+      <i class="bi bi-house-door"></i>
+    </a>
   </div>
 </div>
 <div class="map-container map-container-expanded" data-floor="{{ active_floor }}">
@@ -22,7 +44,7 @@
   {% if floor_image %}
   <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ settings.floor_names.get(active_floor, active_floor) if settings.floor_names else active_floor }}">
   {% else %}
-  <div class="map-placeholder">Upload a floor plan in settings</div>
+  <div class="map-placeholder">{{ 'อัปโหลดผังชั้นในหน้าตั้งค่า' if current_lang == 'th' else 'Upload a floor plan in settings' }}</div>
   {% endif %}
   {% for logo in settings.floor_plan_logos.get(active_floor, []) %}
   {% set logo_icon = logo.logo_icon or settings.floor_logo_icon %}
@@ -80,21 +102,13 @@
       </div>
     </div>
     <ul>
-        {% for metric in metric_options %}
+        {% for metric in tooltip_metric_options %}
         {% set reading = device_readings.get(metric.key) %}
         {% set reading_severity = device_metric_severity.get(device.device_id, {}).get(metric.key) %}
         <li class="d-flex justify-content-between gap-3">
           <span>{{ metric.label }}</span>
           <span class="fw-semibold"{% if reading_severity and reading_severity.label in settings.critical_levels %} style="color: {{ reading_severity.color }}"{% endif %}>
-            {% if reading %}
-              {% if metric.key == 'motion' %}
-                {{ 'Occupied' if reading.value else 'Vacant' }}
-              {% else %}
-                {{ '%.1f'|format(reading.value or 0) }} {{ reading.unit or metric.unit }}
-              {% endif %}
-            {% else %}
-              --
-            {% endif %}
+            {{ render_sensor_metric_value(metric, reading) }}
           </span>
         </li>
         {% endfor %}
@@ -105,7 +119,7 @@
   {% endfor %}
 </div>
 <div class="sensor-details-panel mt-3" id="sensorDetailsPanel">
-  <div class="sensor-details-placeholder text-muted small">Hover or tap a sensor to view details.</div>
+  <div class="sensor-details-placeholder text-muted small">{{ t('hover_sensor_details') }}</div>
   <div class="sensor-details-content" hidden></div>
 </div>
 {% endblock %}
@@ -120,7 +134,7 @@
     mapFullRoute: {{ url_for('map_full')|tojson }},
     isFullMap: true,
     floorFromQuery: {{ floor_from_query|tojson }},
-    homeRoute: {{ url_for('index')|tojson }},
+    homeRoute: {{ url_for('map_full')|tojson }},
   };
 </script>
 {% endblock %}

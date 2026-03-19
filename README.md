@@ -1,200 +1,283 @@
-🌍 IAQ Dashboard – AM30x Sensor (Flask)
+# ICON Milesight Dashboard
 
-A responsive web dashboard for monitoring Indoor Air Quality (IAQ) using Milesight AM30x LoRaWAN sensors, built with Python Flask and SQLite.
+Flask dashboard for Milesight sensor data with:
 
-This project visualizes real-time and historical environmental data such as PM2.5, PM10, CO₂, Temperature, Humidity, and TVOC, with support for multi-floor map UI, alarm management, and admin configuration.
+- live and historical IAQ monitoring
+- floor map visualization
+- alarm management and guidance workflows
+- settings, source mapping, and user management
+- SQLite-based local storage
 
-✨ Features
-📊 IAQ Monitoring
+The app supports local development on Windows and Linux, and now includes Docker support for running as a service.
 
-Real-time IAQ status: Good / Moderate / Unhealthy
+## Features
 
-Average Indoor & Outdoor values
+- Dashboard with indoor/outdoor summary, daily charts, weekly overview, and alerts
+- Multi-floor map with sensor placement, severity markers, and auto rotation
+- Alarm page with active alarms, history, response notes, and guidance checklists
+- Role-based user management
+- CSV export and source/API integration tools
+- English / Thai language switching
 
-Customizable IAQ severity mapping (future-ready for Fire Alarm, Energy systems)
+## Tech Stack
 
-🗺️ Map UI (Floor Plan)
+- Python 3
+- Flask
+- Waitress
+- SQLite
+- Bootstrap 5
+- Chart.js
 
-Upload floor plan images
+## Project Structure
 
-Multi-floor support with auto-rotation
+```text
+ICON_Milesight/
+|-- app.py
+|-- requirements.txt
+|-- Dockerfile
+|-- docker-compose.yml
+|-- settings.json
+|-- sensordata.db
+|-- calendar.db
+|-- alarm.db
+|-- api.db
+|-- auth.db
+|-- services/
+|-- templates/
+|-- static/
+|   `-- uploads/
+`-- scripts/
+```
 
-Drag & drop sensor positions
+## Default Access
 
-Sensor icons reflect real-time severity
+- Guest users can open the map page.
+- Logged-in users can access pages based on role permissions.
+- Default admin credentials:
 
-📈 Data Visualization
+```text
+Username: admin
+Password: admin123
+```
 
-Daily graph (24-hour timeline)
+Change the admin password after first login.
 
-Weekly overview graph
+## Local Installation
 
-Filtered data viewer with date range & sampling selector
+### Windows (PowerShell)
 
-🚨 Alarm & Notification
+Requirements:
 
-Real-time alarm count (bell icon)
+- Python 3.11 or newer
 
-Daily alarm summary (calendar icon)
+Steps:
 
-Alert banner for critical alarms
+```powershell
+git clone <your-repository-url>
+cd ICON_Milesight
 
-Full alarm history page
+py -3 -m venv .venv
+.venv\Scripts\Activate.ps1
 
-⚙️ Admin Settings
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
-Project name & location
+$env:ICON_SECRET_KEY = "change-this-secret"
+python app.py
+```
 
-IAQ severity color/label mapping
+Open:
 
-Floor plan & sensor icon management
-
-Auto-rotate floor interval
-
-Role-based access (Admin only)
-
-📥 Data Export
-
-Export sensor data to CSV with one click
-
-🔌 Milesight Ingest API
-
-See `docs_milesight_ingest_api.md` for the API contract and Python example for sending Milesight readings into the dashboard.
-
-🧠 Supported Sensor (Milesight AM30x)
-
-The system is designed specifically for Milesight AM30x Indoor Ambience Sensors.
-
-Supported metrics:
-
-Temperature (°C)
-
-Humidity (%RH)
-
-CO₂ (ppm)
-
-PM2.5 / PM10 (µg/m³)
-
-TVOC (mg/m³)
-
-🏗️ Tech Stack
-Layer	Technology
-Backend	Python Flask
-Template	Jinja2
-Database	SQLite
-Frontend	HTML, CSS, JS
-UI Framework	Bootstrap 5
-Charts	Chart.js
-Auth	Session-based
-🗂️ Project Structure
-aqi-dashboard/
-│
-├── app.py
-├── requirements.txt
-├── settings.json
-│
-├── db/
-│   ├── sensordata.db
-│   ├── calendar.db
-│   └── alarm.db
-│
-├── templates/
-│   ├── base.html
-│   ├── dashboard.html
-│   ├── settings.html
-│   ├── alarms.html
-│   └── graphs/
-│
-├── static/
-│   ├── css/
-│   ├── js/
-│   └── icons/
-│
-└── services/
-    ├── db_service.py
-    ├── alarm_service.py
-    └── graph_service.py
-
-🗄️ Database Overview
-sensordata.db
-
-devices
-
-sensor_readings
-
-alarm_events
-
-calendar.db
-
-daily_alarm_summary
-(generated automatically at 23:50 each day)
-
-alarm.db
-
-alarm_history
-
-🚀 Getting Started
-1️⃣ Clone Repository
-git clone https://github.com/your-org/aqi-dashboard.git
-cd aqi-dashboard
-
-2️⃣ Install Dependencies
-pip install -r requirements.txt
-
-3️⃣ Run Application
-flask --app app run
-
-
-Open browser:
-
+```text
 http://127.0.0.1:5000
+```
 
-🔐 Authentication
+### Linux
 
-Admin-only access for Settings
+Requirements:
 
-Credentials configurable via environment variables or settings.json
+- Python 3.11 or newer
+- `python3-venv`
 
-📤 CSV Export
+Steps:
 
-Click the Download icon on the top-right corner to export sensor data:
+```bash
+git clone <your-repository-url>
+cd ICON_Milesight
 
-/export/sensor.csv
+python3 -m venv .venv
+source .venv/bin/activate
 
-🧩 Extensibility
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
-This system is designed to be modular and extensible:
+export ICON_SECRET_KEY="change-this-secret"
+python app.py
+```
 
-Add Energy & Carbon module
+Open:
 
-Integrate Fire Alarm system
+```text
+http://127.0.0.1:5000
+```
 
-Connect to Milesight IoT Cloud / LoRaWAN uplink
+## Docker Service
 
-Convert to REST API + SPA frontend
+### Requirements
 
-📌 Roadmap
+- Docker Engine + Docker Compose plugin
 
- Energy & Carbon dashboard
+or on Windows:
 
- Waste management module
+- Docker Desktop
 
- Role-based user management
+### Quick Start
 
- Real-time WebSocket updates
+1. Copy the example environment file.
 
- LoRaWAN payload decoder
+Windows PowerShell:
 
-📄 License
+```powershell
+Copy-Item .env.example .env
+```
 
-MIT License © 2025
-Use freely for commercial and non-commercial projects.
+Linux:
 
-🤝 Contribution
+```bash
+cp .env.example .env
+```
 
-Pull requests are welcome.
-For major changes, please open an issue first to discuss what you would like to change.
+2. Edit `.env` and set a real secret key.
 
-📬 Contact
+```env
+APP_PORT=5000
+ICON_SECRET_KEY=change-this-secret
+ICON_DEBUG=0
+```
 
-For support or customization, please contact the project maintainer.
+3. Build and start the service.
+
+```bash
+docker compose up --build -d
+```
+
+4. Open the app.
+
+```text
+http://127.0.0.1:5000
+```
+
+### Docker Commands
+
+Start:
+
+```bash
+docker compose up -d
+```
+
+Rebuild:
+
+```bash
+docker compose up --build -d
+```
+
+View logs:
+
+```bash
+docker compose logs -f
+```
+
+Stop:
+
+```bash
+docker compose down
+```
+
+### Docker Persistence
+
+Docker Compose stores data in:
+
+- `icon_data` named volume for SQLite databases and `settings.json`
+- `./static/uploads` bind mount for uploaded images and assets
+
+Inside the container:
+
+- data directory: `/data`
+- app directory: `/app`
+
+## Environment Variables
+
+The app supports these environment variables:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ICON_SECRET_KEY` | `replace-with-secure-secret` | Flask session secret |
+| `ICON_DATA_DIR` | project root | directory for SQLite DB files and `settings.json` |
+| `ICON_SETTINGS_PATH` | `<ICON_DATA_DIR>/settings.json` | optional custom settings path |
+| `ICON_SKIP_RUNTIME_BOOTSTRAP` | `0` | skip auto dependency bootstrap |
+| `ICON_HOST` | `0.0.0.0` | host for `python app.py` |
+| `ICON_PORT` | `5000` | port for `python app.py` |
+| `ICON_DEBUG` | `1` when using `python app.py` | enable or disable debug mode |
+| `APP_PORT` | `5000` | external Docker Compose port |
+
+## How To Use The Project
+
+1. Open the map page as guest, or log in for full access.
+2. Go to `Settings` to configure:
+   - project name and branding
+   - floor plans
+   - source/API settings
+   - user roles and page permissions
+3. Use the dashboard page at `/dashboard` for charts and IAQ overview.
+4. Use the map page for sensor placement and monitoring.
+5. Use the alarms page for active alarms, history, and response tracking.
+
+## Data Files
+
+The app creates and uses these SQLite files:
+
+- `sensordata.db`
+- `calendar.db`
+- `alarm.db`
+- `api.db`
+- `auth.db`
+
+The app also uses:
+
+- `settings.json`
+- `static/uploads/` for uploaded assets
+
+## Milesight Ingest API
+
+See:
+
+- `docs_milesight_ingest_api.md`
+
+This document describes how to send Milesight readings into the dashboard.
+
+## Troubleshooting
+
+### Port already in use
+
+Change the port:
+
+- local run: set `ICON_PORT`
+- Docker: change `APP_PORT` in `.env`
+
+### Reset local data
+
+Delete the SQLite files and `settings.json` if you want a clean start.
+
+### Reset Docker data
+
+Stop the stack and remove the Docker volume:
+
+```bash
+docker compose down -v
+```
+
+## Notes
+
+- Uploaded files are stored in `static/uploads`.
+- Docker mode is the easiest way to run this project as a service.
+- Local mode is best for development and template changes.

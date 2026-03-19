@@ -3,11 +3,14 @@ import sqlite3
 from datetime import datetime, timezone
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-DATA_DIR = BASE_DIR
+DATA_DIR = os.environ.get("ICON_DATA_DIR") or BASE_DIR
+os.makedirs(DATA_DIR, exist_ok=True)
 
 SENSOR_DB = os.path.join(DATA_DIR, "sensordata.db")
 CALENDAR_DB = os.path.join(DATA_DIR, "calendar.db")
 ALARM_DB = os.path.join(DATA_DIR, "alarm.db")
+API_DB = os.path.join(DATA_DIR, "api.db")
+AUTH_DB = os.path.join(DATA_DIR, "auth.db")
 
 
 def connect(db_path):
@@ -26,13 +29,15 @@ def init_sensor_db():
                 floor_id TEXT,
                 zone TEXT,
                 label TEXT,
+                sensor_types TEXT,
                 location_x REAL,
                 location_y REAL,
                 sensor_icon TEXT,
                 last_seen DATETIME,
                 signal_quality INTEGER,
                 source_name TEXT,
-                source_device_name TEXT
+                source_device_name TEXT,
+                source_device_uuid TEXT
             );
             CREATE TABLE IF NOT EXISTS sensor_readings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,6 +46,7 @@ def init_sensor_db():
                 floor_id TEXT,
                 metric TEXT,
                 value REAL,
+                raw_value TEXT,
                 unit TEXT,
                 topic TEXT DEFAULT 'Live'
             );
@@ -62,15 +68,21 @@ def init_sensor_db():
         }
         if "label" not in device_columns:
             conn.execute("ALTER TABLE devices ADD COLUMN label TEXT")
+        if "sensor_types" not in device_columns:
+            conn.execute("ALTER TABLE devices ADD COLUMN sensor_types TEXT")
         if "sensor_icon" not in device_columns:
             conn.execute("ALTER TABLE devices ADD COLUMN sensor_icon TEXT")
         if "source_name" not in device_columns:
             conn.execute("ALTER TABLE devices ADD COLUMN source_name TEXT")
         if "source_device_name" not in device_columns:
             conn.execute("ALTER TABLE devices ADD COLUMN source_device_name TEXT")
+        if "source_device_uuid" not in device_columns:
+            conn.execute("ALTER TABLE devices ADD COLUMN source_device_uuid TEXT")
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(sensor_readings)").fetchall()}
         if "topic" not in columns:
             conn.execute("ALTER TABLE sensor_readings ADD COLUMN topic TEXT DEFAULT 'Live'")
+        if "raw_value" not in columns:
+            conn.execute("ALTER TABLE sensor_readings ADD COLUMN raw_value TEXT")
 
 
 def init_calendar_db():
@@ -155,10 +167,96 @@ def init_alarm_db():
             conn.execute("ALTER TABLE action_history ADD COLUMN checklist TEXT")
 
 
+def init_api_db():
+    with connect(API_DB) as conn:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS api_request_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at DATETIME NOT NULL,
+                source_name TEXT,
+                request_role TEXT,
+                request_name TEXT,
+                request_method TEXT,
+                request_path TEXT,
+                request_url TEXT,
+                use_auth INTEGER DEFAULT 1,
+                request_headers TEXT,
+                request_query TEXT,
+                request_body TEXT,
+                response_status TEXT,
+                response_code INTEGER,
+                response_payload TEXT,
+                error_message TEXT
+            );
+            """
+        )
+        columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(api_request_history)").fetchall()
+        }
+        if "response_code" not in columns:
+            conn.execute("ALTER TABLE api_request_history ADD COLUMN response_code INTEGER")
+
+
+def init_auth_db():
+    with connect(AUTH_DB) as conn:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                full_name TEXT,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'admin',
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                last_login_at DATETIME
+            );
+            CREATE TABLE IF NOT EXISTS login_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts DATETIME NOT NULL,
+                user_id INTEGER,
+                username TEXT,
+                attempted_username TEXT,
+                success INTEGER NOT NULL DEFAULT 0,
+                ip_address TEXT,
+                location_text TEXT,
+                request_method TEXT,
+                request_path TEXT,
+                user_agent TEXT,
+                session_id TEXT
+            );
+            """
+        )
+        user_columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "full_name" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN full_name TEXT")
+        if "role" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'")
+        if "is_active" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+        if "last_login_at" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN last_login_at DATETIME")
+        history_columns = {row["name"] for row in conn.execute("PRAGMA table_info(login_history)").fetchall()}
+        if "location_text" not in history_columns:
+            conn.execute("ALTER TABLE login_history ADD COLUMN location_text TEXT")
+        if "request_method" not in history_columns:
+            conn.execute("ALTER TABLE login_history ADD COLUMN request_method TEXT")
+        if "request_path" not in history_columns:
+            conn.execute("ALTER TABLE login_history ADD COLUMN request_path TEXT")
+        if "user_agent" not in history_columns:
+            conn.execute("ALTER TABLE login_history ADD COLUMN user_agent TEXT")
+        if "session_id" not in history_columns:
+            conn.execute("ALTER TABLE login_history ADD COLUMN session_id TEXT")
+
+
 def init_all():
     init_sensor_db()
     init_calendar_db()
     init_alarm_db()
+    init_api_db()
+    init_auth_db()
 
 
 def seed_demo_data():

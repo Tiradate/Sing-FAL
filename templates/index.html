@@ -1,5 +1,39 @@
 {% extends 'base.html' %}
 
+{% macro render_sensor_metric_value(metric, reading) -%}
+  {% if reading %}
+    {% if metric.key == 'motion' %}
+      {{ t('occupied') if reading.value else t('vacant') }}
+    {% elif reading.value is not none %}
+      {{ '%.1f'|format(reading.value or 0) }} {{ reading.unit or metric.unit }}
+    {% elif reading.raw_value %}
+      {{ reading.raw_value }}{% if reading.unit or metric.unit %} {{ reading.unit or metric.unit }}{% endif %}
+    {% else %}
+      --
+    {% endif %}
+  {% else %}
+    --
+  {% endif %}
+{%- endmacro %}
+
+{% macro render_dashboard_label(value, default_en, default_th='') -%}
+  {% set normalized = (value or '')|trim %}
+  {% if not normalized or normalized == default_en or normalized == 'Average Indoor/Outdoor IAQ' or normalized == 'Top Definition' %}
+    {{ default_th if current_lang == 'th' and default_th else default_en }}
+  {% else %}
+    {{ normalized }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro render_severity_label(label) -%}
+  {% set normalized = (label or '')|trim|lower %}
+  {% if current_lang == 'th' %}
+    {% if normalized == 'good' %}ดี{% elif normalized == 'moderate' %}ปานกลาง{% elif normalized == 'unhealthy' %}ไม่ดีต่อสุขภาพ{% else %}{{ label }}{% endif %}
+  {% else %}
+    {% if normalized == 'good' %}Good{% elif normalized == 'moderate' %}Moderate{% elif normalized == 'unhealthy' %}Unhealthy{% else %}{{ label }}{% endif %}
+  {% endif %}
+{%- endmacro %}
+
 {% block content %}
 <div class="row align-items-center g-3 mb-3">
   <div class="col-12 col-lg-6 d-flex align-items-center">
@@ -51,12 +85,12 @@
       <div class="card-body dashboard-card-body">
         <div class="d-flex align-items-center flex-wrap gap-4">
           <div>
-            <div class="small text-uppercase text-muted">{{ top_definition.title or t('top_definition') }}</div>
-            <h6 class="text-muted mb-0">{{ top_definition.header or t('average_indoor_outdoor_iaq') }}</h6>
+            <div class="small text-uppercase text-muted">{{ render_dashboard_label(top_definition.title, 'Color Definition', 'คำอธิบายสี') }}</div>
+            <h6 class="text-muted mb-0">{{ render_dashboard_label(top_definition.header, 'Average Indoor/Outdoor', 'ค่าเฉลี่ยภายใน/ภายนอก') }}</h6>
           </div>
           {% if top_definition_columns.indoor_enabled is not defined or top_definition_columns.indoor_enabled %}
           <div>
-            <div class="small text-uppercase text-muted">{{ top_definition_columns.indoor or t('indoor') }}</div>
+            <div class="small text-uppercase text-muted">{{ render_dashboard_label(top_definition_columns.indoor, t('indoor'), 'ภายใน') }}</div>
             {% if top_definition_mode == 'critical' %}
             <div class="fw-semibold">{{ indoor_critical_count }} {{ t('critical') }}</div>
             {% else %}
@@ -66,7 +100,7 @@
           {% endif %}
           {% if top_definition_columns.outdoor_enabled is not defined or top_definition_columns.outdoor_enabled %}
           <div>
-            <div class="small text-uppercase text-muted">{{ top_definition_columns.outdoor or t('outdoor') }}</div>
+            <div class="small text-uppercase text-muted">{{ render_dashboard_label(top_definition_columns.outdoor, t('outdoor'), 'ภายนอก') }}</div>
             {% if top_definition_mode == 'critical' %}
             <div class="fw-semibold">{{ outdoor_critical_count }} {{ t('critical') }}</div>
             {% else %}
@@ -79,7 +113,7 @@
             {% for level in top_definition_legend %}
             <div class="d-flex align-items-center gap-2">
               <span class="legend-dot" style="background: {{ level.color }}"></span>
-              <small>{{ level.label }}</small>
+              <small>{{ render_severity_label(level.label) }}</small>
             </div>
             {% endfor %}
           </div>
@@ -110,7 +144,7 @@
             <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
             {% endfor %}
           </select>
-          <button id="floorRotate" class="btn btn-sm btn-outline-secondary">Auto</button>
+          <button id="floorRotate" class="btn btn-sm btn-outline-secondary">{{ 'อัตโนมัติ' if current_lang == 'th' else 'Auto' }}</button>
           {% endif %}
         </div>
       </div>
@@ -120,7 +154,7 @@
           {% if floor_image %}
           <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ settings.floor_names.get(map_floor, map_floor) if settings.floor_names else map_floor }}">
           {% else %}
-          <div class="map-placeholder">Upload a floor plan in settings</div>
+          <div class="map-placeholder">{{ 'อัปโหลดผังชั้นในหน้าตั้งค่า' if current_lang == 'th' else 'Upload a floor plan in settings' }}</div>
           {% endif %}
           {% for logo in settings.floor_plan_logos.get(map_floor, []) %}
           {% set logo_icon = logo.logo_icon or settings.floor_logo_icon %}
@@ -179,7 +213,7 @@
               </div>
               <ul>
                 {% set critical = namespace(found=false) %}
-                {% for metric in metric_options %}
+                {% for metric in tooltip_metric_options %}
                 {% set reading = device_readings.get(metric.key) %}
                 {% set reading_severity = device_metric_severity.get(device.device_id, {}).get(metric.key) %}
                 {% if reading_severity and reading_severity.label in settings.critical_levels %}
@@ -187,15 +221,7 @@
                 <li class="d-flex justify-content-between gap-3">
                   <span>{{ metric.label }}</span>
                   <span class="fw-semibold" style="color: {{ reading_severity.color }}">
-                    {% if reading %}
-                      {% if metric.key == 'motion' %}
-                        {{ t('occupied') if reading.value else t('vacant') }}
-                      {% else %}
-                        {{ '%.1f'|format(reading.value or 0) }} {{ reading.unit or metric.unit }}
-                      {% endif %}
-                    {% else %}
-                      --
-                    {% endif %}
+                    {{ render_sensor_metric_value(metric, reading) }}
                   </span>
                 </li>
                 {% endif %}
@@ -231,21 +257,13 @@
                 </div>
               </div>
               <ul>
-                {% for metric in metric_options %}
+                {% for metric in tooltip_metric_options %}
                   {% set reading = device_readings.get(metric.key) %}
                   {% set reading_severity = device_metric_severity.get(device.device_id, {}).get(metric.key) %}
                   <li class="d-flex justify-content-between gap-3">
                     <span>{{ metric.label }}</span>
                     <span class="fw-semibold"{% if reading_severity and reading_severity.label in settings.critical_levels %} style="color: {{ reading_severity.color }}"{% endif %}>
-                      {% if reading %}
-                        {% if metric.key == 'motion' %}
-                          {{ t('occupied') if reading.value else t('vacant') }}
-                        {% else %}
-                          {{ '%.1f'|format(reading.value or 0) }} {{ reading.unit or metric.unit }}
-                        {% endif %}
-                      {% else %}
-                        --
-                      {% endif %}
+                      {{ render_sensor_metric_value(metric, reading) }}
                     </span>
                   </li>
                   {% endfor %}

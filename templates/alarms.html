@@ -14,6 +14,61 @@
   </span>
 {% endmacro %}
 
+{% macro alarm_text(en, th) -%}
+  {{ th if current_lang == 'th' else en }}
+{%- endmacro %}
+
+{% macro guidance_text(metric, text) -%}
+  {% if current_lang != 'th' %}
+    {{ text }}
+  {% elif metric == 'temperature' %}
+    {% if text == 'LEED/ASHRAE 55 thermal comfort: 20â€“24Â°C (winter), 23â€“26Â°C (summer). Target 22â€“24Â°C for comfort.' %}LEED/ASHRAE 55 ความสบายเชิงความร้อน: 20-24°C (ฤดูหนาว), 23-26°C (ฤดูร้อน) ค่าที่แนะนำเพื่อความสบายคือ 22-24°C
+    {% elif text == 'Verify HVAC setpoints and schedules align with occupied hours.' %}ตรวจสอบค่า setpoint และตารางเวลาของ HVAC ให้สอดคล้องกับช่วงเวลาที่มีการใช้งาน
+    {% elif text == 'Balance diffusers and VAV boxes to address hot/cold complaints.' %}ปรับสมดุล diffuser และ VAV box เพื่อลดปัญหาร้อนหรือเย็นเกินไป
+    {% elif text == 'Inspect equipment faults (stuck dampers, valve issues, failed sensors).' %}ตรวจสอบความขัดข้องของอุปกรณ์ เช่น damper ค้าง วาล์วผิดปกติ หรือเซ็นเซอร์เสีย
+    {% elif text == 'Use zoning or local fans to improve occupant comfort.' %}ใช้การแบ่งโซนหรือพัดลมเฉพาะจุดเพื่อเพิ่มความสบายของผู้ใช้งาน
+    {% else %}{{ text }}{% endif %}
+  {% elif metric == 'humidity' %}
+    {% if text == 'LEED/ASHRAE 55 comfort band: 30â€“60% RH.' %}LEED/ASHRAE 55 ช่วงความชื้นสัมพัทธ์ที่สบาย: 30-60% RH
+    {% elif text == 'Check humidification/dehumidification equipment and condensate drainage.' %}ตรวจสอบอุปกรณ์เพิ่ม/ลดความชื้นและระบบระบายน้ำทิ้ง
+    {% elif text == 'Inspect envelope leaks or wet areas contributing to high RH.' %}ตรวจสอบรอยรั่วของอาคารหรือจุดอับชื้นที่ทำให้ RH สูง
+    {% elif text == 'Adjust outdoor air or reheat strategies to stabilize RH.' %}ปรับปริมาณลมภายนอกหรือกลยุทธ์ reheat เพื่อควบคุม RH ให้คงที่
+    {% elif text == 'Communicate comfort guidance to occupants if RH fluctuates.' %}สื่อสารแนวทางด้านความสบายให้ผู้ใช้งานหาก RH มีการแกว่งตัว
+    {% else %}{{ text }}{% endif %}
+  {% elif metric == 'co2' %}
+    {% if text == 'LEED EQ: indoor COâ‚‚ â‰¤ 700 ppm above outdoor; keep â‰¤ 1000 ppm for comfort.' %}LEED EQ: CO2 ภายในอาคารไม่ควรเกินภายนอกเกิน 700 ppm และควรรักษาไม่เกิน 1000 ppm เพื่อความสบาย
+    {% elif text == 'Increase outdoor air to meet occupancy demand (DCV settings).' %}เพิ่มลมภายนอกให้เหมาะกับจำนวนผู้ใช้งานจริง (ตั้งค่า DCV)
+    {% elif text == 'Verify outdoor air dampers and COâ‚‚ sensors are calibrated.' %}ตรวจสอบ damper ลมภายนอกและเซ็นเซอร์ CO2 ว่าได้รับการสอบเทียบแล้ว
+    {% elif text == 'Confirm occupancy schedules and room utilization.' %}ยืนยันตารางการใช้งานพื้นที่และจำนวนผู้ใช้งาน
+    {% elif text == 'Open transfer paths or doors to improve air distribution.' %}เปิดทางลมหรือประตูเพื่อช่วยให้การกระจายอากาศดีขึ้น
+    {% else %}{{ text }}{% endif %}
+  {% elif metric == 'pm25' %}
+    {% if text == 'WHO guideline: 24-hour average â‰¤ 15 Âµg/mÂ³ Â· Annual average â‰¤ 5 Âµg/mÂ³.' %}แนวทาง WHO: ค่าเฉลี่ย 24 ชั่วโมงไม่เกิน 15 µg/m³ และค่าเฉลี่ยรายปีไม่เกิน 5 µg/m³
+    {% elif text == 'Trace sources (outdoor infiltration, loading docks, kitchens).' %}ติดตามแหล่งกำเนิด เช่น อากาศภายนอกแทรกซึม จุดรับส่งสินค้า หรือครัว
+    {% elif text == 'Upgrade filters to MERV 13â€“15+ and confirm replacement schedule.' %}อัปเกรดแผ่นกรองเป็น MERV 13-15+ และยืนยันแผนการเปลี่ยนตามรอบ
+    {% elif text == 'Reduce outdoor intake during high IAQ; switch to recirculation.' %}ลดลมภายนอกในช่วงที่คุณภาพอากาศภายนอกแย่ และสลับเป็นหมุนเวียนอากาศ
+    {% elif text == 'Seal entry points; enable air curtains/vestibules.' %}ปิดช่องรั่วและใช้งานม่านลมหรือพื้นที่กันชนทางเข้า
+    {% elif text == 'Deploy HEPA purifiers in high-traffic zones.' %}ติดตั้งเครื่องฟอก HEPA ในพื้นที่คนหนาแน่น
+    {% else %}{{ text }}{% endif %}
+  {% elif metric == 'pm10' %}
+    {% if text == 'WHO guideline: 24-hour average â‰¤ 45 Âµg/mÂ³ Â· Annual average â‰¤ 15 Âµg/mÂ³.' %}แนวทาง WHO: ค่าเฉลี่ย 24 ชั่วโมงไม่เกิน 45 µg/m³ และค่าเฉลี่ยรายปีไม่เกิน 15 µg/m³
+    {% elif text == 'Identify dust sources (construction, housekeeping, storage areas).' %}ระบุแหล่งกำเนิดฝุ่น เช่น งานก่อสร้าง งานทำความสะอาด หรือพื้นที่เก็บของ
+    {% elif text == 'Upgrade filters and clean supply/return grilles.' %}อัปเกรดแผ่นกรองและทำความสะอาดตะแกรงลมจ่าย/ลมกลับ
+    {% elif text == 'Increase cleaning frequency for high-traffic zones.' %}เพิ่มความถี่ในการทำความสะอาดสำหรับพื้นที่คนหนาแน่น
+    {% elif text == 'Limit outdoor intake during dust events and monitor IAQ.' %}จำกัดลมภายนอกระหว่างช่วงฝุ่นสูงและติดตามค่า IAQ อย่างต่อเนื่อง
+    {% else %}{{ text }}{% endif %}
+  {% elif metric == 'tvoc' %}
+    {% if text == 'LEED/comfort target: keep TVOC â‰¤ 0.5 mg/mÂ³ (500 Âµg/mÂ³) where feasible.' %}เป้าหมาย LEED/ความสบาย: ควรรักษา TVOC ไม่เกิน 0.5 mg/m³ (500 µg/m³) หากทำได้
+    {% elif text == 'Identify sources (cleaning products, furnishings, maintenance work).' %}ระบุแหล่งกำเนิด เช่น น้ำยาทำความสะอาด เฟอร์นิเจอร์ หรือการซ่อมบำรุง
+    {% elif text == 'Increase ventilation during high-emitting activities.' %}เพิ่มการระบายอากาศระหว่างกิจกรรมที่ปล่อยสารสูง
+    {% elif text == 'Switch to low-VOC materials and cleaning agents.' %}เปลี่ยนไปใช้วัสดุและน้ำยาที่มี VOC ต่ำ
+    {% elif text == 'Isolate or schedule work after hours to protect occupants.' %}แยกพื้นที่ทำงานหรือจัดตารางงานหลังเวลาทำการเพื่อปกป้องผู้ใช้งาน
+    {% else %}{{ text }}{% endif %}
+  {% else %}
+    {{ text }}
+  {% endif %}
+{%- endmacro %}
+
 {% block content %}
 {% set guidance = {
   "temperature": {
@@ -77,30 +132,30 @@
     <div class="card shadow-sm h-100">
       <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <div>
-          <h5 class="mb-0">Active Alarms</h5>
+          <h5 class="mb-0">{{ alarm_text('Active Alarms', 'การแจ้งเตือนที่กำลังเกิดขึ้น') }}</h5>
           {% if session.get("is_admin") %}
           <div class="text-muted small">
             {% if alarms_view == "today" %}
-            Showing today's alarms from devices.
+            {{ alarm_text("Showing today's alarms from devices.", 'แสดงการแจ้งเตือนของวันนี้จากอุปกรณ์') }}
             {% else %}
-            Showing active alarms only.
+            {{ alarm_text('Showing active alarms only.', 'แสดงเฉพาะการแจ้งเตือนที่ยังทำงานอยู่') }}
             {% endif %}
           </div>
           {% endif %}
         </div>
         {% if session.get("is_admin") %}
-        <div class="btn-group btn-group-sm" role="group" aria-label="Alarm view">
+        <div class="btn-group btn-group-sm" role="group" aria-label="{{ alarm_text('Alarm view', 'มุมมองการแจ้งเตือน') }}">
           <a
             class="btn btn-outline-primary {% if alarms_view == 'today' %}active{% endif %}"
             href="{{ url_for('alarms', view='today', system=current_system) }}"
           >
-            Today
+            {{ t('today') }}
           </a>
           <a
             class="btn btn-outline-primary {% if alarms_view != 'today' %}active{% endif %}"
             href="{{ url_for('alarms', view='active', system=current_system) }}"
           >
-            Active
+            {{ alarm_text('Active', 'กำลังเกิดขึ้น') }}
           </a>
         </div>
         {% endif %}
@@ -109,12 +164,12 @@
         {% if session.get("is_admin") %}
         <div class="border rounded p-3 mb-3">
           <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="fw-semibold">Alarm generation</div>
-            <small class="text-muted">Create a manual alarm for today</small>
+            <div class="fw-semibold">{{ alarm_text('Alarm generation', 'สร้างการแจ้งเตือน') }}</div>
+            <small class="text-muted">{{ alarm_text('Create a manual alarm for today', 'สร้างการแจ้งเตือนด้วยตนเองสำหรับวันนี้') }}</small>
           </div>
           <form id="alarm-generator" class="row gy-2 gx-2 align-items-end">
             <div class="col-12 col-md-4">
-              <label class="form-label mb-1">Device ID</label>
+              <label class="form-label mb-1">{{ alarm_text('Device ID', 'รหัสอุปกรณ์') }}</label>
               <select class="form-select form-select-sm" name="device_id" required>
                 {% if devices %}
                 {% for device in devices %}
@@ -127,12 +182,12 @@
                 </option>
                 {% endfor %}
                 {% else %}
-                <option value="" selected disabled>No devices available</option>
+                <option value="" selected disabled>{{ alarm_text('No devices available', 'ไม่มีอุปกรณ์') }}</option>
                 {% endif %}
               </select>
             </div>
             <div class="col-12 col-md-4">
-              <label class="form-label mb-1">Metric</label>
+              <label class="form-label mb-1">{{ alarm_text('Metric', 'ตัวชี้วัด') }}</label>
               <select class="form-select form-select-sm" name="metric">
                 {% for metric in alarm_metric_options %}
                 <option value="{{ metric.key }}" {% if loop.first %}selected{% endif %}>{{ metric.label }}</option>
@@ -140,18 +195,18 @@
               </select>
             </div>
             <div class="col-12 col-md-4">
-              <label class="form-label mb-1">Value</label>
+              <label class="form-label mb-1">{{ alarm_text('Value', 'ค่า') }}</label>
               <input class="form-control form-control-sm" name="metric_value" type="text" value="{{ '' if current_system == 'fire' else '80' }}" required>
               {% if current_system == "fire" %}
-              <small>Use the text value from the Fire Systems Severity Mapping settings.</small>
+              <small>{{ alarm_text('Use the text value from the Fire Systems Severity Mapping settings.', 'ใช้ค่าข้อความจากการตั้งค่า Fire Systems Severity Mapping') }}</small>
               {% endif %}
             </div>
             <div class="col-12 col-md-4">
-              <label class="form-label mb-1">Date &amp; Time</label>
+              <label class="form-label mb-1">{{ alarm_text('Date & Time', 'วันที่และเวลา') }}</label>
               <input class="form-control form-control-sm" name="alarm_ts" type="datetime-local" required>
             </div>
             <div class="col-12 col-md-4 d-flex gap-2">
-              <button class="btn btn-sm btn-primary" type="submit">Generate alarm</button>
+              <button class="btn btn-sm btn-primary" type="submit">{{ alarm_text('Generate alarm', 'สร้างการแจ้งเตือน') }}</button>
               <div id="alarm-generator-status" class="small text-muted align-self-center"></div>
             </div>
           </form>
@@ -184,7 +239,7 @@
                 data-bs-toggle="modal"
                 data-bs-target="#guidanceModal-{{ loop.index }}"
               >
-                Guidance
+                {{ alarm_text('Guidance', 'คำแนะนำ') }}
               </button>
             </div>
           </div>
@@ -199,8 +254,8 @@
               <div class="modal-content">
                 <form method="post" action="{{ url_for('save_alarm_response') }}">
                   <div class="modal-header">
-                    <h5 class="modal-title" id="guidanceModalLabel-{{ loop.index }}">Recommended Response</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title" id="guidanceModalLabel-{{ loop.index }}">{{ alarm_text('Recommended Response', 'คำแนะนำในการตอบสนอง') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ alarm_text('Close', 'ปิด') }}"></button>
                   </div>
                   <div class="modal-body">
                     <input type="hidden" name="alarm_id" value="{{ alarm.id }}">
@@ -208,26 +263,26 @@
                     {% set alarm_index = loop.index %}
                     {% if metric_guidance %}
                     <div class="mb-3 small text-muted">
-                      Standard (LEED/comfort): {{ metric_guidance.standard }}
+                      {{ alarm_text('Standard (LEED/comfort):', 'มาตรฐาน (LEED/ความสบาย):') }} {{ guidance_text(alarm.metric, metric_guidance.standard) }}
                     </div>
-                    <div class="fw-semibold mb-2">Checklist</div>
+                    <div class="fw-semibold mb-2">{{ alarm_text('Checklist', 'รายการตรวจสอบ') }}</div>
                     {% for item in metric_guidance.actions %}
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" id="check-{{ alarm_index }}-{{ loop.index }}" name="checklist" value="{{ loop.index }}">
-                      <label class="form-check-label" for="check-{{ alarm_index }}-{{ loop.index }}">{{ item }}</label>
+                      <label class="form-check-label" for="check-{{ alarm_index }}-{{ loop.index }}">{{ guidance_text(alarm.metric, item) }}</label>
                     </div>
                     {% endfor %}
                     {% else %}
-                    <div class="text-muted small mb-3">Review the alarm source, confirm sensor readings, and follow site SOP.</div>
+                    <div class="text-muted small mb-3">{{ alarm_text('Review the alarm source, confirm sensor readings, and follow site SOP.', 'ตรวจสอบแหล่งที่มาของการแจ้งเตือน ยืนยันค่าจากเซ็นเซอร์ และปฏิบัติตามขั้นตอนมาตรฐานของหน่วยงาน') }}</div>
                     {% endif %}
-                    <div class="fw-semibold mb-2">Action Owner (KPI Tracking)</div>
-                    <input class="form-control" name="action_owner" type="text" placeholder="Enter action person name">
-                    <div class="fw-semibold mb-2 mt-3">Action Note</div>
-                    <textarea class="form-control" name="action_note" rows="3" placeholder="Record the response taken"></textarea>
+                    <div class="fw-semibold mb-2">{{ alarm_text('Action Owner (KPI Tracking)', 'ผู้รับผิดชอบ (ติดตาม KPI)') }}</div>
+                    <input class="form-control" name="action_owner" type="text" placeholder="{{ alarm_text('Enter action person name', 'ระบุชื่อผู้รับผิดชอบ') }}">
+                    <div class="fw-semibold mb-2 mt-3">{{ alarm_text('Action Note', 'บันทึกการดำเนินการ') }}</div>
+                    <textarea class="form-control" name="action_note" rows="3" placeholder="{{ alarm_text('Record the response taken', 'บันทึกการตอบสนองที่ดำเนินการ') }}"></textarea>
                   </div>
                   <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save response</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ alarm_text('Close', 'ปิด') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ alarm_text('Save response', 'บันทึกการตอบสนอง') }}</button>
                   </div>
                 </form>
               </div>
@@ -236,7 +291,7 @@
           {% endfor %}
         </div>
         {% else %}
-        <div class="text-muted">No active alarms.</div>
+        <div class="text-muted">{{ t('no_active_alarms') }}</div>
         {% endif %}
       </div>
     </div>
@@ -245,22 +300,22 @@
   <div class="col-12 col-lg-6">
     <div class="card shadow-sm h-100">
       <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Alarm History</h5>
+        <h5 class="mb-0">{{ alarm_text('Alarm History', 'ประวัติการแจ้งเตือน') }}</h5>
         <div class="d-flex gap-2">
           <a
             class="btn btn-sm btn-outline-primary"
             href="{{ url_for('export_action_history', action_start=action_start, action_end=action_end) }}"
           >
-            Download Actions
+            {{ alarm_text('Download Actions', 'ดาวน์โหลดการดำเนินการ') }}
           </a>
           {% if session.get("is_admin") %}
           <form class="m-0" method="post" action="{{ url_for('clear_alarm_history') }}">
             <button
               class="btn btn-sm btn-outline-danger"
               type="submit"
-              onclick="return confirm('Clear all alarm history entries?');"
+              onclick="return confirm('{{ alarm_text('Clear all alarm history entries?', 'ล้างประวัติการแจ้งเตือนทั้งหมดใช่หรือไม่?') }}');"
             >
-              Clear History
+              {{ alarm_text('Clear History', 'ล้างประวัติ') }}
             </button>
           </form>
           {% endif %}
@@ -294,7 +349,7 @@
                     data-bs-toggle="modal"
                     data-bs-target="#historyNote-{{ loop.index }}"
                   >
-                    Note
+                    {{ alarm_text('Note', 'บันทึก') }}
                   </button>
                 </div>
                 {% endif %}
@@ -313,29 +368,29 @@
             <div class="modal-dialog">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h5 class="modal-title" id="historyNoteLabel-{{ loop.index }}">Response Note</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  <h5 class="modal-title" id="historyNoteLabel-{{ loop.index }}">{{ alarm_text('Response Note', 'บันทึกการตอบสนอง') }}</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ alarm_text('Close', 'ปิด') }}"></button>
                 </div>
                 <div class="modal-body">
                   {% set metric_guidance = guidance.get(alarm.metric) %}
                   {% set alarm_index = loop.index %}
                   {% if metric_guidance %}
                   {% set selected_checks = (alarm.checklist or "").split(",") %}
-                  <div class="fw-semibold mb-2">Checklist (view only)</div>
+                  <div class="fw-semibold mb-2">{{ alarm_text('Checklist (view only)', 'รายการตรวจสอบ (ดูอย่างเดียว)') }}</div>
                   {% for item in metric_guidance.actions %}
                   <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="history-check-{{ alarm_index }}-{{ loop.index }}" disabled {% if loop.index|string in selected_checks %}checked{% endif %}>
-                    <label class="form-check-label" for="history-check-{{ alarm_index }}-{{ loop.index }}">{{ item }}</label>
+                    <label class="form-check-label" for="history-check-{{ alarm_index }}-{{ loop.index }}">{{ guidance_text(alarm.metric, item) }}</label>
                   </div>
                   {% endfor %}
                   {% endif %}
-                  <div class="fw-semibold mb-1">Action Owner</div>
-                  <div class="text-muted mb-3">{{ alarm.action_owner or "Not provided" }}</div>
-                  <div class="fw-semibold mb-1">Action Note</div>
-                  <div class="text-muted">{{ alarm.action_note or "Not provided" }}</div>
+                  <div class="fw-semibold mb-1">{{ alarm_text('Action Owner', 'ผู้รับผิดชอบ') }}</div>
+                  <div class="text-muted mb-3">{{ alarm.action_owner or alarm_text('Not provided', 'ไม่ได้ระบุ') }}</div>
+                  <div class="fw-semibold mb-1">{{ alarm_text('Action Note', 'บันทึกการดำเนินการ') }}</div>
+                  <div class="text-muted">{{ alarm.action_note or alarm_text('Not provided', 'ไม่ได้ระบุ') }}</div>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ alarm_text('Close', 'ปิด') }}</button>
                 </div>
               </div>
             </div>
@@ -344,7 +399,7 @@
           {% endfor %}
         </div>
         {% else %}
-        <div class="text-muted">No history yet.</div>
+        <div class="text-muted">{{ alarm_text('No history yet.', 'ยังไม่มีประวัติ') }}</div>
         {% endif %}
       </div>
     </div>
@@ -368,7 +423,7 @@
     }
     alarmForm.addEventListener("submit", async (event) => {
       event.preventDefault();
-      statusEl.textContent = "Sending...";
+      statusEl.textContent = {{ alarm_text('"Sending..."', '"กำลังส่ง..."') }};
       const formData = new FormData(alarmForm);
       const metric = formData.get("metric");
       const rawValue = (formData.get("metric_value") || "").toString().trim();
@@ -380,13 +435,13 @@
       };
       if (currentSystem === "fire") {
         if (!rawValue) {
-          statusEl.textContent = "Enter a fire alarm text value.";
+          statusEl.textContent = {{ alarm_text('"Enter a fire alarm text value."', '"กรอกค่าข้อความของการแจ้งเตือนไฟ"') }};
           return;
         }
         reading.alarm_text = rawValue;
       } else {
         if (!isNumeric) {
-          statusEl.textContent = "Enter a numeric alarm value.";
+          statusEl.textContent = {{ alarm_text('"Enter a numeric alarm value."', '"กรอกค่าตัวเลขของการแจ้งเตือน"') }};
           return;
         }
         reading.metrics = { [metric]: numericValue };
@@ -402,9 +457,9 @@
         });
         if (!response.ok) {
           const error = await response.json();
-          throw new Error(error.error || "Failed to generate alarm.");
+          throw new Error(error.error || {{ alarm_text('"Failed to generate alarm."', '"สร้างการแจ้งเตือนไม่สำเร็จ"') }});
         }
-        statusEl.textContent = "Alarm generated. Refreshing...";
+        statusEl.textContent = {{ alarm_text('"Alarm generated. Refreshing..."', '"สร้างการแจ้งเตือนแล้ว กำลังรีเฟรช..."') }};
         window.location.reload();
       } catch (error) {
         statusEl.textContent = error.message;
