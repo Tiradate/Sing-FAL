@@ -82,7 +82,7 @@ py -3 -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
-$env:ICON_SECRET_KEY = "change-this-secret"
+$env:ICON_SECRET_KEY = python -c "import secrets; print(secrets.token_hex(32))"
 python app.py
 ```
 
@@ -111,7 +111,7 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
-export ICON_SECRET_KEY="change-this-secret"
+export ICON_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
 python app.py
 ```
 
@@ -147,11 +147,23 @@ Linux:
 cp .env.example .env
 ```
 
-2. Edit `.env` and set a real secret key.
+2. Generate a real secret key and put it in `.env`.
+
+Windows PowerShell:
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Linux:
+
+```bash
+python -c 'import secrets; print(secrets.token_hex(32))'
+```
 
 ```env
 APP_PORT=5000
-ICON_SECRET_KEY=change-this-secret
+ICON_SECRET_KEY=paste-generated-secret-here
 ICON_DEBUG=0
 ```
 
