@@ -359,6 +359,13 @@ def upsert_device_layouts(layouts):
             floor_id = (layout.get("floor_id") or "").strip()
             location_x = layout.get("location_x")
             location_y = layout.get("location_y")
+            source_name = (layout.get("source_name") or "").strip() or None
+            source_device_name = (
+                (layout.get("source_device_name") or "").strip() or None
+            )
+            source_device_uuid = (
+                (layout.get("source_device_uuid") or "").strip() or None
+            )
             conn.execute(
                 """
                 INSERT INTO devices (
@@ -382,7 +389,16 @@ def upsert_device_layouts(layouts):
                 DO UPDATE SET
                     floor_id = excluded.floor_id,
                     location_x = excluded.location_x,
-                    location_y = excluded.location_y
+                    location_y = excluded.location_y,
+                    source_name = COALESCE(excluded.source_name, devices.source_name),
+                    source_device_name = COALESCE(
+                        excluded.source_device_name,
+                        devices.source_device_name
+                    ),
+                    source_device_uuid = COALESCE(
+                        excluded.source_device_uuid,
+                        devices.source_device_uuid
+                    )
                 """,
                 (
                     device_id,
@@ -396,9 +412,9 @@ def upsert_device_layouts(layouts):
                     None,
                     now,
                     100,
-                    None,
-                    None,
-                    None,
+                    source_name,
+                    source_device_name,
+                    source_device_uuid,
                 ),
             )
 

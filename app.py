@@ -1128,6 +1128,9 @@ def export_settings_csv():
             "floor_id": floor_id,
             "location_x": device["location_x"],
             "location_y": device["location_y"],
+            "source_name": device.get("source_name"),
+            "source_device_name": device.get("source_device_name"),
+            "source_device_uuid": device.get("source_device_uuid"),
         }
         sensor_positions.append(sensor_position)
         floor_plan_sensors.setdefault(floor_id, []).append(
@@ -1135,6 +1138,9 @@ def export_settings_csv():
                 "device_id": sensor_position["device_id"],
                 "location_x": sensor_position["location_x"],
                 "location_y": sensor_position["location_y"],
+                "source_name": sensor_position["source_name"],
+                "source_device_name": sensor_position["source_device_name"],
+                "source_device_uuid": sensor_position["source_device_uuid"],
             }
         )
     export_settings = dict(settings)
@@ -1453,6 +1459,15 @@ def import_settings_csv():
                             "floor_id": floor_id,
                             "location_x": max(0, min(100, location_x)),
                             "location_y": max(0, min(100, location_y)),
+                            "source_name": (sensor.get("source_name") or "").strip() or None,
+                            "source_device_name": (
+                                sensor.get("source_device_name") or ""
+                            ).strip()
+                            or None,
+                            "source_device_uuid": (
+                                sensor.get("source_device_uuid") or ""
+                            ).strip()
+                            or None,
                         }
                     )
             return layouts
