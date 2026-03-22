@@ -948,10 +948,10 @@ def ingest_source_latest_values_payload(payload, source_name=None, *, conn=None)
                 except (TypeError, ValueError):
                     numeric_value = None
                 ts = _normalize_timestamp(
-                    value_item.get("updated_at")
-                    or value_item.get("ts")
-                    or item.get("updated_at")
+                    value_item.get("ts")
                     or item.get("ts")
+                    or value_item.get("updated_at")
+                    or item.get("updated_at")
                 )
                 unit = field_config.get("unit") or SOURCE_METRIC_UNITS.get(metric_key, "")
                 conn.execute(

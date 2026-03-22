@@ -1226,17 +1226,19 @@ def view_data():
 
     if not start or not end:
         if device == "__all__":
-            device_start, device_end = data_service.get_sensor_time_bounds(use_ingested_at=True)
+            device_start, device_end = data_service.get_sensor_time_bounds()
         else:
-            device_start, device_end = data_service.get_sensor_time_bounds(device_id=device, use_ingested_at=True)
+            device_start, device_end = data_service.get_sensor_time_bounds(device_id=device)
         if not device_start or not device_end:
             return "Missing required parameters", 400
         if device_start.tzinfo is None:
             device_start = device_start.replace(tzinfo=timezone.utc)
         if device_end.tzinfo is None:
             device_end = device_end.replace(tzinfo=timezone.utc)
-        end = device_end.astimezone(project_tz).strftime("%Y-%m-%dT%H:%M")
-        start = (device_end.astimezone(project_tz) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M")
+        end_now = datetime.now(project_tz)
+        end = end_now.strftime("%Y-%m-%dT%H:%M")
+        start_anchor = min(device_end.astimezone(project_tz), end_now)
+        start = (start_anchor - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M")
 
     try:
         start_dt, end_dt = parse_date_range(start, end, project_tz)
@@ -1250,9 +1252,9 @@ def view_data():
     end_utc = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
 
     query = """
-        SELECT COALESCE(ingested_at, ts) AS event_ts, ts, device_id, metric, value, unit, topic
+        SELECT ts AS event_ts, ts, device_id, metric, value, unit, topic
         FROM sensor_readings
-        WHERE COALESCE(ingested_at, ts) BETWEEN ? AND ?
+        WHERE ts BETWEEN ? AND ?
     """
     params = [start_utc.isoformat(), end_utc.isoformat()]
     if device == "__all__":
@@ -1354,7 +1356,7 @@ def delete_view_data():
     end_utc = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
     with connect(SENSOR_DB) as conn:
         conn.execute(
-            "DELETE FROM sensor_readings WHERE device_id = ? AND COALESCE(ingested_at, ts) BETWEEN ? AND ?",
+            "DELETE FROM sensor_readings WHERE device_id = ? AND ts BETWEEN ? AND ?",
             (device, start_utc.isoformat(), end_utc.isoformat()),
         )
         conn.execute(
