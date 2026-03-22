@@ -102,6 +102,19 @@ body.dashboard-bg {
   min-height: inherit;
 }
 
+.map-canvas {
+  position: relative;
+  width: 100%;
+}
+
+.map-stage.is-auto-cropped {
+  min-height: 0;
+}
+
+.map-stage.is-auto-cropped .map-canvas {
+  position: absolute;
+}
+
 .map-image {
   width: 100%;
   height: auto;

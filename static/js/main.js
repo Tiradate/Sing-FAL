@@ -305,6 +305,180 @@
     checkAlarmStatus().catch(() => undefined);
   }
 
+  const parsePercentValue = (value) => {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const ensureMapCanvas = (stage) => {
+    let canvas = Array.from(stage.children).find((child) => child.classList?.contains('map-canvas'));
+    if (canvas) {
+      return canvas;
+    }
+    canvas = document.createElement('div');
+    canvas.className = 'map-canvas';
+    while (stage.firstChild) {
+      canvas.appendChild(stage.firstChild);
+    }
+    stage.appendChild(canvas);
+    return canvas;
+  };
+
+  const getMapBoundsFromImage = (img) => {
+    const cached = img.dataset.cropBounds;
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (error) {
+        img.dataset.cropBounds = '';
+      }
+    }
+    if (!img.complete || !img.naturalWidth || !img.naturalHeight) {
+      return null;
+    }
+    try {
+      const probe = document.createElement('canvas');
+      probe.width = img.naturalWidth;
+      probe.height = img.naturalHeight;
+      const context = probe.getContext('2d', { willReadFrequently: true });
+      if (!context) {
+        return null;
+      }
+      context.drawImage(img, 0, 0);
+      const { data: pixels, width, height } = context.getImageData(0, 0, probe.width, probe.height);
+      const whiteThreshold = 245;
+      const alphaThreshold = 10;
+      const stride = width * 4;
+      let minX = width;
+      let minY = height;
+      let maxX = -1;
+      let maxY = -1;
+
+      for (let y = 0; y < height; y += 1) {
+        const rowOffset = y * stride;
+        for (let x = 0; x < width; x += 1) {
+          const offset = rowOffset + (x * 4);
+          const alpha = pixels[offset + 3];
+          if (alpha <= alphaThreshold) {
+            continue;
+          }
+          const red = pixels[offset];
+          const green = pixels[offset + 1];
+          const blue = pixels[offset + 2];
+          if (red > whiteThreshold && green > whiteThreshold && blue > whiteThreshold) {
+            continue;
+          }
+          if (x < minX) {
+            minX = x;
+          }
+          if (y < minY) {
+            minY = y;
+          }
+          if (x > maxX) {
+            maxX = x;
+          }
+          if (y > maxY) {
+            maxY = y;
+          }
+        }
+      }
+
+      const fallbackBounds = {
+        left: 0,
+        top: 0,
+        width,
+        height,
+        fullWidth: width,
+        fullHeight: height,
+      };
+      if (maxX < minX || maxY < minY) {
+        img.dataset.cropBounds = JSON.stringify(fallbackBounds);
+        return fallbackBounds;
+      }
+
+      const padding = 24;
+      const bounds = {
+        left: Math.max(0, minX - padding),
+        top: Math.max(0, minY - padding),
+        width: Math.min(width, (maxX - minX) + (padding * 2)),
+        height: Math.min(height, (maxY - minY) + (padding * 2)),
+        fullWidth: width,
+        fullHeight: height,
+      };
+      img.dataset.cropBounds = JSON.stringify(bounds);
+      return bounds;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const expandBoundsForMarkers = (stage, bounds) => {
+    const nextBounds = { ...bounds };
+    const markerPadding = 40;
+    stage.querySelectorAll('.sensor-icon, .logo-icon').forEach((marker) => {
+      if (marker.dataset.originalLeft === undefined) {
+        marker.dataset.originalLeft = marker.style.left || '';
+      }
+      if (marker.dataset.originalTop === undefined) {
+        marker.dataset.originalTop = marker.style.top || '';
+      }
+      const leftPct = parsePercentValue(marker.dataset.originalLeft);
+      const topPct = parsePercentValue(marker.dataset.originalTop);
+      if (leftPct === null || topPct === null) {
+        return;
+      }
+      const markerX = (leftPct / 100) * bounds.fullWidth;
+      const markerY = (topPct / 100) * bounds.fullHeight;
+      nextBounds.left = Math.max(0, Math.min(nextBounds.left, markerX - markerPadding));
+      nextBounds.top = Math.max(0, Math.min(nextBounds.top, markerY - markerPadding));
+      const maxX = Math.min(bounds.fullWidth, Math.max(nextBounds.left + nextBounds.width, markerX + markerPadding));
+      const maxY = Math.min(bounds.fullHeight, Math.max(nextBounds.top + nextBounds.height, markerY + markerPadding));
+      nextBounds.width = maxX - nextBounds.left;
+      nextBounds.height = maxY - nextBounds.top;
+    });
+    return nextBounds;
+  };
+
+  const applyResponsiveMapCrop = (stage) => {
+    if (!stage || stage.closest('.map-editor')) {
+      return;
+    }
+    const img = stage.querySelector('.map-image');
+    if (!img) {
+      return;
+    }
+    const baseBounds = getMapBoundsFromImage(img);
+    if (!baseBounds) {
+      return;
+    }
+    const bounds = expandBoundsForMarkers(stage, baseBounds);
+    const widthRatio = bounds.width / bounds.fullWidth;
+    const heightRatio = bounds.height / bounds.fullHeight;
+    if (widthRatio >= 0.98 && heightRatio >= 0.98) {
+      return;
+    }
+
+    const canvas = ensureMapCanvas(stage);
+    stage.classList.add('is-auto-cropped');
+    stage.style.aspectRatio = `${bounds.width} / ${bounds.height}`;
+    canvas.style.aspectRatio = `${bounds.fullWidth} / ${bounds.fullHeight}`;
+    canvas.style.width = `${(bounds.fullWidth / bounds.width) * 100}%`;
+    canvas.style.left = `${-(bounds.left / bounds.width) * 100}%`;
+    canvas.style.top = `${-(bounds.top / bounds.height) * 100}%`;
+  };
+
+  document.querySelectorAll('.map-stage').forEach((stage) => {
+    const img = stage.querySelector('.map-image');
+    if (!img) {
+      return;
+    }
+    if (img.complete && img.naturalWidth) {
+      applyResponsiveMapCrop(stage);
+      return;
+    }
+    img.addEventListener('load', () => applyResponsiveMapCrop(stage), { once: true });
+  });
+
   const sensorDetailsPanel = document.getElementById('sensorDetailsPanel');
   const sensorDetailsContent = sensorDetailsPanel?.querySelector('.sensor-details-content');
   const sensorDetailsPlaceholder = sensorDetailsPanel?.querySelector('.sensor-details-placeholder');
