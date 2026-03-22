@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import re
 import sqlite3
+from zoneinfo import ZoneInfo
 
 from services import settings as settings_service
 from services.db import connect, SENSOR_DB, CALENDAR_DB
@@ -1258,48 +1259,122 @@ def _get_metric_avg_by_zone(metrics, floor_id=None, is_outdoor=False):
         return {row["metric"]: {"avg_value": row["avg_value"], "unit": row["unit"]} for row in rows}
 
 
-def get_daily_series(metric="pm25", floor_id=None):
-    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
-    start = now - timedelta(hours=23)
-    params = [metric, start.isoformat()]
+def get_daily_series(metric="pm25", floor_id=None, series_timezone=None):
+    return _get_time_series(
+        metric=metric,
+        floor_id=floor_id,
+        bucket="hour",
+        series_timezone=series_timezone,
+    )
+
+
+def _coerce_series_timezone(series_timezone):
+    if isinstance(series_timezone, str) and series_timezone.strip():
+        try:
+            return ZoneInfo(series_timezone.strip())
+        except Exception:
+            return timezone.utc
+    return series_timezone or timezone.utc
+
+
+def _get_latest_metric_timestamp(metric, floor_id=None):
+    params = [metric]
     floor_clause = ""
     if floor_id:
         floor_clause = "AND floor_id = ?"
         params.append(floor_id)
     query = f"""
-        SELECT strftime('%H:00', ts) AS hour_label, AVG(value) AS avg_value
+        SELECT MAX(ts) AS max_ts
         FROM sensor_readings
-        WHERE metric = ? AND ts >= ? {floor_clause}
-        GROUP BY hour_label
-        ORDER BY hour_label
+        WHERE metric = ? {floor_clause}
     """
     with connect(SENSOR_DB) as conn:
-        rows = conn.execute(query, params).fetchall()
-        labels = [row["hour_label"] for row in rows]
-        values = [round(row["avg_value"], 2) for row in rows]
-        return labels, values
+        row = conn.execute(query, params).fetchone()
+    if not row or not row["max_ts"]:
+        return None
+    return datetime.fromisoformat(row["max_ts"])
 
 
-def get_weekly_series(metric="pm25", floor_id=None):
-    now = datetime.now(timezone.utc).date()
-    start = now - timedelta(days=6)
-    params = [metric, start.isoformat()]
+def get_weekly_series(metric="pm25", floor_id=None, series_timezone=None):
+    return _get_time_series(
+        metric=metric,
+        floor_id=floor_id,
+        bucket="day",
+        series_timezone=series_timezone,
+    )
+
+
+def _get_time_series(metric="pm25", floor_id=None, bucket="hour", series_timezone=None):
+    series_timezone = _coerce_series_timezone(series_timezone)
+    latest_ts = _get_latest_metric_timestamp(metric, floor_id=floor_id)
+    if latest_ts is None:
+        return [], []
+    if latest_ts.tzinfo is None:
+        latest_ts = latest_ts.replace(tzinfo=timezone.utc)
+    local_latest = latest_ts.astimezone(series_timezone)
+    params = [metric]
     floor_clause = ""
     if floor_id:
         floor_clause = "AND floor_id = ?"
         params.append(floor_id)
-    query = f"""
-        SELECT date(ts) AS date_label, AVG(value) AS avg_value
+
+    if bucket == "day":
+        local_end = local_latest.replace(hour=0, minute=0, second=0, microsecond=0)
+        local_start = local_end - timedelta(days=6)
+        utc_start = local_start.astimezone(timezone.utc)
+        utc_end = (local_end + timedelta(days=1)).astimezone(timezone.utc)
+        query = f"""
+        SELECT ts, value
         FROM sensor_readings
-        WHERE metric = ? AND date(ts) >= ? {floor_clause}
-        GROUP BY date_label
-        ORDER BY date_label
-    """
+        WHERE metric = ? AND ts >= ? AND ts < ? {floor_clause}
+        ORDER BY ts
+        """
+        query_params = [metric, utc_start.isoformat(), utc_end.isoformat(), *params[1:]]
+        bucket_labels = [
+            (local_start + timedelta(days=offset)).strftime("%Y-%m-%d")
+            for offset in range(7)
+        ]
+        buckets = {label: [] for label in bucket_labels}
+        label_format = "%Y-%m-%d"
+    else:
+        local_end = local_latest.replace(minute=0, second=0, microsecond=0)
+        local_start = local_end - timedelta(hours=23)
+        utc_start = local_start.astimezone(timezone.utc)
+        utc_end = (local_end + timedelta(hours=1)).astimezone(timezone.utc)
+        query = f"""
+        SELECT ts, value
+        FROM sensor_readings
+        WHERE metric = ? AND ts >= ? AND ts < ? {floor_clause}
+        ORDER BY ts
+        """
+        query_params = [metric, utc_start.isoformat(), utc_end.isoformat(), *params[1:]]
+        bucket_labels = [
+            (local_start + timedelta(hours=offset)).strftime("%H:00")
+            for offset in range(24)
+        ]
+        buckets = {label: [] for label in bucket_labels}
+        label_format = "%H:00"
+
     with connect(SENSOR_DB) as conn:
-        rows = conn.execute(query, params).fetchall()
-        labels = [row["date_label"] for row in rows]
-        values = [round(row["avg_value"], 2) for row in rows]
-        return labels, values
+        rows = conn.execute(query, query_params).fetchall()
+
+    for row in rows:
+        row_ts = datetime.fromisoformat(row["ts"])
+        if row_ts.tzinfo is None:
+            row_ts = row_ts.replace(tzinfo=timezone.utc)
+        bucket_label = row_ts.astimezone(series_timezone).strftime(label_format)
+        if bucket_label in buckets and row["value"] is not None:
+            buckets[bucket_label].append(float(row["value"]))
+
+    labels = []
+    values = []
+    for label in bucket_labels:
+        bucket_values = buckets[label]
+        if not bucket_values:
+            continue
+        labels.append(label)
+        values.append(round(sum(bucket_values) / len(bucket_values), 2))
+    return labels, values
 
 
 def get_sensor_time_bounds(floor_id=None):

@@ -883,8 +883,17 @@ def index():
     if weekly_metric not in metric_keys:
         weekly_metric = fallback_metric
 
-    daily_labels, daily_values = data_service.get_daily_series(daily_metric, floor_id=floor_id)
-    weekly_labels, weekly_values = data_service.get_weekly_series(weekly_metric, floor_id=floor_id)
+    project_tz = get_project_timezone(settings)
+    daily_labels, daily_values = data_service.get_daily_series(
+        daily_metric,
+        floor_id=floor_id,
+        series_timezone=project_tz,
+    )
+    weekly_labels, weekly_values = data_service.get_weekly_series(
+        weekly_metric,
+        floor_id=floor_id,
+        series_timezone=project_tz,
+    )
 
     sensor_cards = data_service.get_latest_avg_metrics(
         floor_id=floor_id,
@@ -953,7 +962,6 @@ def index():
             indoor_critical_count += 1
 
     default_view_device = devices[0]["device_id"] if devices else None
-    project_tz = get_project_timezone(settings)
     daily_view_end = datetime.now(project_tz)
     daily_view_start = daily_view_end - timedelta(hours=24)
     weekly_view_end = datetime.now(project_tz)
@@ -1519,18 +1527,28 @@ def import_settings_csv():
 @app.route("/graphs/daily")
 @require_page_access("home")
 def graphs_daily():
+    settings = settings_service.load_settings()
     metric = request.args.get("metric", "pm25")
     floor_id = request.args.get("floor")
-    labels, values = data_service.get_daily_series(metric, floor_id)
+    labels, values = data_service.get_daily_series(
+        metric,
+        floor_id,
+        series_timezone=get_project_timezone(settings),
+    )
     return jsonify({"labels": labels, "values": values})
 
 
 @app.route("/graphs/weekly")
 @require_page_access("home")
 def graphs_weekly():
+    settings = settings_service.load_settings()
     metric = request.args.get("metric", "pm25")
     floor_id = request.args.get("floor")
-    labels, values = data_service.get_weekly_series(metric, floor_id)
+    labels, values = data_service.get_weekly_series(
+        metric,
+        floor_id,
+        series_timezone=get_project_timezone(settings),
+    )
     return jsonify({"labels": labels, "values": values})
 
 
