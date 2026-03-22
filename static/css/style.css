@@ -106,6 +106,18 @@ body.dashboard-bg {
   display: block;
 }
 
+@media (max-width: 612px) {
+  .map-container-full {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .map-container-full .map-stage[data-map-natural="true"] {
+    min-width: 613px;
+  }
+}
+
 .map-container:not(.map-container-has-image) {
   min-height: 320px;
 }
