@@ -467,17 +467,30 @@
     canvas.style.top = `${-(bounds.top / bounds.height) * 100}%`;
   };
 
-  document.querySelectorAll('.map-stage').forEach((stage) => {
-    const img = stage.querySelector('.map-image');
-    if (!img) {
-      return;
-    }
-    if (img.complete && img.naturalWidth) {
-      applyResponsiveMapCrop(stage);
-      return;
-    }
-    img.addEventListener('load', () => applyResponsiveMapCrop(stage), { once: true });
-  });
+  const initResponsiveMaps = () => {
+    document.querySelectorAll('.map-stage').forEach((stage) => {
+      const img = stage.querySelector('.map-image');
+      if (!img) {
+        return;
+      }
+      if (img.decode) {
+        img.decode().then(
+          () => applyResponsiveMapCrop(stage),
+          () => applyResponsiveMapCrop(stage)
+        );
+        return;
+      }
+      if (img.complete && img.naturalWidth) {
+        applyResponsiveMapCrop(stage);
+        return;
+      }
+      img.addEventListener('load', () => applyResponsiveMapCrop(stage), { once: true });
+    });
+  };
+
+  initResponsiveMaps();
+  window.addEventListener('load', initResponsiveMaps, { once: true });
+  window.addEventListener('pageshow', initResponsiveMaps);
 
   const sensorDetailsPanel = document.getElementById('sensorDetailsPanel');
   const sensorDetailsContent = sensorDetailsPanel?.querySelector('.sensor-details-content');
