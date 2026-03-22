@@ -4801,6 +4801,7 @@
     editorContainer.dataset.floor = floorId || '';
     setSelectedDevice(null);
     const floorImage = editorData.floorPlans[floorId];
+    editorContainer.classList.toggle('map-container-has-image', Boolean(floorImage));
     if (floorImage) {
       const img = document.createElement('img');
       img.src = `/${floorImage}`;

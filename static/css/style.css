@@ -82,13 +82,17 @@ body.dashboard-bg {
 
 .map-container {
   position: relative;
-  min-height: 320px;
+  width: 100%;
   background: #f1f3f5;
   border-radius: 8px;
   overflow: hidden;
 }
 
-.map-container-expanded {
+.map-container:not(.map-container-has-image) {
+  min-height: 320px;
+}
+
+.map-container-expanded:not(.map-container-has-image) {
   min-height: 520px;
 }
 
@@ -253,10 +257,10 @@ canvas {
 }
 
 @media (max-width: 991px) {
-  .map-container {
+  .map-container:not(.map-container-has-image) {
     min-height: 260px;
   }
-  .map-container-expanded {
+  .map-container-expanded:not(.map-container-has-image) {
     min-height: 420px;
   }
 }
@@ -265,10 +269,10 @@ canvas {
   .header-icon {
     font-size: 1rem;
   }
-  .map-container {
+  .map-container:not(.map-container-has-image) {
     min-height: 220px;
   }
-  .map-container-expanded {
+  .map-container-expanded:not(.map-container-has-image) {
     min-height: 320px;
   }
 }
