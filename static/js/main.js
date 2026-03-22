@@ -455,7 +455,7 @@
   };
 
   const applyResponsiveMapCrop = (stage) => {
-    if (!stage || stage.closest('.map-editor')) {
+    if (!stage || stage.closest('.map-editor') || stage.dataset.mapNatural === 'true') {
       return;
     }
     const img = stage.querySelector('.map-image');

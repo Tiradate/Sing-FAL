@@ -89,13 +89,21 @@ body.dashboard-bg {
 }
 
 .map-container-full {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  text-align: center;
 }
 
 .map-container-full .map-stage {
-  flex: 0 0 auto;
+  display: inline-block;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
+  text-align: initial;
+}
+
+.map-container-full .map-image {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 .map-container:not(.map-container-has-image) {
@@ -303,17 +311,5 @@ canvas {
   }
   .map-container-expanded:not(.map-container-has-image) {
     min-height: 320px;
-  }
-}
-
-@media (max-width: 638px) {
-  .map-container-full {
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .map-container-full .map-stage {
-    min-width: 639px;
   }
 }
