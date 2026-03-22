@@ -2277,6 +2277,26 @@ def _load_ready_source_devices(settings, source, organizations, devices):
     return ready_devices, latest_value_map, latest_values_payload, current_source, settings_updated
 
 
+def _sync_latest_values_payload_to_sensor_data(settings, source, payload):
+    normalized_payload = payload if isinstance(payload, dict) else {"items": _coerce_collection_items(payload)}
+    if not _has_latest_value_payload(normalized_payload):
+        return False, {"inserted": 0, "matched_devices": 0}
+
+    settings_updated = data_service.sync_source_metric_fields(
+        settings,
+        source.get("name"),
+        normalized_payload,
+    )
+    try:
+        ingest_result = data_service.ingest_source_latest_values_payload(
+            normalized_payload,
+            source_name=source.get("name"),
+        )
+    except Exception:
+        ingest_result = {"inserted": 0, "matched_devices": 0}
+    return settings_updated, ingest_result
+
+
 def _merge_query_params(url, query):
     if not query:
         return url
@@ -2535,6 +2555,16 @@ def _execute_source_request(settings, source, request_definition, context=None, 
             response_status="success",
             response_code=200,
         )
+        role = str(request_definition.get("role") or "").strip().lower()
+        if role == "latest_values":
+            sync_updated, ingest_result = _sync_latest_values_payload_to_sensor_data(
+                settings,
+                request_source,
+                payload,
+            )
+            auth_updated = auth_updated or sync_updated
+            request_source["_latest_values_ingest_result"] = ingest_result
+            request_source["_latest_values_settings_updated"] = bool(sync_updated)
         if include_request_debug:
             return (
                 payload,
@@ -2965,21 +2995,10 @@ def preview_endpoint_source_data():
     except Exception as exc:
         return jsonify({"error": str(exc)}), 400
 
-    source_metric_updated = data_service.sync_source_metric_fields(
-        settings,
-        preview_payload["source"].get("name"),
-        preview_payload.get("latest_values", {"items": []}),
+    ingest_result = preview_payload["source"].get("_latest_values_ingest_result", {"inserted": 0, "matched_devices": 0})
+    settings_updated = settings_updated or bool(
+        preview_payload["source"].get("_latest_values_settings_updated", False)
     )
-    settings_updated = settings_updated or source_metric_updated
-
-    ingest_result = {"inserted": 0, "matched_devices": 0}
-    try:
-        ingest_result = data_service.ingest_source_latest_values_payload(
-            preview_payload.get("latest_values", {"items": []}),
-            source_name=preview_payload["source"].get("name"),
-        )
-    except Exception:
-        ingest_result = {"inserted": 0, "matched_devices": 0}
 
     settings_updated = settings_updated or preview_payload.get("settings_updated", False)
     if settings_updated:
