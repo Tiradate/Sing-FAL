@@ -88,6 +88,16 @@ body.dashboard-bg {
   overflow: hidden;
 }
 
+.map-container-full {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.map-container-full .map-stage {
+  flex: 0 0 auto;
+}
+
 .map-container:not(.map-container-has-image) {
   min-height: 320px;
 }
@@ -293,5 +303,17 @@ canvas {
   }
   .map-container-expanded:not(.map-container-has-image) {
     min-height: 320px;
+  }
+}
+
+@media (max-width: 638px) {
+  .map-container-full {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .map-container-full .map-stage {
+    min-width: 639px;
   }
 }

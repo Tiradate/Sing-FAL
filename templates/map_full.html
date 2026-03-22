@@ -40,7 +40,7 @@
   </div>
 </div>
 {% set floor_image = settings.floor_plans.get(active_floor, '') %}
-<div class="map-container map-container-expanded{% if floor_image %} map-container-has-image{% endif %}" data-floor="{{ active_floor }}">
+<div class="map-container map-container-full map-container-expanded{% if floor_image %} map-container-has-image{% endif %}" data-floor="{{ active_floor }}">
   <div class="map-stage">
   {% if floor_image %}
   <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ settings.floor_names.get(active_floor, active_floor) if settings.floor_names else active_floor }}">

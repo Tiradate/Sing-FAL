@@ -426,6 +426,16 @@ TRANSLATIONS = {
 }
 
 UTC_PLUS_7 = timezone(timedelta(hours=7))
+PROJECT_TIMEZONE_FALLBACKS = {
+    "UTC": timezone.utc,
+    "Asia/Bangkok": timezone(timedelta(hours=7)),
+    "Asia/Yangon": timezone(timedelta(hours=6, minutes=30)),
+    "Asia/Singapore": timezone(timedelta(hours=8)),
+    "Asia/Tokyo": timezone(timedelta(hours=9)),
+    "Europe/London": timezone.utc,
+    "America/New_York": timezone(timedelta(hours=-5)),
+    "America/Los_Angeles": timezone(timedelta(hours=-8)),
+}
 UTC_PLUS_6_5 = timezone(timedelta(hours=6, minutes=30))
 PROJECT_TIMEZONE_OPTIONS = [
     ("Asia/Bangkok", "Asia/Bangkok (UTC+07:00)"),
@@ -445,6 +455,8 @@ PROJECT_TIME_FORMAT_OPTIONS = [
 
 def get_project_timezone_name(settings):
     value = str((settings or {}).get("project_timezone") or "Asia/Bangkok").strip()
+    if value in PROJECT_TIMEZONE_FALLBACKS:
+        return value
     try:
         ZoneInfo(value)
         return value
@@ -457,7 +469,7 @@ def get_project_timezone(settings):
     try:
         return ZoneInfo(timezone_name)
     except Exception:
-        return UTC_PLUS_7
+        return PROJECT_TIMEZONE_FALLBACKS.get(timezone_name, UTC_PLUS_7)
 
 
 def get_project_time_format(settings):
@@ -967,11 +979,25 @@ def index():
     weekly_view_end = datetime.now(project_tz)
     weekly_view_start = weekly_view_end - timedelta(days=7)
     all_data_start, all_data_end = data_service.get_sensor_time_bounds(floor_id=floor_id)
+    device_data_start = None
+    device_data_end = None
+    if default_view_device:
+        device_data_start, device_data_end = data_service.get_sensor_time_bounds(
+            device_id=default_view_device
+        )
     if not all_data_start or not all_data_end:
         all_data_start, all_data_end = daily_view_start, daily_view_end
     elif all_data_start.tzinfo is None and all_data_end.tzinfo is None:
         all_data_start = all_data_start.replace(tzinfo=timezone.utc).astimezone(project_tz)
         all_data_end = all_data_end.replace(tzinfo=timezone.utc).astimezone(project_tz)
+    if device_data_start and device_data_end:
+        if device_data_start.tzinfo is None and device_data_end.tzinfo is None:
+            device_data_start = device_data_start.replace(tzinfo=timezone.utc).astimezone(project_tz)
+            device_data_end = device_data_end.replace(tzinfo=timezone.utc).astimezone(project_tz)
+        daily_view_end = device_data_end
+        daily_view_start = daily_view_end - timedelta(hours=24)
+        weekly_view_end = device_data_end
+        weekly_view_start = weekly_view_end - timedelta(days=7)
     default_view_interval = 10
 
     return render_template(
@@ -1189,9 +1215,19 @@ def view_data():
     end = request.args.get("end")
     interval_minutes = request.args.get("interval", type=int) or 10
     project_tz = get_project_timezone(settings)
-
-    if not device or not start or not end:
+    if not device:
         return "Missing required parameters", 400
+
+    if not start or not end:
+        device_start, device_end = data_service.get_sensor_time_bounds(device_id=device)
+        if not device_start or not device_end:
+            return "Missing required parameters", 400
+        if device_start.tzinfo is None:
+            device_start = device_start.replace(tzinfo=timezone.utc)
+        if device_end.tzinfo is None:
+            device_end = device_end.replace(tzinfo=timezone.utc)
+        end = device_end.astimezone(project_tz).strftime("%Y-%m-%dT%H:%M")
+        start = (device_end.astimezone(project_tz) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M")
 
     try:
         start_dt, end_dt = parse_date_range(start, end, project_tz)

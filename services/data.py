@@ -8,6 +8,17 @@ from zoneinfo import ZoneInfo
 from services import settings as settings_service
 from services.db import connect, SENSOR_DB, CALENDAR_DB
 
+SERIES_TIMEZONE_FALLBACKS = {
+    "UTC": timezone.utc,
+    "Asia/Bangkok": timezone(timedelta(hours=7)),
+    "Asia/Yangon": timezone(timedelta(hours=6, minutes=30)),
+    "Asia/Singapore": timezone(timedelta(hours=8)),
+    "Asia/Tokyo": timezone(timedelta(hours=9)),
+    "Europe/London": timezone.utc,
+    "America/New_York": timezone(timedelta(hours=-5)),
+    "America/Los_Angeles": timezone(timedelta(hours=-8)),
+}
+
 
 SUPPORTED_METRICS = {
     "temperature": "°C",
@@ -1270,8 +1281,11 @@ def get_daily_series(metric="pm25", floor_id=None, series_timezone=None):
 
 def _coerce_series_timezone(series_timezone):
     if isinstance(series_timezone, str) and series_timezone.strip():
+        timezone_name = series_timezone.strip()
+        if timezone_name in SERIES_TIMEZONE_FALLBACKS:
+            return SERIES_TIMEZONE_FALLBACKS[timezone_name]
         try:
-            return ZoneInfo(series_timezone.strip())
+            return ZoneInfo(timezone_name)
         except Exception:
             return timezone.utc
     return series_timezone or timezone.utc
@@ -1377,16 +1391,20 @@ def _get_time_series(metric="pm25", floor_id=None, bucket="hour", series_timezon
     return labels, values
 
 
-def get_sensor_time_bounds(floor_id=None):
+def get_sensor_time_bounds(floor_id=None, device_id=None):
     params = []
-    floor_clause = ""
+    clauses = []
     if floor_id:
-        floor_clause = "WHERE floor_id = ?"
+        clauses.append("floor_id = ?")
         params.append(floor_id)
+    if device_id:
+        clauses.append("device_id = ?")
+        params.append(device_id)
+    where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     query = f"""
         SELECT MIN(ts) AS min_ts, MAX(ts) AS max_ts
         FROM sensor_readings
-        {floor_clause}
+        {where_clause}
     """
     with connect(SENSOR_DB) as conn:
         row = conn.execute(query, params).fetchone()
