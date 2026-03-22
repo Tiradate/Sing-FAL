@@ -325,6 +325,7 @@ TRANSLATIONS = {
         "view_data": "View data",
         "last_24_hours": "Last 24 hours",
         "all_data": "All data",
+        "all_devices": "All devices",
         "today": "Today",
         "weekly_overview": "Weekly Overview",
         "average_per_day": "Average per day",
@@ -415,6 +416,7 @@ TRANSLATIONS = {
         "view_data": "ดูข้อมูล",
         "last_24_hours": "24 ชั่วโมงล่าสุด",
         "all_data": "ข้อมูลทั้งหมด",
+        "all_devices": "ทุกอุปกรณ์",
         "today": "วันนี้",
         "weekly_overview": "ภาพรวมรายสัปดาห์",
         "average_per_day": "ค่าเฉลี่ยต่อวัน",
@@ -1210,16 +1212,23 @@ def export_settings_assets_zip():
 def view_data():
     settings = settings_service.load_settings()
     active_system = resolve_active_system(settings)
-    device = request.args.get("device")
+    devices = data_service.get_devices()
+    device_ids = [row["device_id"] for row in devices if row.get("device_id")]
+    device = (request.args.get("device") or "__all__").strip() or "__all__"
     start = request.args.get("start")
     end = request.args.get("end")
     interval_minutes = request.args.get("interval", type=int) or 10
     project_tz = get_project_timezone(settings)
-    if not device:
+    if device != "__all__" and device not in device_ids:
+        return "Unknown device", 400
+    if device == "__all__" and not device_ids:
         return "Missing required parameters", 400
 
     if not start or not end:
-        device_start, device_end = data_service.get_sensor_time_bounds(device_id=device)
+        if device == "__all__":
+            device_start, device_end = data_service.get_sensor_time_bounds()
+        else:
+            device_start, device_end = data_service.get_sensor_time_bounds(device_id=device)
         if not device_start or not device_end:
             return "Missing required parameters", 400
         if device_start.tzinfo is None:
@@ -1243,11 +1252,19 @@ def view_data():
     query = """
         SELECT ts, device_id, metric, value, unit, topic
         FROM sensor_readings
-        WHERE device_id = ? AND ts BETWEEN ? AND ?
-        ORDER BY ts ASC
+        WHERE ts BETWEEN ? AND ?
     """
+    params = [start_utc.isoformat(), end_utc.isoformat()]
+    if device == "__all__":
+        placeholders = ",".join("?" for _ in device_ids)
+        query += f" AND device_id IN ({placeholders})"
+        params.extend(device_ids)
+    else:
+        query += " AND device_id = ?"
+        params.append(device)
+    query += " ORDER BY ts ASC"
     with connect(SENSOR_DB) as conn:
-        rows = conn.execute(query, (device, start_utc.isoformat(), end_utc.isoformat())).fetchall()
+        rows = conn.execute(query, params).fetchall()
 
     local_tz = project_tz
     aggregates = {}
@@ -1265,7 +1282,7 @@ def view_data():
             microsecond=0,
         )
         topic = (row["topic"] or "Live").strip() or "Live"
-        key = (bucket, topic, row["metric"])
+        key = (bucket, topic, row["device_id"], row["metric"])
         if key not in aggregates:
             aggregates[key] = {"sum": 0.0, "count": 0, "unit": row["unit"]}
         aggregates[key]["sum"] += float(value)
@@ -1274,17 +1291,19 @@ def view_data():
     metric_options = get_enabled_metric_options(settings, active_system)
     metric_order = [option["key"] for option in metric_options]
     records = []
-    bucket_topics = sorted({(bucket, topic) for bucket, topic, _metric in aggregates.keys()})
-    for bucket, topic in bucket_topics:
+    bucket_topics = sorted(
+        {(bucket, topic, device_id) for bucket, topic, device_id, _metric in aggregates.keys()}
+    )
+    for bucket, topic, bucket_device in bucket_topics:
         record = {
             "timestamp": format_project_datetime(bucket.replace(tzinfo=local_tz), settings),
             "gateway": "N/A",
             "topic": topic,
-            "device": device,
+            "device": bucket_device,
             "metrics": {},
         }
         for metric in metric_order:
-            stats = aggregates.get((bucket, topic, metric))
+            stats = aggregates.get((bucket, topic, bucket_device, metric))
             if stats:
                 avg_value = stats["sum"] / stats["count"]
                 record["metrics"][metric] = round(avg_value, 2)
@@ -1296,7 +1315,6 @@ def view_data():
     end_display = end_dt.strftime("%Y-%m-%dT%H:%M")
     start_date = start_dt.date().isoformat()
     end_date = end_dt.date().isoformat()
-    devices = data_service.get_devices()
 
     return render_template(
         "view_data.html",
@@ -1309,6 +1327,7 @@ def view_data():
         interval_minutes=interval_minutes,
         devices=devices,
         metric_options=metric_options,
+        all_devices_value="__all__",
     )
 
 

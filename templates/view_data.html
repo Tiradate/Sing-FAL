@@ -14,6 +14,9 @@
       <div class="col-12 col-md-3">
         <label class="form-label">{{ t('device') }}</label>
         <select class="form-select" name="device" required>
+          <option value="{{ all_devices_value }}" {% if active_device == all_devices_value %}selected{% endif %}>
+            {{ t('all_devices') }}
+          </option>
           {% for device in devices %}
           <option value="{{ device.device_id }}" {% if device.device_id == active_device %}selected{% endif %}>
             {% if device.label and device.label != device.device_id %}
@@ -48,7 +51,7 @@
   </div>
 </div>
 
-{% if is_admin %}
+{% if is_admin and active_device != all_devices_value %}
 <div class="card shadow-sm mb-3">
   <div class="card-body">
     <h6 class="fw-bold">{{ t('admin_data_tools') }}</h6>
