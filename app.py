@@ -1226,9 +1226,9 @@ def view_data():
 
     if not start or not end:
         if device == "__all__":
-            device_start, device_end = data_service.get_sensor_time_bounds()
+            device_start, device_end = data_service.get_sensor_time_bounds(use_ingested_at=True)
         else:
-            device_start, device_end = data_service.get_sensor_time_bounds(device_id=device)
+            device_start, device_end = data_service.get_sensor_time_bounds(device_id=device, use_ingested_at=True)
         if not device_start or not device_end:
             return "Missing required parameters", 400
         if device_start.tzinfo is None:
@@ -1250,9 +1250,9 @@ def view_data():
     end_utc = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
 
     query = """
-        SELECT ts, device_id, metric, value, unit, topic
+        SELECT COALESCE(ingested_at, ts) AS event_ts, ts, device_id, metric, value, unit, topic
         FROM sensor_readings
-        WHERE ts BETWEEN ? AND ?
+        WHERE COALESCE(ingested_at, ts) BETWEEN ? AND ?
     """
     params = [start_utc.isoformat(), end_utc.isoformat()]
     if device == "__all__":
@@ -1272,7 +1272,7 @@ def view_data():
         value = row["value"]
         if value is None or value == "" or str(value).strip().upper() == "N/A":
             continue
-        ts = datetime.fromisoformat(row["ts"])
+        ts = datetime.fromisoformat(row["event_ts"])
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
         local_ts = ts.astimezone(local_tz).replace(tzinfo=None)
@@ -1354,7 +1354,7 @@ def delete_view_data():
     end_utc = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
     with connect(SENSOR_DB) as conn:
         conn.execute(
-            "DELETE FROM sensor_readings WHERE device_id = ? AND ts BETWEEN ? AND ?",
+            "DELETE FROM sensor_readings WHERE device_id = ? AND COALESCE(ingested_at, ts) BETWEEN ? AND ?",
             (device, start_utc.isoformat(), end_utc.isoformat()),
         )
         conn.execute(

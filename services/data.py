@@ -658,6 +658,7 @@ def ingest_milesight_payload(payload, *, conn=None):
     }
     if owns_conn:
         conn = connect(SENSOR_DB)
+    ingestion_ts = datetime.now(timezone.utc).isoformat()
     device_rows = conn.execute("SELECT * FROM devices").fetchall()
     known_devices = {row["device_id"]: row for row in device_rows}
     mapped_source_devices = {}
@@ -767,6 +768,7 @@ def ingest_milesight_payload(payload, *, conn=None):
                     insert_rows.append(
                         (
                             ts,
+                            ingestion_ts,
                             device_id,
                             floor_id,
                             normalized_metric,
@@ -804,8 +806,8 @@ def ingest_milesight_payload(payload, *, conn=None):
             if insert_rows:
                 conn.executemany(
                     """
-                    INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, raw_value, unit, topic)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO sensor_readings (ts, ingested_at, device_id, floor_id, metric, value, raw_value, unit, topic)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     insert_rows,
                 )
@@ -814,8 +816,8 @@ def ingest_milesight_payload(payload, *, conn=None):
         if insert_rows:
             conn.executemany(
                 """
-                INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, raw_value, unit, topic)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO sensor_readings (ts, ingested_at, device_id, floor_id, metric, value, raw_value, unit, topic)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 insert_rows,
             )
@@ -847,6 +849,7 @@ def ingest_source_latest_values_payload(payload, source_name=None, *, conn=None)
     }
     if owns_conn:
         conn = connect(SENSOR_DB)
+    ingestion_ts = datetime.now(timezone.utc).isoformat()
 
     device_rows = conn.execute("SELECT * FROM devices").fetchall()
     mapped_by_uuid = {}
@@ -953,11 +956,12 @@ def ingest_source_latest_values_payload(payload, source_name=None, *, conn=None)
                 unit = field_config.get("unit") or SOURCE_METRIC_UNITS.get(metric_key, "")
                 conn.execute(
                     """
-                    INSERT INTO sensor_readings (ts, device_id, floor_id, metric, value, raw_value, unit, topic)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO sensor_readings (ts, ingested_at, device_id, floor_id, metric, value, raw_value, unit, topic)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         ts,
+                        ingestion_ts,
                         device_id,
                         floor_id,
                         metric_key,
@@ -1391,7 +1395,7 @@ def _get_time_series(metric="pm25", floor_id=None, bucket="hour", series_timezon
     return labels, values
 
 
-def get_sensor_time_bounds(floor_id=None, device_id=None):
+def get_sensor_time_bounds(floor_id=None, device_id=None, use_ingested_at=False):
     params = []
     clauses = []
     if floor_id:
@@ -1401,8 +1405,9 @@ def get_sensor_time_bounds(floor_id=None, device_id=None):
         clauses.append("device_id = ?")
         params.append(device_id)
     where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    time_expr = "COALESCE(ingested_at, ts)" if use_ingested_at else "ts"
     query = f"""
-        SELECT MIN(ts) AS min_ts, MAX(ts) AS max_ts
+        SELECT MIN({time_expr}) AS min_ts, MAX({time_expr}) AS max_ts
         FROM sensor_readings
         {where_clause}
     """

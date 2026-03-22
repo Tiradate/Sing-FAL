@@ -42,6 +42,7 @@ def init_sensor_db():
             CREATE TABLE IF NOT EXISTS sensor_readings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ts DATETIME,
+                ingested_at DATETIME,
                 device_id TEXT,
                 floor_id TEXT,
                 metric TEXT,
@@ -79,6 +80,8 @@ def init_sensor_db():
         if "source_device_uuid" not in device_columns:
             conn.execute("ALTER TABLE devices ADD COLUMN source_device_uuid TEXT")
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(sensor_readings)").fetchall()}
+        if "ingested_at" not in columns:
+            conn.execute("ALTER TABLE sensor_readings ADD COLUMN ingested_at DATETIME")
         if "topic" not in columns:
             conn.execute("ALTER TABLE sensor_readings ADD COLUMN topic TEXT DEFAULT 'Live'")
         if "raw_value" not in columns:
