@@ -4802,17 +4802,20 @@
     setSelectedDevice(null);
     const floorImage = editorData.floorPlans[floorId];
     editorContainer.classList.toggle('map-container-has-image', Boolean(floorImage));
+    const stage = document.createElement('div');
+    stage.className = 'map-stage';
+    editorContainer.appendChild(stage);
     if (floorImage) {
       const img = document.createElement('img');
       img.src = `/${floorImage}`;
       img.className = 'map-image';
       img.alt = `Floor ${floorId}`;
-      editorContainer.appendChild(img);
+      stage.appendChild(img);
     } else {
       const placeholder = document.createElement('div');
       placeholder.className = 'map-placeholder';
       placeholder.textContent = 'Upload a floor plan in settings';
-      editorContainer.appendChild(placeholder);
+      stage.appendChild(placeholder);
     }
 
     (editorData.floorLogos[floorId] || []).forEach((logo) => {
@@ -4827,7 +4830,7 @@
       logoIcon.style.top = `${logo.location_y}%`;
       logoIcon.title = logo.label || 'Logo';
       logoIcon.innerHTML = `<img src="/${logoIconPath}" alt="logo" style="height: ${editorData.logoIconSize}px; width: auto;">`;
-      editorContainer.appendChild(logoIcon);
+      stage.appendChild(logoIcon);
     });
 
     editorData.devices
@@ -4841,7 +4844,7 @@
         icon.style.top = `${device.location_y}%`;
         icon.title = device.label || device.device_id;
         icon.innerHTML = `<img src="/${iconPath}" alt="sensor" style="width: ${editorData.sensorIconSize}px; height: ${editorData.sensorIconSize}px;">`;
-        editorContainer.appendChild(icon);
+        stage.appendChild(icon);
       });
 
     attachSensorDragHandlers();
@@ -4851,6 +4854,7 @@
   };
 
   const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+  const getEditorStage = () => editorContainer.querySelector('.map-stage');
 
   const attachSensorDragHandlers = () => {
     const icons = editorContainer.querySelectorAll('.map-editor-sensor');
@@ -4859,7 +4863,11 @@
         event.preventDefault();
         const deviceId = icon.dataset.device;
         setSelectedDevice(deviceId);
-        const containerRect = editorContainer.getBoundingClientRect();
+        const stage = getEditorStage();
+        if (!stage) {
+          return;
+        }
+        const containerRect = stage.getBoundingClientRect();
 
         const moveHandler = (moveEvent) => {
           const x = ((moveEvent.clientX - containerRect.left) / containerRect.width) * 100;
@@ -4901,7 +4909,11 @@
         event.preventDefault();
         const logoId = icon.dataset.logo;
         setSelectedLogo(logoId);
-        const containerRect = editorContainer.getBoundingClientRect();
+        const stage = getEditorStage();
+        if (!stage) {
+          return;
+        }
+        const containerRect = stage.getBoundingClientRect();
 
         const moveHandler = (moveEvent) => {
           const x = ((moveEvent.clientX - containerRect.left) / containerRect.width) * 100;

@@ -96,6 +96,12 @@ body.dashboard-bg {
   min-height: 520px;
 }
 
+.map-stage {
+  position: relative;
+  width: 100%;
+  min-height: inherit;
+}
+
 .map-image {
   width: 100%;
   height: auto;

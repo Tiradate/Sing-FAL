@@ -151,6 +151,7 @@
       <div class="card-body dashboard-card-body">
         {% set floor_image = settings.floor_plans.get(map_floor, '') %}
         <div class="map-container{% if floor_image %} map-container-has-image{% endif %}" data-floor="{{ map_floor }}">
+          <div class="map-stage">
           {% if floor_image %}
           <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ settings.floor_names.get(map_floor, map_floor) if settings.floor_names else map_floor }}">
           {% else %}
@@ -273,6 +274,7 @@
           </div>
           {% endif %}
           {% endfor %}
+          </div>
         </div>
         {% if loop.first %}
         <div class="sensor-details-panel mt-3" id="sensorDetailsPanel">

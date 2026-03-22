@@ -41,6 +41,7 @@
 </div>
 {% set floor_image = settings.floor_plans.get(active_floor, '') %}
 <div class="map-container map-container-expanded{% if floor_image %} map-container-has-image{% endif %}" data-floor="{{ active_floor }}">
+  <div class="map-stage">
   {% if floor_image %}
   <img src="/{{ floor_image }}" class="map-image" alt="Floor {{ settings.floor_names.get(active_floor, active_floor) if settings.floor_names else active_floor }}">
   {% else %}
@@ -117,6 +118,7 @@
   </div>
   {% endif %}
   {% endfor %}
+  </div>
 </div>
 <div class="sensor-details-panel mt-3" id="sensorDetailsPanel">
   <div class="sensor-details-placeholder text-muted small">{{ t('hover_sensor_details') }}</div>
