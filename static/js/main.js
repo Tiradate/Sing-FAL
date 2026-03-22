@@ -324,6 +324,21 @@
     return canvas;
   };
 
+  const layoutResponsiveMap = (stage, bounds) => {
+    const canvas = ensureMapCanvas(stage);
+    const stageWidth = stage.clientWidth;
+    if (!stageWidth || !bounds?.width || !bounds?.height) {
+      return;
+    }
+    stage.classList.add('is-auto-cropped');
+    stage.style.aspectRatio = '';
+    stage.style.height = `${(stageWidth * bounds.height) / bounds.width}px`;
+    canvas.style.aspectRatio = '';
+    canvas.style.width = `${(bounds.fullWidth / bounds.width) * 100}%`;
+    canvas.style.left = `${-(bounds.left / bounds.width) * 100}%`;
+    canvas.style.top = `${-(bounds.top / bounds.height) * 100}%`;
+  };
+
   const getMapBoundsFromImage = (img) => {
     const cached = img.dataset.cropBounds;
     if (cached) {
@@ -459,12 +474,22 @@
     }
 
     const canvas = ensureMapCanvas(stage);
-    stage.classList.add('is-auto-cropped');
-    stage.style.aspectRatio = `${bounds.width} / ${bounds.height}`;
-    canvas.style.aspectRatio = `${bounds.fullWidth} / ${bounds.fullHeight}`;
-    canvas.style.width = `${(bounds.fullWidth / bounds.width) * 100}%`;
-    canvas.style.left = `${-(bounds.left / bounds.width) * 100}%`;
-    canvas.style.top = `${-(bounds.top / bounds.height) * 100}%`;
+    stage.dataset.cropBounds = JSON.stringify(bounds);
+    layoutResponsiveMap(stage, bounds);
+  };
+
+  const refreshResponsiveMapLayouts = () => {
+    document.querySelectorAll('.map-stage.is-auto-cropped').forEach((stage) => {
+      const serializedBounds = stage.dataset.cropBounds;
+      if (!serializedBounds) {
+        return;
+      }
+      try {
+        layoutResponsiveMap(stage, JSON.parse(serializedBounds));
+      } catch (error) {
+        stage.dataset.cropBounds = '';
+      }
+    });
   };
 
   const initResponsiveMaps = () => {
@@ -491,6 +516,15 @@
   initResponsiveMaps();
   window.addEventListener('load', initResponsiveMaps, { once: true });
   window.addEventListener('pageshow', initResponsiveMaps);
+  window.addEventListener('resize', refreshResponsiveMapLayouts);
+  if (window.ResizeObserver) {
+    const mapResizeObserver = new ResizeObserver(() => {
+      refreshResponsiveMapLayouts();
+    });
+    document.querySelectorAll('.map-stage').forEach((stage) => {
+      mapResizeObserver.observe(stage);
+    });
+  }
 
   const sensorDetailsPanel = document.getElementById('sensorDetailsPanel');
   const sensorDetailsContent = sensorDetailsPanel?.querySelector('.sensor-details-content');
