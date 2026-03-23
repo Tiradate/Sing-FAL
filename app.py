@@ -8,6 +8,8 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import time
 import uuid
 import zipfile
 from urllib.parse import parse_qsl, urlencode, urlparse
@@ -258,6 +260,11 @@ from services.db import SENSOR_DB, connect, init_all, seed_demo_data
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("ICON_SECRET_KEY", "replace-with-secure-secret")
+
+_BACKGROUND_SOURCE_POLLING_LOCK = threading.Lock()
+_BACKGROUND_SOURCE_POLLING_STATE_LOCK = threading.Lock()
+_BACKGROUND_SOURCE_POLLING_THREAD = None
+_BACKGROUND_SOURCE_POLLING_STATE = {}
 
 SUPPORTED_LANGUAGES = {
     "en": "ENG",
@@ -758,6 +765,7 @@ def derive_device_severity(devices, device_metric_severity, alarm_severity, sett
 def ensure_init():
     init_all()
     seed_demo_data()
+    _ensure_background_source_polling_started()
 
 
 def get_current_language():
@@ -2843,6 +2851,165 @@ def _normalize_endpoint_source_list(sources):
     return normalized_sources or [settings_service.normalize_endpoint_source_definition({})]
 
 
+def _background_source_polling_enabled():
+    return _env_flag("ICON_ENABLE_BACKGROUND_POLLING", default=True)
+
+
+def _background_source_polling_process_ready():
+    if not _background_source_polling_enabled():
+        return False
+    if _env_flag("ICON_DEBUG", default=True) and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        return False
+    return True
+
+
+def _background_source_polling_state_key(source):
+    normalized_source = _resolve_endpoint_source(source)
+    source_name = str(normalized_source.get("name") or "").strip()
+    if source_name:
+        return source_name
+    return _get_source_cache_key(normalized_source) or uuid.uuid4().hex
+
+
+def _background_source_polling_signature(source):
+    normalized_source = _resolve_endpoint_source(source)
+    return json.dumps(normalized_source, sort_keys=True, ensure_ascii=True)
+
+
+def _latest_values_poll_interval_seconds(source):
+    latest_values_request = _source_api_request(source, "latest_values")
+    if not latest_values_request:
+        return 0
+
+    normalized_request = settings_service.normalize_endpoint_api_request_definition(
+        latest_values_request,
+        0,
+    )
+    if not normalized_request.get("interval_unlimited"):
+        return 0
+
+    try:
+        interval_minutes = int(
+            normalized_request.get("run_every_times")
+            or normalized_request.get("run_interval_minutes")
+            or 0
+        )
+    except (TypeError, ValueError):
+        interval_minutes = 0
+    return max(0, interval_minutes) * 60
+
+
+def _prune_background_source_polling_state(active_source_keys):
+    with _BACKGROUND_SOURCE_POLLING_STATE_LOCK:
+        stale_keys = [
+            key for key in list(_BACKGROUND_SOURCE_POLLING_STATE.keys()) if key not in active_source_keys
+        ]
+        for key in stale_keys:
+            _BACKGROUND_SOURCE_POLLING_STATE.pop(key, None)
+
+
+def _run_background_source_polling_cycle():
+    settings = settings_service.load_settings()
+    settings_updated = _sync_endpoint_token_store(settings)
+    active_source_keys = set()
+    now = time.time()
+
+    for source in _normalize_endpoint_source_list(settings.get("endpoint_sources", [])):
+        normalized_source = _resolve_endpoint_source(source)
+        source_name = str(normalized_source.get("name") or "").strip()
+        if normalized_source.get("format") != "api" or not source_name:
+            continue
+
+        interval_seconds = _latest_values_poll_interval_seconds(normalized_source)
+        if interval_seconds <= 0:
+            continue
+
+        source_key = _background_source_polling_state_key(normalized_source)
+        active_source_keys.add(source_key)
+        source_signature = _background_source_polling_signature(normalized_source)
+        with _BACKGROUND_SOURCE_POLLING_STATE_LOCK:
+            state_entry = _BACKGROUND_SOURCE_POLLING_STATE.get(source_key)
+            if not isinstance(state_entry, dict) or state_entry.get("signature") != source_signature:
+                state_entry = {
+                    "signature": source_signature,
+                    "execution_state": {},
+                    "next_run_at": 0.0,
+                }
+                _BACKGROUND_SOURCE_POLLING_STATE[source_key] = state_entry
+
+            next_run_at = float(state_entry.get("next_run_at") or 0.0)
+            execution_state = state_entry.get("execution_state") or {}
+
+        if next_run_at > now:
+            continue
+
+        try:
+            preview_payload = _load_source_preview_data(
+                settings,
+                normalized_source,
+                execution_state,
+            )
+        except Exception as exc:
+            with _BACKGROUND_SOURCE_POLLING_STATE_LOCK:
+                if source_key in _BACKGROUND_SOURCE_POLLING_STATE:
+                    _BACKGROUND_SOURCE_POLLING_STATE[source_key]["next_run_at"] = time.time() + interval_seconds
+                    _BACKGROUND_SOURCE_POLLING_STATE[source_key]["last_error"] = str(exc)
+                    _BACKGROUND_SOURCE_POLLING_STATE[source_key]["last_error_at"] = (
+                        datetime.now(timezone.utc).isoformat()
+                    )
+            print(f"[background] Latest Values polling failed for '{source_name}': {exc}")
+            continue
+
+        settings_updated = settings_updated or bool(preview_payload.get("settings_updated", False))
+        settings_updated = settings_updated or bool(
+            preview_payload.get("source", {}).get("_latest_values_settings_updated", False)
+        )
+        with _BACKGROUND_SOURCE_POLLING_STATE_LOCK:
+            if source_key in _BACKGROUND_SOURCE_POLLING_STATE:
+                _BACKGROUND_SOURCE_POLLING_STATE[source_key].update(
+                    {
+                        "execution_state": preview_payload.get("execution_state", {}),
+                        "next_run_at": time.time() + interval_seconds,
+                        "last_success_at": datetime.now(timezone.utc).isoformat(),
+                        "last_error": "",
+                    }
+                )
+
+    _prune_background_source_polling_state(active_source_keys)
+    if settings_updated:
+        settings_service.save_settings(settings)
+
+
+def _background_source_polling_loop():
+    init_all()
+    seed_demo_data()
+    print("[background] Latest Values polling thread started.")
+    while True:
+        try:
+            _run_background_source_polling_cycle()
+        except Exception as exc:
+            print(f"[background] Latest Values polling cycle crashed: {exc}")
+        time.sleep(15)
+
+
+def _ensure_background_source_polling_started():
+    global _BACKGROUND_SOURCE_POLLING_THREAD
+
+    if not _background_source_polling_process_ready():
+        return
+
+    with _BACKGROUND_SOURCE_POLLING_LOCK:
+        if _BACKGROUND_SOURCE_POLLING_THREAD and _BACKGROUND_SOURCE_POLLING_THREAD.is_alive():
+            return
+
+        _BACKGROUND_SOURCE_POLLING_THREAD = threading.Thread(
+            target=_background_source_polling_loop,
+            name="icon-latest-values-poller",
+            daemon=True,
+        )
+        _BACKGROUND_SOURCE_POLLING_THREAD.start()
+
+
 def _fetch_source_token(source):
     normalized_source = _resolve_endpoint_source(source)
     api_config = normalized_source.get("api", {})
@@ -4470,6 +4637,9 @@ def logout():
 
 
 if __name__ == "__main__":
+    init_all()
+    seed_demo_data()
+    _ensure_background_source_polling_started()
     app.run(
         debug=_env_flag("ICON_DEBUG", default=True),
         host=os.environ.get("ICON_HOST", "0.0.0.0"),
