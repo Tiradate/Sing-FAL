@@ -112,10 +112,6 @@ body.dashboard-bg {
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
   }
-
-  .map-container-full .map-stage[data-map-natural="true"] {
-    min-width: 613px;
-  }
 }
 
 .map-container:not(.map-container-has-image) {
