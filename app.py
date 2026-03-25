@@ -3305,9 +3305,13 @@ def _sync_latest_history_to_sensor_db(settings):
         if sensor_max_ts and payload_latest_ts <= sensor_max_ts:
             continue
         try:
+            fields_updated = data_service.sync_source_metric_fields(settings, source_name, payload)
+            if fields_updated:
+                settings_service.save_settings(settings)
             data_service.ingest_source_latest_values_payload(
                 payload,
                 source_name=source_name,
+                settings=settings,
             )
             sensor_max_ts = payload_latest_ts
         except Exception:

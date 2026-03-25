@@ -829,13 +829,14 @@ def ingest_milesight_payload(payload, *, conn=None):
             conn.close()
 
 
-def ingest_source_latest_values_payload(payload, source_name=None, *, conn=None):
+def ingest_source_latest_values_payload(payload, source_name=None, *, settings=None, conn=None):
     latest_items = payload.get("items") if isinstance(payload, dict) else payload
     if not isinstance(latest_items, list):
         return {"error": "Payload must include a list of latest value items"}
 
     owns_conn = conn is None
-    settings = settings_service.load_settings()
+    if settings is None:
+        settings = settings_service.load_settings()
     field_configs = {
         field["key"]: field
         for field in get_source_metric_fields(settings)
