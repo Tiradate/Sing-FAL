@@ -3282,7 +3282,7 @@ def _payload_latest_value_timestamp(payload):
 
 
 def _sync_latest_history_to_sensor_db(settings):
-    _sensor_min_ts, sensor_max_ts = data_service.get_sensor_time_bounds()
+    _sensor_min_ts, sensor_max_ts = data_service.get_sensor_time_bounds(exclude_topic="Test")
     if sensor_max_ts and sensor_max_ts.tzinfo is None:
         sensor_max_ts = sensor_max_ts.replace(tzinfo=timezone.utc)
 

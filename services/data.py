@@ -1396,7 +1396,7 @@ def _get_time_series(metric="pm25", floor_id=None, bucket="hour", series_timezon
     return labels, values
 
 
-def get_sensor_time_bounds(floor_id=None, device_id=None, use_ingested_at=False):
+def get_sensor_time_bounds(floor_id=None, device_id=None, use_ingested_at=False, exclude_topic=None):
     params = []
     clauses = []
     if floor_id:
@@ -1405,6 +1405,9 @@ def get_sensor_time_bounds(floor_id=None, device_id=None, use_ingested_at=False)
     if device_id:
         clauses.append("device_id = ?")
         params.append(device_id)
+    if exclude_topic:
+        clauses.append("(topic IS NULL OR topic != ?)")
+        params.append(exclude_topic)
     where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     time_expr = "COALESCE(ingested_at, ts)" if use_ingested_at else "ts"
     query = f"""
