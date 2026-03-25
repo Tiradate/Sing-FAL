@@ -1312,6 +1312,7 @@ def export_settings_assets_zip():
 @app.route("/view_data")
 def view_data():
     settings = settings_service.load_settings()
+    _sync_latest_history_to_sensor_db(settings)
     active_system = resolve_active_system(settings)
     devices = data_service.get_devices()
     device_ids = [row["device_id"] for row in devices if row.get("device_id")]
@@ -1365,7 +1366,7 @@ def view_data():
     else:
         query += " AND device_id = ?"
         params.append(device)
-    query += " ORDER BY ts ASC"
+    query += " ORDER BY ts DESC"
     with connect(SENSOR_DB) as conn:
         rows = conn.execute(query, params).fetchall()
 
@@ -1395,7 +1396,8 @@ def view_data():
     metric_order = [option["key"] for option in metric_options]
     records = []
     bucket_topics = sorted(
-        {(bucket, topic, device_id) for bucket, topic, device_id, _metric in aggregates.keys()}
+        {(bucket, topic, device_id) for bucket, topic, device_id, _metric in aggregates.keys()},
+        reverse=True,
     )
     for bucket, topic, bucket_device in bucket_topics:
         record = {
@@ -3229,6 +3231,87 @@ def _normalize_history_date_text(value):
         except ValueError:
             continue
     raise ValueError("Invalid date format")
+
+
+def _payload_latest_value_timestamp(payload):
+    latest_ts = None
+    items = _coerce_collection_items(payload)
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        values = item.get("values")
+        if not isinstance(values, list):
+            continue
+        for value_item in values:
+            if not isinstance(value_item, dict):
+                continue
+            raw_ts = (
+                value_item.get("ts")
+                or item.get("ts")
+                or value_item.get("updated_at")
+                or item.get("updated_at")
+            )
+            if raw_ts in (None, ""):
+                continue
+            try:
+                if isinstance(raw_ts, str):
+                    cleaned = raw_ts.strip()
+                    if cleaned.endswith("Z"):
+                        cleaned = cleaned[:-1] + "+00:00"
+                    try:
+                        parsed = datetime.fromisoformat(cleaned)
+                    except ValueError:
+                        epoch = float(cleaned)
+                        if epoch > 1e12:
+                            epoch /= 1000
+                        parsed = datetime.fromtimestamp(epoch, tz=timezone.utc)
+                elif isinstance(raw_ts, (int, float)):
+                    epoch = float(raw_ts)
+                    if epoch > 1e12:
+                        epoch /= 1000
+                    parsed = datetime.fromtimestamp(epoch, tz=timezone.utc)
+                else:
+                    continue
+            except (TypeError, ValueError, OSError):
+                continue
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            if latest_ts is None or parsed > latest_ts:
+                latest_ts = parsed
+    return latest_ts
+
+
+def _sync_latest_history_to_sensor_db(settings):
+    _sensor_min_ts, sensor_max_ts = data_service.get_sensor_time_bounds()
+    if sensor_max_ts and sensor_max_ts.tzinfo is None:
+        sensor_max_ts = sensor_max_ts.replace(tzinfo=timezone.utc)
+
+    for source in _normalize_endpoint_source_list(settings.get("endpoint_sources", [])):
+        source_name = str(source.get("name") or "").strip()
+        if not source_name:
+            continue
+        history_entry = latest_api_request_history(
+            {
+                "source_name": source_name,
+                "request_role": "latest_values",
+            }
+        )
+        if not history_entry or history_entry.get("response_status") != "success":
+            continue
+        payload = history_entry.get("response_payload") or {}
+        payload_latest_ts = _payload_latest_value_timestamp(payload)
+        if payload_latest_ts is None:
+            continue
+        if sensor_max_ts and payload_latest_ts <= sensor_max_ts:
+            continue
+        try:
+            data_service.ingest_source_latest_values_payload(
+                payload,
+                source_name=source_name,
+            )
+            sensor_max_ts = payload_latest_ts
+        except Exception:
+            continue
 
 
 @app.route("/api/settings/source-devices", methods=["GET", "POST"])
