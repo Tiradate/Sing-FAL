@@ -486,6 +486,13 @@ def get_project_time_format(settings):
     return value if value in {"24h", "12h"} else "24h"
 
 
+def get_project_date_format():
+    language = get_current_language()
+    if language == "th":
+        return "%d/%m/%Y"
+    return "%Y/%m/%d"
+
+
 def format_project_datetime(value, settings):
     if not value:
         return ""
@@ -500,7 +507,8 @@ def format_project_datetime(value, settings):
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     local_ts = parsed.astimezone(get_project_timezone(settings))
-    time_pattern = "%d/%m/%Y %H:%M" if get_project_time_format(settings) == "24h" else "%d/%m/%Y %I:%M %p"
+    date_pattern = get_project_date_format()
+    time_pattern = f"{date_pattern} %H:%M" if get_project_time_format(settings) == "24h" else f"{date_pattern} %I:%M %p"
     return local_ts.strftime(time_pattern)
 
 
@@ -782,6 +790,30 @@ def translate_text(key):
     return language_messages.get(key, default_messages.get(key, key))
 
 
+ALARM_MESSAGE_TRANSLATIONS_TH = {
+    "Temperature": "อุณหภูมิ",
+    "Humidity": "ความชื้น",
+    "Smoke": "ควัน",
+    "Heat": "ความร้อน",
+    "Flow Switch": "โฟลว์สวิตช์",
+    "Supervisory valve": "วาล์วควบคุม",
+    "Manual": "ปุ่มกดแจ้งเหตุ",
+    "Gas": "ก๊าซ",
+}
+
+
+def translate_alarm_message(message):
+    text = str(message or "").strip()
+    if not text or get_current_language() != "th":
+        return text
+    translated = text
+    for source, target in ALARM_MESSAGE_TRANSLATIONS_TH.items():
+        translated = re.sub(rf"\b{re.escape(source)}\b", target, translated)
+    translated = translated.replace(" exceeds ", " เกิน ")
+    translated = translated.replace(" is above the limit", " สูงกว่าค่าที่กำหนด")
+    return translated
+
+
 @app.context_processor
 def inject_globals():
     settings = settings_service.load_settings()
@@ -804,6 +836,7 @@ def inject_globals():
         "project_time_format_options": PROJECT_TIME_FORMAT_OPTIONS,
         "format_project_datetime": lambda value: format_project_datetime(value, settings),
         "t": translate_text,
+        "translate_alarm_message": translate_alarm_message,
     }
 
 
@@ -1197,6 +1230,66 @@ def export_settings_csv():
         for key, value in export_settings.items():
             writer.writerow([key, json.dumps(value)])
     return send_file(csv_path, as_attachment=True, download_name="settings.csv")
+
+
+@app.get("/settings/login-history.csv")
+def export_login_history_csv():
+    if not session.get("is_admin"):
+        return redirect(url_for("login"))
+    try:
+        start_date = _normalize_history_date_text(request.args.get("login_history_start_date"))
+        end_date = _normalize_history_date_text(request.args.get("login_history_end_date"))
+    except ValueError:
+        return "Invalid date format", 400
+    rows = auth_service.list_login_history(
+        limit=None,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    csv_buffer = io.StringIO()
+    writer = csv.writer(csv_buffer)
+    writer.writerow(
+        [
+            "timestamp",
+            "username",
+            "attempted_username",
+            "success",
+            "ip_address",
+            "location",
+            "request_method",
+            "request_path",
+            "user_agent",
+            "session_id",
+        ]
+    )
+    for row in rows:
+        writer.writerow(
+            [
+                row["ts"],
+                row["username"] or "",
+                row["attempted_username"] or "",
+                "success" if row["success"] else "failed",
+                row["ip_address"] or "",
+                row["location_text"] or "",
+                row["request_method"] or "",
+                row["request_path"] or "",
+                row["user_agent"] or "",
+                row["session_id"] or "",
+            ]
+        )
+    csv_bytes = io.BytesIO(csv_buffer.getvalue().encode("utf-8-sig"))
+    csv_bytes.seek(0)
+    filename_parts = ["login_history"]
+    if start_date:
+        filename_parts.append(start_date)
+    if end_date:
+        filename_parts.append(end_date)
+    return send_file(
+        csv_bytes,
+        as_attachment=True,
+        download_name="_".join(filename_parts) + ".csv",
+        mimetype="text/csv",
+    )
 
 
 @app.route("/settings/export-assets.zip")
@@ -3126,6 +3219,18 @@ def _history_date_range_filters(start_date_text="", end_date_text=""):
     return filters
 
 
+def _normalize_history_date_text(value):
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(text, fmt).date().isoformat()
+        except ValueError:
+            continue
+    raise ValueError("Invalid date format")
+
+
 @app.route("/api/settings/source-devices", methods=["GET", "POST"])
 def get_endpoint_source_devices():
     return preview_endpoint_source_data()
@@ -3246,7 +3351,7 @@ def test_endpoint_source_request():
             "device_items": test_payload.get("device_items", []),
             "history": list_api_request_history(
                 _source_request_history_filters(source, request_definition),
-                limit=150,
+                limit=10,
             ),
         }
     )
@@ -4254,6 +4359,19 @@ def settings():
 
     device_payloads = [dict(device) for device in devices]
 
+    try:
+        login_history_start_date = _normalize_history_date_text(
+            request.args.get("login_history_start_date")
+        )
+        login_history_end_date = _normalize_history_date_text(
+            request.args.get("login_history_end_date")
+        )
+    except ValueError:
+        flash("Invalid login history date format.", "danger")
+        login_history_start_date = ""
+        login_history_end_date = ""
+    login_history_limit = 10 if not (login_history_start_date or login_history_end_date) else None
+
     return render_template(
         "settings.html",
         settings=settings,
@@ -4267,7 +4385,13 @@ def settings():
         managed_users=auth_service.list_users(),
         role_permissions=role_permissions,
         role_page_keys=ROLE_PAGE_KEYS,
-        login_history=auth_service.list_login_history(100),
+        login_history=auth_service.list_login_history(
+            login_history_limit,
+            start_date=login_history_start_date,
+            end_date=login_history_end_date,
+        ),
+        login_history_start_date=login_history_start_date,
+        login_history_end_date=login_history_end_date,
         source_metric_fields=data_service.get_source_metric_fields(settings),
         dynamic_severity_fields=[
             field

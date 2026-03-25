@@ -1,6 +1,6 @@
 import json
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from services.db import API_DB, connect
 
@@ -11,7 +11,14 @@ def _json_text(value):
     return json.dumps(value, ensure_ascii=True)
 
 
+def purge_old_api_request_history():
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=31)).isoformat()
+    with connect(API_DB) as conn:
+        conn.execute("DELETE FROM api_request_history WHERE created_at < ?", (cutoff,))
+
+
 def log_api_request_history(entry):
+    purge_old_api_request_history()
     payload = dict(entry or {})
     with connect(API_DB) as conn:
         cursor = conn.execute(

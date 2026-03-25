@@ -218,7 +218,7 @@
           <div class="list-group-item">
             <div class="d-flex justify-content-between">
               <div>
-                <div class="fw-semibold">{{ alarm.metric | upper }} - {{ alarm.message }}</div>
+                <div class="fw-semibold">{{ alarm.metric | upper }} - {{ translate_alarm_message(alarm.message) }}</div>
                 {% set alarm_label = device_label_map.get(alarm.device_id) %}
                 <small class="text-muted">
                   {% if alarm_label and alarm_label != alarm.device_id %}
@@ -328,7 +328,7 @@
           <div class="list-group-item">
             <div class="d-flex justify-content-between align-items-start">
               <div>
-                <div class="fw-semibold">{{ alarm.metric | upper }} - {{ alarm.message }}</div>
+                <div class="fw-semibold">{{ alarm.metric | upper }} - {{ translate_alarm_message(alarm.message) }}</div>
                 {% set alarm_label = device_label_map.get(alarm.device_id) %}
                 <small class="text-muted">
                   {% if alarm_label and alarm_label != alarm.device_id %}

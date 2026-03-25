@@ -369,7 +369,7 @@
       <div class="card-body dashboard-card-body">
         <canvas id="weeklyChart"></canvas>
         <div class="mt-2">
-          <input type="date" class="form-control form-control-sm" />
+          <input type="text" class="form-control form-control-sm" placeholder="dd/mm/yyyy" inputmode="numeric" />
         </div>
       </div>
     </div>
@@ -417,7 +417,7 @@
               {% set iaq_level = (settings.severity_levels|selectattr('label','equalto',alarm.severity)|list|first) %}
               <span class="severity-dot" style="background: {{ fire_level.color if fire_level and fire_level.color else (iaq_level.color if iaq_level else '#dc3545') }}"></span>
               <div>
-                <div class="fw-semibold">{{ alarm.metric | upper }} - {{ alarm.message }}</div>
+                <div class="fw-semibold">{{ alarm.metric | upper }} - {{ translate_alarm_message(alarm.message) }}</div>
                 {% set alarm_label = device_label_map.get(alarm.device_id) %}
                 <small class="text-muted">
                   {% if alarm_label and alarm_label != alarm.device_id %}

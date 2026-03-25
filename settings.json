@@ -368,7 +368,7 @@
       "name": "LIV-24 IAQ",
       "format": "api",
       "base_url": "http://100.70.55.161:8000",
-      "token": "ext_39057456243c0c35_Jx6ovO6nyW88OsW8ROJyfLAXTwajQlzO",
+      "token": "ext_bdb8b449f3daba1c_B1elkVKYyJoXwgycsSwZS58nAKIwZmvK",
       "api": {
         "template_id": "",
         "request_headers": "{}",
@@ -459,7 +459,7 @@
   "floor_names": {},
   "endpoint_token_store": {
     "100.70.55.161:8000": {
-      "token": "ext_39057456243c0c35_Jx6ovO6nyW88OsW8ROJyfLAXTwajQlzO",
+      "token": "ext_bdb8b449f3daba1c_B1elkVKYyJoXwgycsSwZS58nAKIwZmvK",
       "updated_at": "2026-03-17T19:59:27.370548+00:00",
       "source_names": [
         "LIV-24 IAQ"

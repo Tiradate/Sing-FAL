@@ -20,17 +20,23 @@ def ensure_default_admin_user(settings):
     password = str(settings.get("admin_password") or "admin123")
     full_name = str(settings.get("project_name") or "Administrator").strip() or "Administrator"
     with connect(AUTH_DB) as conn:
-        existing = conn.execute("SELECT id FROM users LIMIT 1").fetchone()
-        if existing:
-            return
+        existing = conn.execute(
+            "SELECT id, password_hash FROM users WHERE role = 'admin' ORDER BY id LIMIT 1"
+        ).fetchone()
         now = _utc_now()
-        conn.execute(
-            """
-            INSERT INTO users (username, full_name, password_hash, role, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, 'admin', 1, ?, ?)
-            """,
-            (username, full_name, generate_password_hash(password), now, now),
-        )
+        if not existing:
+            conn.execute(
+                """
+                INSERT INTO users (username, full_name, password_hash, role, is_active, created_at, updated_at)
+                VALUES (?, ?, ?, 'admin', 1, ?, ?)
+                """,
+                (username, full_name, generate_password_hash(password), now, now),
+            )
+        elif not check_password_hash(existing["password_hash"], password):
+            conn.execute(
+                "UPDATE users SET username = ?, password_hash = ?, updated_at = ? WHERE id = ?",
+                (username, generate_password_hash(password), now, existing["id"]),
+            )
 
 
 def list_users():
@@ -44,17 +50,33 @@ def list_users():
         ).fetchall()
 
 
-def list_login_history(limit=100):
+def list_login_history(limit=10, start_date="", end_date=""):
+    clauses = []
+    params = []
+    start_date_text = str(start_date or "").strip()
+    end_date_text = str(end_date or "").strip()
+    if start_date_text:
+        clauses.append("date(ts) >= date(?)")
+        params.append(start_date_text)
+    if end_date_text:
+        clauses.append("date(ts) <= date(?)")
+        params.append(end_date_text)
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    limit_sql = ""
+    if limit is not None:
+        limit_sql = "LIMIT ?"
+        params.append(int(limit))
     with connect(AUTH_DB) as conn:
         return conn.execute(
-            """
+            f"""
             SELECT id, ts, user_id, username, attempted_username, success, ip_address,
                    location_text, request_method, request_path, user_agent, session_id
             FROM login_history
+            {where_sql}
             ORDER BY ts DESC, id DESC
-            LIMIT ?
+            {limit_sql}
             """,
-            (int(limit),),
+            tuple(params),
         ).fetchall()
 
 

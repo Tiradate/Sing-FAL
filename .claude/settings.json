@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -rn \"log_api_request_history\\\\|api_request_history\\\\|API_DB\" c:/Users/Administrator/Documents/GitHub/ICON_Milesight --include=*.py --exclude-dir=.venv --exclude-dir=venv)"
+    ]
+  }
+}

@@ -3,37 +3,40 @@
 {% block content %}
 <div class="card shadow-sm settings-card">
   <div class="card-header settings-card-header">
-    <h5 class="mb-0">Settings</h5>
+    <h5 class="mb-0">{{ 'การตั้งค่า' if current_lang == 'th' else 'Settings' }}</h5>
   </div>
   <div class="card-body settings-card-body">
     <form method="post" enctype="multipart/form-data" id="settingsForm">
       <input type="hidden" name="settings_section" id="settingsSectionInput" value="{{ active_settings_tab or 'project' }}">
       <div class="d-flex flex-wrap gap-2 mb-4">
         <button class="btn btn-outline-dark" type="button" data-settings-tab="project">
-          <i class="bi bi-building me-1"></i>Project
+          <i class="bi bi-building me-1"></i>{{ 'โปรเจกต์' if current_lang == 'th' else 'Project' }}
         </button>
         <button class="btn btn-outline-dark" type="button" data-settings-tab="source">
-          <i class="bi bi-hdd-network me-1"></i>Source
+          <i class="bi bi-hdd-network me-1"></i>{{ 'แหล่งข้อมูล' if current_lang == 'th' else 'Source' }}
         </button>
         <button class="btn btn-outline-dark" type="button" data-settings-tab="design">
-          <i class="bi bi-palette me-1"></i>Design
+          <i class="bi bi-palette me-1"></i>{{ 'ดีไซน์' if current_lang == 'th' else 'Design' }}
         </button>
         <button class="btn btn-outline-dark" type="button" data-settings-tab="user">
-          <i class="bi bi-people me-1"></i>User Manage
+          <i class="bi bi-people me-1"></i>{{ 'จัดการผู้ใช้' if current_lang == 'th' else 'User Manage' }}
+        </button>
+        <button class="btn btn-outline-dark" type="button" data-settings-tab="import_export">
+          <i class="bi bi-arrow-left-right me-1"></i>{{ 'นำเข้า/ส่งออก' if current_lang == 'th' else 'Import/Export' }}
         </button>
       </div>
       <div data-settings-tab-panel="project"{% if (active_settings_tab or 'project') != 'project' %} class="d-none"{% endif %}>
       <div class="row g-3">
         <div class="col-12 col-md-6">
-          <label class="form-label">Project Name</label>
+          <label class="form-label">{{ 'ชื่อโปรเจกต์' if current_lang == 'th' else 'Project Name' }}</label>
           <input class="form-control" type="text" name="project_name" value="{{ settings.project_name }}">
         </div>
         <div class="col-12 col-md-6">
-          <label class="form-label">Location Label</label>
+          <label class="form-label">{{ 'ป้ายกำกับสถานที่' if current_lang == 'th' else 'Location Label' }}</label>
           <input class="form-control" type="text" name="location_label" value="{{ settings.location_label }}">
         </div>
         <div class="col-12 col-md-6">
-          <label class="form-label">Project Time Zone</label>
+          <label class="form-label">{{ 'เขตเวลาโปรเจกต์' if current_lang == 'th' else 'Project Time Zone' }}</label>
           <select class="form-select" name="project_timezone">
             {% for timezone_value, timezone_label in project_timezone_options %}
             <option value="{{ timezone_value }}" {% if settings.project_timezone == timezone_value %}selected{% endif %}>{{ timezone_label }}</option>
@@ -41,7 +44,7 @@
           </select>
         </div>
         <div class="col-12 col-md-6">
-          <label class="form-label">Time Format</label>
+          <label class="form-label">{{ 'รูปแบบเวลา' if current_lang == 'th' else 'Time Format' }}</label>
           <select class="form-select" name="project_time_format">
             {% for format_value, format_label in project_time_format_options %}
             <option value="{{ format_value }}" {% if settings.project_time_format == format_value %}selected{% endif %}>{{ format_label }}</option>
@@ -49,42 +52,42 @@
           </select>
         </div>
         <div class="col-12 col-md-6">
-          <label class="form-label">Floor Auto-Rotate Interval (seconds)</label>
+          <label class="form-label">{{ 'ระยะเวลาหมุนชั้น (วินาที)' if current_lang == 'th' else 'Floor Auto-Rotate Interval (seconds)' }}</label>
           <input class="form-control" type="number" name="floor_auto_rotate_seconds" value="{{ settings.floor_auto_rotate_seconds }}">
         </div>
         <div class="col-12 col-md-6">
-          <label class="form-label">Sensor Icon Size (px)</label>
+          <label class="form-label">{{ 'ขนาดไอคอนเซ็นเซอร์ (px)' if current_lang == 'th' else 'Sensor Icon Size (px)' }}</label>
           <input class="form-control" type="number" name="sensor_icon_size" value="{{ settings.sensor_icon_size }}">
         </div>
         <div class="col-12 col-md-6">
-          <label class="form-label">Logo Icon Size (px)</label>
+          <label class="form-label">{{ 'ขนาดไอคอนโลโก้ (px)' if current_lang == 'th' else 'Logo Icon Size (px)' }}</label>
           <input class="form-control" type="number" name="logo_icon_size" value="{{ settings.logo_icon_size }}">
         </div>
         <div class="col-12">
-          <label class="form-label">Show Icons</label>
+          <label class="form-label">{{ 'แสดงไอคอน' if current_lang == 'th' else 'Show Icons' }}</label>
           <div class="d-flex gap-3">
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="show_bell" {% if settings.show_icons.bell %}checked{% endif %}>
-              <label class="form-check-label">Bell</label>
+              <label class="form-check-label">{{ 'กระดิ่ง' if current_lang == 'th' else 'Bell' }}</label>
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="show_calendar" {% if settings.show_icons.calendar %}checked{% endif %}>
-              <label class="form-check-label">Calendar</label>
+              <label class="form-check-label">{{ 'ปฏิทิน' if current_lang == 'th' else 'Calendar' }}</label>
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="show_download" {% if settings.show_icons.download %}checked{% endif %}>
-              <label class="form-check-label">Download</label>
+              <label class="form-check-label">{{ 'ดาวน์โหลด' if current_lang == 'th' else 'Download' }}</label>
             </div>
           </div>
         </div>
         <div class="col-12">
           <div class="form-check">
             <input class="form-check-input" type="checkbox" name="show_severity_lines" {% if settings.show_severity_lines %}checked{% endif %}>
-            <label class="form-check-label">Show severity lines on daily/weekly graphs</label>
+            <label class="form-check-label">{{ 'แสดงเส้นระดับความรุนแรงในกราฟรายวัน/รายสัปดาห์' if current_lang == 'th' else 'Show severity lines on daily/weekly graphs' }}</label>
           </div>
         </div>
         <div class="col-12 col-md-6">
-          <label class="form-label">Systems</label>
+          <label class="form-label">{{ 'ระบบ' if current_lang == 'th' else 'Systems' }}</label>
           <div class="d-flex gap-3 flex-wrap">
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="nav_system_iaq" {% if settings.system_navigation.iaq %}checked{% endif %}>
@@ -92,23 +95,23 @@
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="nav_system_energy" {% if settings.system_navigation.energy %}checked{% endif %}>
-              <label class="form-check-label">Energy &amp; Carbon</label>
+              <label class="form-check-label">{{ 'พลังงานและคาร์บอน' if current_lang == 'th' else 'Energy &amp; Carbon' }}</label>
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="nav_system_waste" {% if settings.system_navigation.waste %}checked{% endif %}>
-              <label class="form-check-label">Waste</label>
+              <label class="form-check-label">{{ 'ขยะ' if current_lang == 'th' else 'Waste' }}</label>
             </div>
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="nav_system_fire" {% if settings.system_navigation.fire %}checked{% endif %}>
-              <label class="form-check-label">Fire</label>
+              <label class="form-check-label">{{ 'อัคคีภัย' if current_lang == 'th' else 'Fire' }}</label>
             </div>
           </div>
         </div>
         <div class="col-12">
-          <label class="form-label">Main Page Colors</label>
+          <label class="form-label">{{ 'สีหน้าหลัก' if current_lang == 'th' else 'Main Page Colors' }}</label>
           <div class="row g-3">
             <div class="col-12 col-md-4">
-              <label class="form-label mb-1">Card Header</label>
+              <label class="form-label mb-1">{{ 'ส่วนหัวการ์ด' if current_lang == 'th' else 'Card Header' }}</label>
               <div class="d-flex align-items-center gap-2">
                 <input
                   class="form-control form-control-color"
@@ -126,12 +129,12 @@
                     name="card_header_transparent"
                     {% if settings.card_header_color == 'transparent' %}checked{% endif %}
                   >
-                  <label class="form-check-label" for="cardHeaderTransparent">Transparent</label>
+                  <label class="form-check-label" for="cardHeaderTransparent">{{ 'โปร่งใส' if current_lang == 'th' else 'Transparent' }}</label>
                 </div>
               </div>
             </div>
             <div class="col-12 col-md-4">
-              <label class="form-label mb-1">Card Body</label>
+              <label class="form-label mb-1">{{ 'ตัวการ์ด' if current_lang == 'th' else 'Card Body' }}</label>
               <div class="d-flex align-items-center gap-2">
                 <input
                   class="form-control form-control-color"
@@ -149,12 +152,12 @@
                     name="card_body_transparent"
                     {% if settings.card_body_color == 'transparent' %}checked{% endif %}
                   >
-                  <label class="form-check-label" for="cardBodyTransparent">Transparent</label>
+                  <label class="form-check-label" for="cardBodyTransparent">{{ 'โปร่งใส' if current_lang == 'th' else 'Transparent' }}</label>
                 </div>
               </div>
             </div>
             <div class="col-12 col-md-4">
-              <label class="form-label mb-1">Page Background</label>
+              <label class="form-label mb-1">{{ 'พื้นหลังหน้า' if current_lang == 'th' else 'Page Background' }}</label>
               <div class="d-flex align-items-center gap-2">
                 <input
                   class="form-control form-control-color"
@@ -172,7 +175,7 @@
                     name="page_background_transparent"
                     {% if settings.page_background_color == 'transparent' %}checked{% endif %}
                   >
-                  <label class="form-check-label" for="pageBackgroundTransparent">Transparent</label>
+                  <label class="form-check-label" for="pageBackgroundTransparent">{{ 'โปร่งใส' if current_lang == 'th' else 'Transparent' }}</label>
                 </div>
               </div>
             </div>
@@ -180,7 +183,7 @@
         </div>
       </div>
       <div class="mt-4 d-flex justify-content-end">
-        <button class="btn btn-primary" type="submit" data-save-settings-section="project">Save Project</button>
+        <button class="btn btn-primary" type="submit" data-save-settings-section="project">{{ 'บันทึกโปรเจกต์' if current_lang == 'th' else 'Save Project' }}</button>
       </div>
       </div>
 
@@ -188,10 +191,10 @@
       <hr class="my-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-          <h6 class="mb-0">API / MQTT Endpoint Settings</h6>
-          <small class="text-muted">Configure one or more API/MQTT sources. Default source is LIV-24 IAQ.</small>
+          <h6 class="mb-0">{{ 'การตั้งค่า API / MQTT' if current_lang == 'th' else 'API / MQTT Endpoint Settings' }}</h6>
+          <small class="text-muted">{{ 'ตั้งค่าแหล่งข้อมูล API/MQTT หนึ่งแหล่งขึ้นไป แหล่งข้อมูลเริ่มต้นคือ LIV-24 IAQ' if current_lang == 'th' else 'Configure one or more API/MQTT sources. Default source is LIV-24 IAQ.' }}</small>
         </div>
-        <button class="btn btn-outline-primary btn-sm" type="button" id="addEndpointSourceBtn">+ Add Source</button>
+        <button class="btn btn-outline-primary btn-sm" type="button" id="addEndpointSourceBtn">{{ '+ เพิ่มแหล่งข้อมูล' if current_lang == 'th' else '+ Add Source' }}</button>
       </div>
 
       <div id="endpointSourceList" class="vstack gap-3">
@@ -201,47 +204,47 @@
       <input type="hidden" name="endpoint_sources_json" id="endpointSourcesJson">
 
       <div class="mt-3 d-flex gap-2 align-items-center">
-        <button class="btn btn-outline-secondary btn-sm" type="button" id="previewLiv24DataBtn">Source Data</button>
-        <small class="text-muted">Load organizations, devices, and latest values from the selected source.</small>
+        <button class="btn btn-outline-secondary btn-sm" type="button" id="previewLiv24DataBtn">{{ 'ข้อมูลแหล่งข้อมูล' if current_lang == 'th' else 'Source Data' }}</button>
+        <small class="text-muted">{{ 'โหลดองค์กร อุปกรณ์ และค่าล่าสุดจากแหล่งข้อมูลที่เลือก' if current_lang == 'th' else 'Load organizations, devices, and latest values from the selected source.' }}</small>
       </div>
       <div class="row g-2 align-items-end mt-2">
         <div class="col-12 col-md-3">
-          <label class="form-label form-label-sm" for="sourceDataExportStartDate">Start Date</label>
-          <input class="form-control form-control-sm" type="date" id="sourceDataExportStartDate">
+          <label class="form-label form-label-sm" for="sourceDataExportStartDate">{{ 'วันที่เริ่มต้น' if current_lang == 'th' else 'Start Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
+          <input class="form-control form-control-sm" type="text" id="sourceDataExportStartDate" placeholder="dd/mm/yyyy" inputmode="numeric">
         </div>
         <div class="col-12 col-md-3">
-          <label class="form-label form-label-sm" for="sourceDataExportEndDate">End Date</label>
-          <input class="form-control form-control-sm" type="date" id="sourceDataExportEndDate">
+          <label class="form-label form-label-sm" for="sourceDataExportEndDate">{{ 'วันที่สิ้นสุด' if current_lang == 'th' else 'End Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
+          <input class="form-control form-control-sm" type="text" id="sourceDataExportEndDate" placeholder="dd/mm/yyyy" inputmode="numeric">
         </div>
         <div class="col-12 col-md-3">
-          <button class="btn btn-outline-primary btn-sm w-100" type="button" id="downloadSourceDataBtn">Download Source Data CSV</button>
+          <button class="btn btn-outline-primary btn-sm w-100" type="button" id="downloadSourceDataBtn">{{ 'ดาวน์โหลด CSV ข้อมูลแหล่งข้อมูล' if current_lang == 'th' else 'Download Source Data CSV' }}</button>
         </div>
       </div>
-      <pre id="previewLiv24DataOutput" class="mt-2 p-3 bg-light border rounded small" style="max-height: 320px; overflow: auto;">Click "Use Source" or "Source Data" to load a source preview.</pre>
+      <pre id="previewLiv24DataOutput" class="mt-2 p-3 bg-light border rounded small" style="max-height: 320px; overflow: auto;">{{ 'คลิก "ใช้แหล่งข้อมูล" หรือ "ข้อมูลแหล่งข้อมูล" เพื่อโหลดตัวอย่าง' if current_lang == 'th' else 'Click "Use Source" or "Source Data" to load a source preview.' }}</pre>
       <div class="mt-4 d-flex justify-content-end">
-        <button class="btn btn-primary" type="submit" data-save-settings-section="source">Save Source</button>
+        <button class="btn btn-primary" type="submit" data-save-settings-section="source">{{ 'บันทึกแหล่งข้อมูล' if current_lang == 'th' else 'Save Source' }}</button>
       </div>
 
       <template id="endpointSourceRowTemplate">
         <div class="card" data-endpoint-source-row>
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <h6 class="mb-0" data-endpoint-source-title>New Source</h6>
+              <h6 class="mb-0" data-endpoint-source-title>{{ 'แหล่งข้อมูลใหม่' if current_lang == 'th' else 'New Source' }}</h6>
               <div class="d-flex flex-column align-items-end gap-1">
                 <div class="d-flex gap-2">
-                  <button class="btn btn-outline-secondary btn-sm" type="button" data-use-source>Use Source</button>
-                  <button class="btn btn-outline-danger btn-sm" type="button" data-remove-endpoint-source>Remove</button>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-use-source>{{ 'ใช้แหล่งข้อมูล' if current_lang == 'th' else 'Use Source' }}</button>
+                  <button class="btn btn-outline-danger btn-sm" type="button" data-remove-endpoint-source>{{ 'ลบ' if current_lang == 'th' else 'Remove' }}</button>
                 </div>
                 <small class="text-muted text-end" data-source-auto-refresh-status></small>
               </div>
             </div>
             <div class="row g-3">
               <div class="col-12 col-md-4">
-                <label class="form-label">Source Name</label>
-                <input class="form-control" type="text" name="endpoint_name" placeholder="Source name">
+                <label class="form-label">{{ 'ชื่อแหล่งข้อมูล' if current_lang == 'th' else 'Source Name' }}</label>
+                <input class="form-control" type="text" name="endpoint_name" placeholder="{{ 'ชื่อแหล่งข้อมูล' if current_lang == 'th' else 'Source name' }}">
               </div>
               <div class="col-12 col-md-2">
-                <label class="form-label">Format</label>
+                <label class="form-label">{{ 'รูปแบบ' if current_lang == 'th' else 'Format' }}</label>
                 <select class="form-select" name="endpoint_format" data-endpoint-format-select>
                   <option value="api" selected>API</option>
                   <option value="mqtt">MQTT</option>
@@ -255,55 +258,55 @@
                 <div class="border rounded p-3 bg-light-subtle">
                   <div class="row g-3">
                     <div class="col-12 col-md-4">
-                      <label class="form-label">Imported API Template</label>
+                      <label class="form-label">{{ 'เทมเพลต API ที่นำเข้า' if current_lang == 'th' else 'Imported API Template' }}</label>
                       <select class="form-select" name="endpoint_api_template_id" data-endpoint-api-template-select>
-                        <option value="">Manual</option>
+                        <option value="">{{ 'กำหนดเอง' if current_lang == 'th' else 'Manual' }}</option>
                         {% for template in api_templates %}
                         <option value="{{ template.id }}">{{ template.name }}</option>
                         {% endfor %}
                       </select>
-                      <small class="text-muted">Choose a Postman collection template to prefill auth and request paths.</small>
+                      <small class="text-muted">{{ 'เลือกเทมเพลต Postman collection เพื่อกรอก auth และ request paths' if current_lang == 'th' else 'Choose a Postman collection template to prefill auth and request paths.' }}</small>
                     </div>
                     <div class="col-12 col-md-4">
-                      <label class="form-label">Auth Type</label>
+                      <label class="form-label">{{ 'ประเภทการยืนยันตัวตน' if current_lang == 'th' else 'Auth Type' }}</label>
                       <select class="form-select" name="endpoint_api_auth_type" data-endpoint-auth-type-select>
-                        <option value="none">No Auth</option>
+                        <option value="none">{{ 'ไม่มีการยืนยันตัวตน' if current_lang == 'th' else 'No Auth' }}</option>
                         <option value="bearer_token">Bearer Token</option>
                         <option value="bearer_login">Bearer Login</option>
                         <option value="basic">Basic Auth</option>
                         <option value="api_key_header">API Key Header</option>
                         <option value="api_key_query">API Key Query</option>
-                        <option value="custom_headers">Custom Headers</option>
+                        <option value="custom_headers">{{ 'ส่วนหัวกำหนดเอง' if current_lang == 'th' else 'Custom Headers' }}</option>
                       </select>
                     </div>
                     <div class="col-12 col-md-4" data-endpoint-auth-fields="bearer_token,bearer_login">
                       <label class="form-label">Bearer Token</label>
-                      <input class="form-control" type="text" name="endpoint_token" placeholder="optional token" data-endpoint-token-input>
+                      <input class="form-control" type="text" name="endpoint_token" placeholder="{{ 'โทเค็น (ไม่บังคับ)' if current_lang == 'th' else 'optional token' }}" data-endpoint-token-input>
                     </div>
                     <div class="col-12 col-md-8">
-                      <label class="form-label">Common Request Headers</label>
+                      <label class="form-label">{{ 'ส่วนหัวคำขอทั่วไป' if current_lang == 'th' else 'Common Request Headers' }}</label>
                       <textarea class="form-control" name="endpoint_api_request_headers" rows="4" placeholder='{"X-Tenant-Id": "value"}'>{}</textarea>
                     </div>
                     <div class="col-12" data-endpoint-auth-fields="none">
-                      <small class="text-muted">Requests for this source will be sent without auth.</small>
+                      <small class="text-muted">{{ 'คำขอจากแหล่งนี้จะส่งโดยไม่มีการยืนยันตัวตน' if current_lang == 'th' else 'Requests for this source will be sent without auth.' }}</small>
                     </div>
                     <div class="col-12" data-endpoint-auth-fields="bearer_token,bearer_login">
-                      <small class="text-muted">Sources that share the same API host/IP will reuse one saved bearer token automatically.</small>
+                      <small class="text-muted">{{ 'แหล่งข้อมูลที่ใช้ API host/IP เดียวกันจะใช้ bearer token ที่บันทึกไว้ร่วมกันโดยอัตโนมัติ' if current_lang == 'th' else 'Sources that share the same API host/IP will reuse one saved bearer token automatically.' }}</small>
                     </div>
                     <div class="col-12 col-md-6" data-endpoint-auth-fields="basic,bearer_login">
-                      <label class="form-label">Auth Username</label>
-                      <input class="form-control" type="text" name="endpoint_api_auth_username" placeholder="username">
+                      <label class="form-label">{{ 'ชื่อผู้ใช้สำหรับยืนยันตัวตน' if current_lang == 'th' else 'Auth Username' }}</label>
+                      <input class="form-control" type="text" name="endpoint_api_auth_username" placeholder="{{ 'ชื่อผู้ใช้' if current_lang == 'th' else 'username' }}">
                     </div>
                     <div class="col-12 col-md-6" data-endpoint-auth-fields="basic,bearer_login">
-                      <label class="form-label">Auth Password</label>
-                      <input class="form-control" type="password" name="endpoint_api_auth_password" placeholder="password">
+                      <label class="form-label">{{ 'รหัสผ่านสำหรับยืนยันตัวตน' if current_lang == 'th' else 'Auth Password' }}</label>
+                      <input class="form-control" type="password" name="endpoint_api_auth_password" placeholder="{{ 'รหัสผ่าน' if current_lang == 'th' else 'password' }}">
                     </div>
                     <div class="col-12 col-md-4" data-endpoint-auth-fields="bearer_login">
                       <label class="form-label">Token URL</label>
                       <input class="form-control" type="text" name="endpoint_api_token_url" placeholder="/api/login" data-endpoint-token-url-input>
                     </div>
                     <div class="col-12 col-md-4" data-endpoint-auth-fields="bearer_login">
-                      <label class="form-label">Token Method</label>
+                      <label class="form-label">{{ 'วิธีรับโทเค็น' if current_lang == 'th' else 'Token Method' }}</label>
                       <select class="form-select" name="endpoint_api_token_method">
                         <option value="POST" selected>POST</option>
                         <option value="GET">GET</option>
@@ -313,15 +316,15 @@
                       </select>
                     </div>
                     <div class="col-12 col-md-4" data-endpoint-auth-fields="bearer_login">
-                      <label class="form-label">Token Field</label>
+                      <label class="form-label">{{ 'ฟิลด์โทเค็น' if current_lang == 'th' else 'Token Field' }}</label>
                       <input class="form-control" type="text" name="endpoint_api_token_field" value="access_token" placeholder="access_token">
                     </div>
                     <div class="col-12 col-md-6" data-endpoint-auth-fields="bearer_login">
-                      <label class="form-label">Auth Headers</label>
+                      <label class="form-label">{{ 'ส่วนหัวการยืนยันตัวตน' if current_lang == 'th' else 'Auth Headers' }}</label>
                       <textarea class="form-control" name="endpoint_api_auth_headers" rows="4" placeholder='{"Content-Type": "application/json"}'>{}</textarea>
                     </div>
                     <div class="col-12 col-md-6" data-endpoint-auth-fields="bearer_login">
-                      <label class="form-label">Auth Body</label>
+                      <label class="form-label">{{ 'เนื้อหาการยืนยันตัวตน' if current_lang == 'th' else 'Auth Body' }}</label>
                       <textarea class="form-control" name="endpoint_api_auth_body" rows="4" placeholder='{% raw %}{"username": "{{username}}", "password": "{{password}}"}{% endraw %}'></textarea>
                     </div>
                     <div class="col-12 col-md-6" data-endpoint-auth-fields="api_key_header,api_key_query">
@@ -333,7 +336,7 @@
                       <input class="form-control" type="text" name="endpoint_api_key_value" placeholder="API key">
                     </div>
                     <div class="col-12" data-endpoint-auth-fields="custom_headers">
-                      <label class="form-label">Custom Auth Headers</label>
+                      <label class="form-label">{{ 'ส่วนหัวการยืนยันตัวตนกำหนดเอง' if current_lang == 'th' else 'Custom Auth Headers' }}</label>
                       <textarea class="form-control" name="endpoint_api_custom_auth_headers" rows="4" placeholder='{"Authorization": "Custom value"}'>{}</textarea>
                     </div>
                   </div>
@@ -343,10 +346,10 @@
                 <div class="border rounded p-3">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
-                      <div class="fw-semibold">API Request Flow</div>
-                      <small class="text-muted">Use one row per path. Roles used by preview are Organizations, Devices, and Latest Values.</small>
+                      <div class="fw-semibold">{{ 'การไหลของคำขอ API' if current_lang == 'th' else 'API Request Flow' }}</div>
+                      <small class="text-muted">{{ 'ใช้หนึ่งแถวต่อหนึ่ง path บทบาทที่ใช้ในตัวอย่าง ได้แก่ Organizations, Devices และ Latest Values' if current_lang == 'th' else 'Use one row per path. Roles used by preview are Organizations, Devices, and Latest Values.' }}</small>
                     </div>
-                    <button class="btn btn-outline-primary btn-sm" type="button" data-add-api-request>+ Add Path</button>
+                    <button class="btn btn-outline-primary btn-sm" type="button" data-add-api-request>{{ '+ เพิ่ม Path' if current_lang == 'th' else '+ Add Path' }}</button>
                   </div>
                   <div class="small text-muted mb-3">Template variables: <code>{% raw %}{{organization_uuid}}{% endraw %}</code>, <code>{% raw %}{{device_uuid}}{% endraw %}</code>, <code>{% raw %}{{device_uuids}}{% endraw %}</code>, <code>{% raw %}{{organization.uuid}}{% endraw %}</code>, <code>{% raw %}{{device.uuid}}{% endraw %}</code>.</div>
                   <div class="vstack gap-3" data-endpoint-api-request-list></div>
@@ -361,11 +364,11 @@
                 <input class="form-control" type="number" name="endpoint_mqtt_port" value="1883">
               </div>
               <div class="col-12 col-md-3" data-endpoint-mqtt-fields>
-                <label class="form-label">MQTT Username</label>
+                <label class="form-label">{{ 'ชื่อผู้ใช้ MQTT' if current_lang == 'th' else 'MQTT Username' }}</label>
                 <input class="form-control" type="text" name="endpoint_mqtt_username">
               </div>
               <div class="col-12 col-md-3" data-endpoint-mqtt-fields>
-                <label class="form-label">MQTT Password</label>
+                <label class="form-label">{{ 'รหัสผ่าน MQTT' if current_lang == 'th' else 'MQTT Password' }}</label>
                 <input class="form-control" type="password" name="endpoint_mqtt_password">
               </div>
               <div class="col-12" data-endpoint-mqtt-fields>
@@ -380,26 +383,26 @@
       <template id="endpointApiRequestRowTemplate">
         <div class="border rounded-3 p-3 bg-body-tertiary" data-endpoint-api-request-row>
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="fw-semibold" data-endpoint-request-title>Request</div>
+            <div class="fw-semibold" data-endpoint-request-title>{{ 'คำขอ' if current_lang == 'th' else 'Request' }}</div>
             <div class="d-flex gap-2">
-              <button class="btn btn-outline-dark btn-sm" type="button" data-toggle-api-history>History</button>
-              <button class="btn btn-outline-secondary btn-sm" type="button" data-test-api-request>Test Request</button>
-              <button class="btn btn-outline-danger btn-sm" type="button" data-remove-api-request>Remove Path</button>
+              <button class="btn btn-outline-dark btn-sm" type="button" data-toggle-api-history>{{ 'ประวัติ' if current_lang == 'th' else 'History' }}</button>
+              <button class="btn btn-outline-secondary btn-sm" type="button" data-test-api-request>{{ 'ทดสอบคำขอ' if current_lang == 'th' else 'Test Request' }}</button>
+              <button class="btn btn-outline-danger btn-sm" type="button" data-remove-api-request>{{ 'ลบ Path' if current_lang == 'th' else 'Remove Path' }}</button>
             </div>
           </div>
           <div class="row g-3">
             <div class="col-12 col-md-3">
-              <label class="form-label">Use For</label>
+              <label class="form-label">{{ 'ใช้สำหรับ' if current_lang == 'th' else 'Use For' }}</label>
               <select class="form-select" name="endpoint_api_request_role" data-endpoint-request-role-select>
-                <option value="organizations">Organizations</option>
-                <option value="devices">Devices</option>
-                <option value="latest_values">Latest Values</option>
-                <option value="custom">Custom</option>
+                <option value="organizations">{{ 'องค์กร' if current_lang == 'th' else 'Organizations' }}</option>
+                <option value="devices">{{ 'อุปกรณ์' if current_lang == 'th' else 'Devices' }}</option>
+                <option value="latest_values">{{ 'ค่าล่าสุด' if current_lang == 'th' else 'Latest Values' }}</option>
+                <option value="custom">{{ 'กำหนดเอง' if current_lang == 'th' else 'Custom' }}</option>
               </select>
             </div>
             <div class="col-12 col-md-3">
-              <label class="form-label">Request Name</label>
-              <input class="form-control" type="text" name="endpoint_api_request_name" placeholder="Devices request">
+              <label class="form-label">{{ 'ชื่อคำขอ' if current_lang == 'th' else 'Request Name' }}</label>
+              <input class="form-control" type="text" name="endpoint_api_request_name" placeholder="{{ 'คำขออุปกรณ์' if current_lang == 'th' else 'Devices request' }}">
             </div>
             <div class="col-12 col-md-2">
               <label class="form-label">Method</label>
@@ -414,18 +417,18 @@
             <div class="col-12 col-md-2 d-flex align-items-end">
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="endpoint_api_request_use_auth" checked>
-                <label class="form-check-label">Use Auth</label>
+                <label class="form-check-label">{{ 'ใช้การยืนยันตัวตน' if current_lang == 'th' else 'Use Auth' }}</label>
               </div>
             </div>
             <div class="col-12 col-md-2 d-flex align-items-end justify-content-md-end">
-              <button class="btn btn-outline-secondary btn-sm mb-2" type="button" data-add-api-request-param>+ Param</button>
+              <button class="btn btn-outline-secondary btn-sm mb-2" type="button" data-add-api-request-param>{{ '+ พารามิเตอร์' if current_lang == 'th' else '+ Param' }}</button>
             </div>
             <div class="col-12">
-              <label class="form-label">Path / URL</label>
+              <label class="form-label">{{ 'Path / URL' if current_lang != 'th' else 'Path / URL' }}</label>
               <input class="form-control" type="text" name="endpoint_api_request_path" placeholder="/api/external/v1/devices">
             </div>
             <div class="col-12">
-              <div class="small text-muted mb-2">Parameters are sent as query string for GET, POST, PUT, PATCH, and DELETE.</div>
+              <div class="small text-muted mb-2">{{ 'พารามิเตอร์จะถูกส่งเป็น query string สำหรับ GET, POST, PUT, PATCH และ DELETE' if current_lang == 'th' else 'Parameters are sent as query string for GET, POST, PUT, PATCH, and DELETE.' }}</div>
               <div class="vstack gap-2" data-endpoint-api-request-param-list></div>
             </div>
             <div class="col-12">
@@ -433,46 +436,52 @@
               <textarea class="form-control" name="endpoint_api_request_body" rows="3" placeholder='{% raw %}{"device_uuid": "{{device_uuid}}"}{% endraw %}'></textarea>
             </div>
             <div class="col-12 col-md-3" data-request-max-interval-group>
-              <label class="form-label">Round Max Time</label>
+              <label class="form-label">{{ 'จำนวนรอบสูงสุด' if current_lang == 'th' else 'Round Max Time' }}</label>
               <input class="form-control" type="number" min="0" step="1" name="endpoint_api_request_max_round_times" placeholder="0">
             </div>
             <div class="col-12 col-md-3 d-flex align-items-end">
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="endpoint_api_request_interval_unlimited" checked>
-                <label class="form-check-label">Unlimited</label>
+                <label class="form-check-label">{{ 'ไม่จำกัด' if current_lang == 'th' else 'Unlimited' }}</label>
               </div>
             </div>
             <div class="col-12 col-md-3 d-none" data-request-run-interval-group>
-              <label class="form-label">Run Every Time</label>
+              <label class="form-label">{{ 'ทำงานทุกรอบ' if current_lang == 'th' else 'Run Every Time' }}</label>
               <input class="form-control" type="number" min="0" step="1" name="endpoint_api_request_run_every_times" placeholder="0">
             </div>
             <div class="col-12">
-              <small class="text-muted">Auto run only. Set <code>1</code> to allow this path to send request 1 time in each auto round. <code>Test Request</code> does not use this setting.</small>
+              <small class="text-muted">{{ 'ใช้กับการรันอัตโนมัติเท่านั้น ตั้งค่า <code>1</code> เพื่อให้ path นี้ส่งคำขอได้ 1 ครั้งในแต่ละรอบอัตโนมัติ โดย <code>Test Request</code> จะไม่ใช้ค่าตั้งนี้' if current_lang == 'th' else 'Auto run only. Set <code>1</code> to allow this path to send request 1 time in each auto round. <code>Test Request</code> does not use this setting.' }}</small>
             </div>
             <div class="col-12 d-none" data-api-history-panel>
               <div class="border rounded-3 bg-white p-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
                   <div>
-                    <div class="fw-semibold">Request History</div>
-                    <small class="text-muted">Saved request and response records from <code>api.db</code>.</small>
+                    <div class="fw-semibold">{{ 'ประวัติคำขอ' if current_lang == 'th' else 'Request History' }}</div>
+                    <small class="text-muted">{{ 'บันทึกคำขอและผลลัพธ์จาก <code>api.db</code> โดยจะแสดง <strong>10</strong> รายการล่าสุดเป็นค่าเริ่มต้น และลบรายการที่เก่ากว่า 1 เดือนอัตโนมัติ' if current_lang == 'th' else 'Saved request and response records from <code>api.db</code>. Shows last <strong>10</strong> records by default. Records older than 1 month are automatically deleted.' }}</small>
                   </div>
-                  <button class="btn btn-outline-secondary btn-sm" type="button" data-refresh-api-history>Refresh</button>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-refresh-api-history>{{ 'รีเฟรช' if current_lang == 'th' else 'Refresh' }}</button>
                 </div>
-                <div class="row g-2 align-items-end mb-3">
+                <div class="row g-2 align-items-end mt-2">
                   <div class="col-12 col-md-3">
-                    <label class="form-label form-label-sm">Start Date</label>
+                    <label class="form-label form-label-sm">{{ 'วันที่เริ่มต้น' if current_lang == 'th' else 'Start Date' }}</label>
                     <input class="form-control form-control-sm" type="date" data-api-history-start-date>
                   </div>
                   <div class="col-12 col-md-3">
-                    <label class="form-label form-label-sm">End Date</label>
+                    <label class="form-label form-label-sm">{{ 'วันที่สิ้นสุด' if current_lang == 'th' else 'End Date' }}</label>
                     <input class="form-control form-control-sm" type="date" data-api-history-end-date>
                   </div>
                   <div class="col-12 col-md-3">
-                    <button class="btn btn-outline-primary btn-sm w-100" type="button" data-export-api-history>Download CSV</button>
+                    <button class="btn btn-outline-secondary btn-sm w-100" type="button" data-load-api-history>{{ 'โหลด' if current_lang == 'th' else 'Load' }}</button>
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <button class="btn btn-outline-primary btn-sm w-100" type="button" data-export-api-history>{{ 'ดาวน์โหลด CSV' if current_lang == 'th' else 'Download CSV' }}</button>
+                  </div>
+                  <div class="col-12">
+                    <small class="text-muted">{{ 'ใช้ช่วงวันที่เพื่อกรองรายการได้ โดยเลือกได้สูงสุด <strong>1 เดือน</strong> และระบบจะลบรายการอัตโนมัติหลังครบ 1 เดือน' if current_lang == 'th' else 'Use date range to filter records. Maximum range is <strong>1 month</strong>. Records are automatically deleted after 1 month.' }}</small>
                   </div>
                 </div>
-                <div class="vstack gap-2" data-api-history-list>
-                  <div class="small text-muted">Click History to load saved request runs.</div>
+                <div class="vstack gap-2 mt-3" data-api-history-list>
+                  <div class="small text-muted">{{ 'กด History เพื่อโหลดประวัติการเรียกคำขอที่บันทึกไว้' if current_lang == 'th' else 'Click History to load saved request runs.' }}</div>
                 </div>
               </div>
             </div>
@@ -483,16 +492,16 @@
       <template id="endpointApiRequestParamRowTemplate">
         <div class="row g-2 align-items-end" data-endpoint-api-request-param-row>
           <div class="col-12 col-md-4">
-            <label class="form-label">Param Key</label>
+            <label class="form-label">{{ 'คีย์พารามิเตอร์' if current_lang == 'th' else 'Param Key' }}</label>
             <input class="form-control" type="text" name="endpoint_api_request_param_key" placeholder="device_uuid">
           </div>
           <div class="col-12 col-md-6">
-            <label class="form-label">Param Value</label>
+            <label class="form-label">{{ 'ค่าพารามิเตอร์' if current_lang == 'th' else 'Param Value' }}</label>
             <div class="vstack gap-2" data-endpoint-api-request-value-list></div>
-            <button class="btn btn-outline-secondary btn-sm mt-2" type="button" data-add-api-request-value>+ Value</button>
+            <button class="btn btn-outline-secondary btn-sm mt-2" type="button" data-add-api-request-value>{{ '+ ค่า' if current_lang == 'th' else '+ Value' }}</button>
           </div>
           <div class="col-12 col-md-2 d-grid">
-            <button class="btn btn-outline-danger" type="button" data-remove-api-request-param>Remove</button>
+            <button class="btn btn-outline-danger" type="button" data-remove-api-request-param>{{ 'ลบ' if current_lang == 'th' else 'Remove' }}</button>
           </div>
         </div>
       </template>
@@ -500,7 +509,7 @@
       <template id="endpointApiRequestValueRowTemplate">
         <div class="input-group" data-endpoint-api-request-value-row>
           <input class="form-control" type="text" name="endpoint_api_request_param_value" placeholder="{% raw %}{{device_uuid}}{% endraw %}">
-          <button class="btn btn-outline-danger" type="button" data-remove-api-request-value>Remove</button>
+          <button class="btn btn-outline-danger" type="button" data-remove-api-request-value>{{ 'ลบ' if current_lang == 'th' else 'Remove' }}</button>
         </div>
       </template>
       </div>
@@ -528,11 +537,11 @@
 
       <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
         <div>
-          <h6 class="mb-0">Systems Page Design</h6>
-          <small class="text-muted">Select a system to edit its page settings (defaults to the first enabled system).</small>
+          <h6 class="mb-0">{{ 'ออกแบบหน้าระบบ' if current_lang == 'th' else 'Systems Page Design' }}</h6>
+          <small class="text-muted">{{ 'เลือกระบบเพื่อแก้ไขการตั้งค่าหน้าของระบบนั้น โดยค่าเริ่มต้นจะใช้ระบบแรกที่เปิดใช้งาน' if current_lang == 'th' else 'Select a system to edit its page settings (defaults to the first enabled system).' }}</small>
         </div>
         <div class="ms-auto">
-          <label class="form-label mb-1" for="systemPageSelect">System</label>
+          <label class="form-label mb-1" for="systemPageSelect">{{ 'ระบบ' if current_lang == 'th' else 'System' }}</label>
           <select class="form-select" id="systemPageSelect">
             {% for item in system_options %}
             <option value="{{ item.key }}" {% if item.key == default_system_key %}selected{% endif %}>{{ item.label }}</option>
@@ -552,60 +561,60 @@
           <div class="card shadow-sm h-100" data-top-definition-key="{{ system.key }}">
             <div class="card-header">
               <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h6 class="mb-0">Top Definition</h6>
+                <h6 class="mb-0">{{ 'คำอธิบายส่วนบน' if current_lang == 'th' else 'Top Definition' }}</h6>
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" name="top_definition_enabled_{{ system.key }}" {% if top_definition.enabled %}checked{% endif %}>
-                  <label class="form-check-label">Enable module</label>
+                  <label class="form-check-label">{{ 'เปิดใช้งานโมดูล' if current_lang == 'th' else 'Enable module' }}</label>
                 </div>
               </div>
             </div>
             <div class="card-body">
               <div class="row g-3">
                 <div class="col-12 col-md-6">
-                  <label class="form-label">Module Title</label>
-                  <input class="form-control" type="text" name="top_definition_title_{{ system.key }}" value="{{ top_definition.title or 'Top Definition' }}">
+                  <label class="form-label">{{ 'ชื่อโมดูล' if current_lang == 'th' else 'Module Title' }}</label>
+                  <input class="form-control" type="text" name="top_definition_title_{{ system.key }}" value="{{ top_definition.title or ('คำอธิบายส่วนบน' if current_lang == 'th' else 'Top Definition') }}">
                 </div>
                 <div class="col-12 col-md-6">
-                  <label class="form-label">Header Text</label>
-                  <input class="form-control" type="text" name="top_definition_header_{{ system.key }}" value="{{ top_definition.header or 'Average Indoor/Outdoor IAQ' }}">
+                  <label class="form-label">{{ 'ข้อความส่วนหัว' if current_lang == 'th' else 'Header Text' }}</label>
+                  <input class="form-control" type="text" name="top_definition_header_{{ system.key }}" value="{{ top_definition.header or ('ค่าเฉลี่ย IAQ ภายใน/ภายนอก' if current_lang == 'th' else 'Average Indoor/Outdoor IAQ') }}">
                 </div>
                 <div class="col-12 col-md-4">
                   <div class="d-flex justify-content-between align-items-center">
-                    <label class="form-label">Header Column 1</label>
+                    <label class="form-label">{{ 'คอลัมน์หัวข้อ 1' if current_lang == 'th' else 'Header Column 1' }}</label>
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" name="top_definition_column_indoor_enabled_{{ system.key }}" {% if top_definition_columns.indoor_enabled is not defined or top_definition_columns.indoor_enabled %}checked{% endif %}>
-                      <label class="form-check-label">Enable</label>
+                      <label class="form-check-label">{{ 'เปิดใช้งาน' if current_lang == 'th' else 'Enable' }}</label>
                     </div>
                   </div>
-                  <input class="form-control" type="text" name="top_definition_column_indoor_{{ system.key }}" value="{{ top_definition_columns.indoor or 'Indoor' }}">
+                  <input class="form-control" type="text" name="top_definition_column_indoor_{{ system.key }}" value="{{ top_definition_columns.indoor or ('ภายใน' if current_lang == 'th' else 'Indoor') }}">
                 </div>
                 <div class="col-12 col-md-4">
                   <div class="d-flex justify-content-between align-items-center">
-                    <label class="form-label">Header Column 2</label>
+                    <label class="form-label">{{ 'คอลัมน์หัวข้อ 2' if current_lang == 'th' else 'Header Column 2' }}</label>
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" name="top_definition_column_outdoor_enabled_{{ system.key }}" {% if top_definition_columns.outdoor_enabled is not defined or top_definition_columns.outdoor_enabled %}checked{% endif %}>
-                      <label class="form-check-label">Enable</label>
+                      <label class="form-check-label">{{ 'เปิดใช้งาน' if current_lang == 'th' else 'Enable' }}</label>
                     </div>
                   </div>
-                  <input class="form-control" type="text" name="top_definition_column_outdoor_{{ system.key }}" value="{{ top_definition_columns.outdoor or 'Outdoor' }}">
+                  <input class="form-control" type="text" name="top_definition_column_outdoor_{{ system.key }}" value="{{ top_definition_columns.outdoor or ('ภายนอก' if current_lang == 'th' else 'Outdoor') }}">
                 </div>
                 <div class="col-12 col-md-4">
-                  <label class="form-label">Mode</label>
+                  <label class="form-label">{{ 'โหมด' if current_lang == 'th' else 'Mode' }}</label>
                   <select class="form-select" name="top_definition_mode_{{ system.key }}">
-                    <option value="average" {% if top_definition_mode == 'average' %}selected{% endif %}>Average</option>
-                    <option value="critical" {% if top_definition_mode == 'critical' %}selected{% endif %}>Critical</option>
+                    <option value="average" {% if top_definition_mode == 'average' %}selected{% endif %}>{{ 'ค่าเฉลี่ย' if current_lang == 'th' else 'Average' }}</option>
+                    <option value="critical" {% if top_definition_mode == 'critical' %}selected{% endif %}>{{ 'วิกฤต' if current_lang == 'th' else 'Critical' }}</option>
                   </select>
                 </div>
                 <div class="col-12">
-                  <label class="form-label">Dashboard Cards</label>
+                  <label class="form-label">{{ 'การ์ดแดชบอร์ด' if current_lang == 'th' else 'Dashboard Cards' }}</label>
                   <div class="d-flex flex-wrap gap-3">
                     <div class="d-flex flex-wrap align-items-center gap-2">
                       <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="dashboard_card_map_{{ system.key }}" {% if dashboard_cards.map is not defined or dashboard_cards.map %}checked{% endif %}>
-                        <label class="form-check-label">Map</label>
+                        <label class="form-check-label">{{ 'แผนที่' if current_lang == 'th' else 'Map' }}</label>
                       </div>
                       <div class="input-group input-group-sm" style="max-width: 200px;">
-                        <span class="input-group-text">Cards</span>
+                        <span class="input-group-text">{{ 'การ์ด' if current_lang == 'th' else 'Cards' }}</span>
                         <input
                           class="form-control"
                           type="number"
@@ -626,37 +635,37 @@
                     </div>
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" name="dashboard_card_daily_graph_{{ system.key }}" {% if dashboard_cards.daily_graph is not defined or dashboard_cards.daily_graph %}checked{% endif %}>
-                      <label class="form-check-label">Daily Graph</label>
+                      <label class="form-check-label">{{ 'กราฟรายวัน' if current_lang == 'th' else 'Daily Graph' }}</label>
                     </div>
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" name="dashboard_card_weekly_overview_{{ system.key }}" {% if dashboard_cards.weekly_overview is not defined or dashboard_cards.weekly_overview %}checked{% endif %}>
-                      <label class="form-check-label">Weekly Overview</label>
+                      <label class="form-check-label">{{ 'ภาพรวมรายสัปดาห์' if current_lang == 'th' else 'Weekly Overview' }}</label>
                     </div>
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" name="dashboard_card_sensor_average_{{ system.key }}" {% if dashboard_cards.sensor_average is not defined or dashboard_cards.sensor_average %}checked{% endif %}>
-                      <label class="form-check-label">Sensor Averages</label>
+                      <label class="form-check-label">{{ 'ค่าเฉลี่ยเซนเซอร์' if current_lang == 'th' else 'Sensor Averages' }}</label>
                     </div>
                     <div class="form-check">
                       <input class="form-check-input" type="checkbox" name="dashboard_card_alerts_notifications_{{ system.key }}" {% if dashboard_cards.alerts_notifications is not defined or dashboard_cards.alerts_notifications %}checked{% endif %}>
-                      <label class="form-check-label">Alerts &amp; Notifications</label>
+                      <label class="form-check-label">{{ 'การแจ้งเตือน' if current_lang == 'th' else 'Alerts &amp; Notifications' }}</label>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="mt-3">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0">Severity Legend</h6>
-                  <button type="button" class="btn btn-sm btn-outline-secondary" data-top-definition-add="{{ system.key }}">+ Add Severity</button>
+                  <h6 class="mb-0">{{ 'คำอธิบายระดับ' if current_lang == 'th' else 'Severity Legend' }}</h6>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-top-definition-add="{{ system.key }}">{{ '+ เพิ่มระดับ' if current_lang == 'th' else '+ Add Severity' }}</button>
                 </div>
                 <div data-top-definition-rows="{{ system.key }}">
                   {% for item in top_definition_legend %}
                   <div class="row g-2 align-items-end mb-2 top-definition-legend-row">
                     <div class="col-12 col-md-5">
-                      <label class="form-label">Severity</label>
+                      <label class="form-label">{{ 'ระดับ' if current_lang == 'th' else 'Severity' }}</label>
                       <input class="form-control" type="text" name="top_definition_legend_label_{{ system.key }}" value="{{ item.label }}">
                     </div>
                     <div class="col-6 col-md-3">
-                      <label class="form-label">Color</label>
+                      <label class="form-label">{{ 'สี' if current_lang == 'th' else 'Color' }}</label>
                       <input class="form-control form-control-color" type="color" name="top_definition_legend_color_{{ system.key }}" value="{{ item.color or '#28a745' }}">
                     </div>
                     <div class="col-6 col-md-2">
@@ -885,7 +894,7 @@
               <option value="{{ upload }}" {% if upload == settings.sensor_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
               {% endfor %}
               </select>
-              <button type="button" class="btn btn-outline-danger" id="deleteSensorIconBtn">Delete</button>
+              <button type="button" class="btn btn-outline-danger" id="deleteSensorIconBtn">{{ 'ลบ' if current_lang == 'th' else 'Delete' }}</button>
             </div>
           </div>
           <div class="col-12 col-md-6">
@@ -902,7 +911,7 @@
                 <option value="{{ upload }}" {% if upload == settings.floor_logo_icon %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
                 {% endfor %}
               </select>
-              <button type="button" class="btn btn-outline-danger" id="deleteFloorLogoBtn">Delete</button>
+              <button type="button" class="btn btn-outline-danger" id="deleteFloorLogoBtn">{{ 'ลบ' if current_lang == 'th' else 'Delete' }}</button>
             </div>
           </div>
           <div class="col-12 col-md-6">
@@ -919,7 +928,7 @@
                 <option value="{{ upload }}" {% if upload == settings.project_logo %}selected{% endif %}>{{ upload.split('/')[-1] }}</option>
                 {% endfor %}
               </select>
-              <button type="button" class="btn btn-outline-danger" id="deleteProjectLogoBtn">Delete</button>
+              <button type="button" class="btn btn-outline-danger" id="deleteProjectLogoBtn">{{ 'ลบ' if current_lang == 'th' else 'Delete' }}</button>
             </div>
           </div>
         </div>
@@ -936,51 +945,51 @@
           </select>
           <button type="button" class="btn btn-sm btn-outline-primary" id="addSensorBtn">+ Add Sensor</button>
           <button type="button" class="btn btn-sm btn-outline-secondary" id="addLogoBtn">+ Add Logo</button>
-          <button type="button" class="btn btn-sm btn-outline-danger" id="clearSensorsBtn">Clear Sensors</button>
-          <button type="button" class="btn btn-sm btn-outline-warning" id="clearFloorPlanBtn">Clear Floor Plan</button>
+          <button type="button" class="btn btn-sm btn-outline-danger" id="clearSensorsBtn">{{ 'ล้างเซนเซอร์' if current_lang == 'th' else 'Clear Sensors' }}</button>
+          <button type="button" class="btn btn-sm btn-outline-warning" id="clearFloorPlanBtn">{{ 'ล้างผังชั้น' if current_lang == 'th' else 'Clear Floor Plan' }}</button>
           <span class="text-muted small" id="sensorCountLabel"></span>
         </div>
         <div class="map-container map-editor" id="floorPlanEditor">
-          <div class="map-placeholder">Select a floor plan to place sensors</div>
+          <div class="map-placeholder">{{ 'เลือกผังชั้นเพื่อวางเซนเซอร์' if current_lang == 'th' else 'Select a floor plan to place sensors' }}</div>
         </div>
         <div class="card mt-3 d-none" id="sensorZoneEditor">
           <div class="card-body p-3">
             <div class="d-flex flex-wrap align-items-center gap-2">
-              <div class="fw-semibold">Selected item:</div>
+              <div class="fw-semibold">{{ 'รายการที่เลือก:' if current_lang == 'th' else 'Selected item:' }}</div>
               <div id="selectedSensorId" class="text-muted small"></div>
               <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
-                <label class="form-label mb-0" for="selectedSensorLabel">Label</label>
-                <input class="form-control form-control-sm" id="selectedSensorLabel" type="text" placeholder="Sensor label">
-                <div class="form-text" id="selectedSensorLabelHint">Label [Building-Floor-Zone-Sensor type-Sensor number]</div>
+                <label class="form-label mb-0" for="selectedSensorLabel">{{ 'ป้ายชื่อ' if current_lang == 'th' else 'Label' }}</label>
+                <input class="form-control form-control-sm" id="selectedSensorLabel" type="text" placeholder="{{ 'ชื่อเซนเซอร์' if current_lang == 'th' else 'Sensor label' }}">
+                <div class="form-text" id="selectedSensorLabelHint">{{ 'รูปแบบชื่อ [อาคาร-ชั้น-โซน-ประเภทเซนเซอร์-หมายเลขเซนเซอร์]' if current_lang == 'th' else 'Label [Building-Floor-Zone-Sensor type-Sensor number]' }}</div>
                 <div class="invalid-feedback" id="selectedSensorLabelError">
-                  Label must include a sensor type in the 4th position.
+                  {{ 'ชื่อจะต้องมีประเภทเซนเซอร์อยู่ในตำแหน่งที่ 4' if current_lang == 'th' else 'Label must include a sensor type in the 4th position.' }}
                 </div>
-                <button class="btn btn-sm btn-outline-primary" type="button" id="saveSensorLabelBtn">Save Label</button>
-                <button class="btn btn-sm btn-outline-danger" type="button" id="deleteSelectedSensorBtn">Delete Sensor</button>
+                <button class="btn btn-sm btn-outline-primary" type="button" id="saveSensorLabelBtn">{{ 'บันทึกชื่อ' if current_lang == 'th' else 'Save Label' }}</button>
+                <button class="btn btn-sm btn-outline-danger" type="button" id="deleteSelectedSensorBtn">{{ 'ลบเซนเซอร์' if current_lang == 'th' else 'Delete Sensor' }}</button>
               </div>
             </div>
           </div>
         </div>
         <div class="card mt-3" id="bulkZoneEditor">
           <div class="card-body p-3">
-            <div class="fw-semibold mb-2">Bulk zone update</div>
+            <div class="fw-semibold mb-2">{{ 'อัปเดตโซนแบบกลุ่ม' if current_lang == 'th' else 'Bulk zone update' }}</div>
             <div class="row g-3 align-items-start">
               <div class="col-12 col-md-6">
-                <label class="form-label mb-1">Sensors on this floor</label>
+                <label class="form-label mb-1">{{ 'เซนเซอร์บนชั้นนี้' if current_lang == 'th' else 'Sensors on this floor' }}</label>
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                  <span class="text-muted small">Selected: <span id="bulkSelectedCount">0</span></span>
+                  <span class="text-muted small">{{ 'เลือกแล้ว:' if current_lang == 'th' else 'Selected:' }} <span id="bulkSelectedCount">0</span></span>
                   <button class="btn btn-sm btn-outline-light" type="button" id="bulkClearSelectionBtn">
-                    Clear
+                    {{ 'ล้าง' if current_lang == 'th' else 'Clear' }}
                   </button>
                 </div>
-                <div class="form-text" id="bulkSelectionHint">Select sensors to smart-fill zone/type.</div>
+                <div class="form-text" id="bulkSelectionHint">{{ 'เลือกเซนเซอร์เพื่อเติมโซน/ประเภทอัตโนมัติ' if current_lang == 'th' else 'Select sensors to smart-fill zone/type.' }}</div>
                 <div class="border rounded p-2 small" id="bulkSensorList"></div>
               </div>
               <div class="col-12 col-md-6">
-                <label class="form-label mb-1" for="bulkSensorZone">Zone</label>
-                <input class="form-control form-control-sm" id="bulkSensorZone" type="text" placeholder="Zone">
-                <label class="form-label mb-1" for="bulkSensorType">Sensor type(s)</label>
-                <input class="form-control form-control-sm" id="bulkSensorType" type="text" list="bulkSensorTypeOptions" placeholder="Sensor types (comma-separated)">
+                <label class="form-label mb-1" for="bulkSensorZone">{{ 'โซน' if current_lang == 'th' else 'Zone' }}</label>
+                <input class="form-control form-control-sm" id="bulkSensorZone" type="text" placeholder="{{ 'โซน' if current_lang == 'th' else 'Zone' }}">
+                <label class="form-label mb-1" for="bulkSensorType">{{ 'ประเภทเซนเซอร์' if current_lang == 'th' else 'Sensor type(s)' }}</label>
+                <input class="form-control form-control-sm" id="bulkSensorType" type="text" list="bulkSensorTypeOptions" placeholder="{{ 'ประเภทเซนเซอร์ (คั่นด้วยจุลภาค)' if current_lang == 'th' else 'Sensor types (comma-separated)' }}">
                 <datalist id="bulkSensorTypeOptions">
                   {% for option in bulk_sensor_type_options %}
                   {% if option %}
@@ -988,28 +997,28 @@
                   {% endif %}
                   {% endfor %}
                 </datalist>
-                <div class="form-text">Choose one or more Incoming Source Fields separated by commas.</div>
-                <label class="form-label mb-1" for="bulkSourceName">Mapping source</label>
+                <div class="form-text">{{ 'เลือก Incoming Source Fields อย่างน้อย 1 ค่า โดยคั่นด้วยจุลภาค' if current_lang == 'th' else 'Choose one or more Incoming Source Fields separated by commas.' }}</div>
+                <label class="form-label mb-1" for="bulkSourceName">{{ 'แหล่งข้อมูลที่ใช้แมป' if current_lang == 'th' else 'Mapping source' }}</label>
                 <select class="form-select form-select-sm" id="bulkSourceName">
-                  <option value="">Select source</option>
+                  <option value="">{{ 'เลือกแหล่งข้อมูล' if current_lang == 'th' else 'Select source' }}</option>
                   {% for source in source_list %}
                   <option value="{{ source.name or '' }}">{{ source.name or '' }}</option>
                   {% endfor %}
                 </select>
-                <label class="form-label mb-1" for="bulkSourceDeviceName">Source device name</label>
+                <label class="form-label mb-1" for="bulkSourceDeviceName">{{ 'ชื่ออุปกรณ์ต้นทาง' if current_lang == 'th' else 'Source device name' }}</label>
                 <select class="form-select form-select-sm" id="bulkSourceDeviceName">
-                  <option value="">Select source device</option>
+                  <option value="">{{ 'เลือกอุปกรณ์ต้นทาง' if current_lang == 'th' else 'Select source device' }}</option>
                 </select>
-                <div class="form-text">Use mapping fields to keep source-device identity in <code>sensordata.db</code>.</div>
+                <div class="form-text">{{ 'ใช้ฟิลด์แมปเพื่อคงข้อมูลอ้างอิงของอุปกรณ์ต้นทางไว้ใน <code>sensordata.db</code>' if current_lang == 'th' else 'Use mapping fields to keep source-device identity in <code>sensordata.db</code>.' }}</div>
                 <div class="d-flex flex-wrap gap-2 mt-2">
                   <button class="btn btn-sm btn-outline-primary" type="button" id="applyBulkZoneBtn">
-                    Apply Updates to Selected
+                    {{ 'อัปเดตรายการที่เลือก' if current_lang == 'th' else 'Apply Updates to Selected' }}
                   </button>
                   <button class="btn btn-sm btn-outline-secondary" type="button" id="bulkSmartFillSelectBtn">
-                    Smart-fill Selection
+                    {{ 'เติมค่าอัตโนมัติให้รายการที่เลือก' if current_lang == 'th' else 'Smart-fill Selection' }}
                   </button>
                   <button class="btn btn-sm btn-outline-light" type="button" id="bulkDeselectAllBtn">
-                    Deselect All
+                    {{ 'ยกเลิกเลือกทั้งหมด' if current_lang == 'th' else 'Deselect All' }}
                   </button>
                 </div>
               </div>
@@ -1019,11 +1028,11 @@
       </div>
 
       <div class="d-none" data-system-section="energy">
-        <div class="alert alert-light border">No additional Energy &amp; Carbon settings available yet.</div>
+        <div class="alert alert-light border">{{ 'ยังไม่มีการตั้งค่าเพิ่มเติมสำหรับ Energy &amp; Carbon' if current_lang == 'th' else 'No additional Energy &amp; Carbon settings available yet.' }}</div>
       </div>
 
       <div class="d-none" data-system-section="waste">
-        <div class="alert alert-light border">No additional Waste settings available yet.</div>
+        <div class="alert alert-light border">{{ 'ยังไม่มีการตั้งค่าเพิ่มเติมสำหรับ Waste' if current_lang == 'th' else 'No additional Waste settings available yet.' }}</div>
       </div>
 
       <div class="d-none" data-system-section="fire">
@@ -1158,8 +1167,6 @@
       <div class="mt-4">
         <div class="d-flex flex-wrap gap-2">
           <button class="btn btn-primary" type="submit" data-save-settings-section="design">Save Design</button>
-          <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_csv') }}">Export Settings CSV</a>
-          <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_assets_zip') }}">Export Assets ZIP</a>
         </div>
 
         <div class="card mt-3">
@@ -1221,26 +1228,26 @@
                 </tbody>
               </table>
             </div>
-            <div class="alert alert-light border mb-0 d-none" id="sourceMetricFieldsEmptyState">No incoming source fields discovered yet. Click <code>Use Source</code> after loading a mapped source to build the field catalog.</div>
+            <div class="alert alert-light border mb-0 d-none" id="sourceMetricFieldsEmptyState">{{ 'ยังไม่พบฟิลด์จากแหล่งข้อมูลขาเข้า กด <code>ใช้แหล่งข้อมูล</code> หลังโหลดแหล่งข้อมูลที่แมปแล้วเพื่อสร้างรายการฟิลด์' if current_lang == 'th' else 'No incoming source fields discovered yet. Click <code>Use Source</code> after loading a mapped source to build the field catalog.' }}</div>
             {% else %}
             <div class="table-responsive d-none" id="sourceMetricFieldsTableWrap">
               <table class="table table-sm align-middle">
                 <thead>
                   <tr>
-                    <th>Field</th>
-                    <th>Label</th>
-                    <th>Channel</th>
-                    <th>Unit</th>
-                    <th>Bulk Type</th>
-                    <th>Tooltip</th>
-                    <th>Save DB</th>
-                    <th>Severity</th>
+                    <th>{{ 'ฟิลด์' if current_lang == 'th' else 'Field' }}</th>
+                    <th>{{ 'ป้ายชื่อ' if current_lang == 'th' else 'Label' }}</th>
+                    <th>{{ 'ช่องสัญญาณ' if current_lang == 'th' else 'Channel' }}</th>
+                    <th>{{ 'หน่วย' if current_lang == 'th' else 'Unit' }}</th>
+                    <th>{{ 'ประเภทกลุ่ม' if current_lang == 'th' else 'Bulk Type' }}</th>
+                    <th>{{ 'คำอธิบาย' if current_lang == 'th' else 'Tooltip' }}</th>
+                    <th>{{ 'บันทึก DB' if current_lang == 'th' else 'Save DB' }}</th>
+                    <th>{{ 'ระดับ' if current_lang == 'th' else 'Severity' }}</th>
                   </tr>
                 </thead>
                 <tbody id="sourceMetricFieldsTableBody"></tbody>
               </table>
             </div>
-            <div class="alert alert-light border mb-0" id="sourceMetricFieldsEmptyState">No incoming source fields discovered yet. Click <code>Use Source</code> after loading a mapped source to build the field catalog.</div>
+            <div class="alert alert-light border mb-0" id="sourceMetricFieldsEmptyState">{{ 'ยังไม่พบฟิลด์จากแหล่งข้อมูลขาเข้า กด <code>ใช้แหล่งข้อมูล</code> หลังโหลดแหล่งข้อมูลที่แมปแล้วเพื่อสร้างรายการฟิลด์' if current_lang == 'th' else 'No incoming source fields discovered yet. Click <code>Use Source</code> after loading a mapped source to build the field catalog.' }}</div>
             {% endif %}
           </div>
         </div>
@@ -1284,6 +1291,28 @@
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="mb-0">{{ 'จัดการผู้ใช้' if current_lang == 'th' else 'Manage Users' }}</h6>
                 <small class="text-muted">{{ 'เปลี่ยนรหัสผ่านหรือลบผู้ใช้' if current_lang == 'th' else 'Change passwords or delete users.' }}</small>
+              </div>
+              <div class="border rounded-3 bg-body-tertiary p-3 mb-3">
+                <div class="small text-muted mb-3">{{ 'ค่าเริ่มต้นแสดง 10 รายการล่าสุด และสามารถเลือกช่วงวันที่เพื่อดูย้อนหลังหรือดาวน์โหลด CSV ได้' if current_lang == 'th' else 'Shows the latest 10 records by default. Select a date range to load more or download CSV.' }}</div>
+                <form class="row g-3 align-items-end" method="get" action="{{ url_for('settings') }}">
+                  <input type="hidden" name="tab" value="user">
+                  <div class="col-12 col-lg-4">
+                    <label class="form-label form-label-sm">{{ 'วันที่เริ่มต้น' if current_lang == 'th' else 'Start Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
+                    <input class="form-control form-control-sm" type="text" name="login_history_start_date" value="{{ login_history_start_date or '' }}" placeholder="dd/mm/yyyy" inputmode="numeric">
+                  </div>
+                  <div class="col-12 col-lg-4">
+                    <label class="form-label form-label-sm">{{ 'วันที่สิ้นสุด' if current_lang == 'th' else 'End Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
+                    <input class="form-control form-control-sm" type="text" name="login_history_end_date" value="{{ login_history_end_date or '' }}" placeholder="dd/mm/yyyy" inputmode="numeric">
+                  </div>
+                  <div class="col-12 col-lg-4">
+                    <label class="form-label form-label-sm d-block">&nbsp;</label>
+                    <div class="d-grid gap-2 d-md-flex">
+                      <button class="btn btn-outline-secondary btn-sm flex-fill" type="submit">{{ 'โหลด' if current_lang == 'th' else 'Load' }}</button>
+                      <a class="btn btn-outline-dark btn-sm flex-fill" href="{{ url_for('settings', tab='user') }}">{{ 'รีเซ็ต' if current_lang == 'th' else 'Reset' }}</a>
+                      <a class="btn btn-outline-primary btn-sm flex-fill" href="{{ url_for('export_login_history_csv', login_history_start_date=login_history_start_date or '', login_history_end_date=login_history_end_date or '') }}">{{ 'ดาวน์โหลด CSV' if current_lang == 'th' else 'Download CSV' }}</a>
+                    </div>
+                  </div>
+                </form>
               </div>
               <div class="table-responsive">
                 <table class="table table-sm align-middle">
@@ -1418,7 +1447,7 @@
                       <td>{{ entry.username or entry.attempted_username or '-' }}</td>
                       <td>
                         <span class="badge {% if entry.success %}text-bg-success{% else %}text-bg-danger{% endif %}">
-                          {{ 'Success' if entry.success else 'Failed' }}
+                          {{ 'สำเร็จ' if entry.success and current_lang == 'th' else ('ไม่สำเร็จ' if current_lang == 'th' else ('Success' if entry.success else 'Failed')) }}
                         </span>
                       </td>
                       <td>{{ entry.ip_address or '-' }}</td>
@@ -1440,7 +1469,12 @@
       </div>
       </div>
     </form>
-    <form class="mt-3" method="post" action="{{ url_for('import_settings_csv') }}" enctype="multipart/form-data" id="importSettingsForm">
+    <div data-settings-tab-panel="import_export"{% if (active_settings_tab or 'project') != 'import_export' %} class="d-none mt-3"{% else %} class="mt-3"{% endif %}>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_csv') }}">{{ 'ส่งออก Settings CSV' if current_lang == 'th' else 'Export Settings CSV' }}</a>
+      <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_assets_zip') }}">{{ 'ส่งออก Assets ZIP' if current_lang == 'th' else 'Export Assets ZIP' }}</a>
+    </div>
+    <form method="post" action="{{ url_for('import_settings_csv') }}" enctype="multipart/form-data" id="importSettingsForm">
       <label class="form-label">Import Settings CSV</label>
       <div class="d-flex flex-wrap gap-2">
         <input class="form-control" type="file" name="settings_csv" accept=".csv">
@@ -1478,6 +1512,7 @@
         {% endif %}
       </div>
     </form>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -1534,7 +1569,8 @@
   const getRequestErrorMessage = (error) =>
     error instanceof Error ? error.message : String(error || 'Unknown error');
 
-  const projectDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  const currentLanguage = {{ current_lang | tojson }};
+  const projectDateTimeFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: {{ settings.project_timezone | tojson }},
     year: 'numeric',
     month: '2-digit',
@@ -1552,7 +1588,39 @@
     if (Number.isNaN(parsed.getTime())) {
       return String(value);
     }
-    return projectDateTimeFormatter.format(parsed);
+    const parts = Object.fromEntries(
+      projectDateTimeFormatter
+        .formatToParts(parsed)
+        .filter((part) => part.type !== 'literal')
+        .map((part) => [part.type, part.value])
+    );
+    const dateText = currentLanguage === 'th'
+      ? `${parts.day}/${parts.month}/${parts.year}`
+      : `${parts.year}/${parts.month}/${parts.day}`;
+    return `${dateText} ${parts.hour}:${parts.minute}`;
+  };
+
+  const normalizeDisplayDateToIso = (value) => {
+    const text = String(value || '').trim();
+    if (!text) {
+      return '';
+    }
+    const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!match) {
+      return text;
+    }
+    const [, day, month, year] = match;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  };
+
+  const formatIsoDateToDisplay = (value) => {
+    const text = String(value || '').trim();
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) {
+      return text;
+    }
+    const [, year, month, day] = match;
+    return `${day}/${month}/${year}`;
   };
 
   const buildSourceHistoryExportUrl = ({ sourceName, requestDefinition = null, startDate = '', endDate = '' }) => {
@@ -1794,11 +1862,11 @@
         const draftSource = collectEndpointSourceRow(row);
         const missingFields = getMissingGetTokenFields(draftSource);
         if (missingFields.length) {
-          alert(`Please fill required API fields before getting a token: ${missingFields.join(', ')}`);
+          alert(`{{ 'กรุณากรอกฟิลด์ API ที่จำเป็นก่อนขอโทเค็น:' if current_lang == 'th' else 'Please fill required API fields before getting a token:' }} ${missingFields.join(', ')}`);
           return;
         }
         getTokenBtn.disabled = true;
-        getTokenBtn.textContent = 'Loading...';
+        getTokenBtn.textContent = {{ ('กำลังโหลด...' if current_lang == 'th' else 'Loading...') | tojson }};
         try {
           const response = await fetch(editorData.sourceTokenRoute, {
             method: 'POST',
@@ -1813,17 +1881,17 @@
           });
           const payload = await response.json();
           if (!response.ok || payload.error) {
-            throw new Error(payload.error || 'Failed to fetch bearer token');
+            throw new Error(payload.error || {{ ('ดึง bearer token ไม่สำเร็จ' if current_lang == 'th' else 'Failed to fetch bearer token') | tojson }});
           }
           syncSharedTokenInputs(row, payload.token || '', payload.cache_key || '');
           if (previewLiv24DataOutput) {
             previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
           }
         } catch (error) {
-          alert(`Get Token failed: ${getRequestErrorMessage(error)}`);
+          alert(`{{ 'ขอโทเค็นไม่สำเร็จ:' if current_lang == 'th' else 'Get Token failed:' }} ${getRequestErrorMessage(error)}`);
         } finally {
           getTokenBtn.disabled = formatSelect && formatSelect.value !== 'api';
-          getTokenBtn.textContent = 'Get Token';
+          getTokenBtn.textContent = {{ ('ขอโทเค็น' if current_lang == 'th' else 'Get Token') | tojson }};
         }
       });
     }
@@ -1831,12 +1899,12 @@
       useApiBtn.addEventListener('click', async () => {
         const sourceName = (sourceNameInput?.value || '').trim();
         if (!sourceName) {
-          alert('Please enter source name before using API.');
+          alert({{ ('กรุณากรอกชื่อแหล่งข้อมูลก่อนใช้งาน API' if current_lang == 'th' else 'Please enter source name before using API.') | tojson }});
           return;
         }
         const draftSource = collectEndpointSourceRow(row);
         useApiBtn.disabled = true;
-        useApiBtn.textContent = 'Loading...';
+        useApiBtn.textContent = {{ ('กำลังโหลด...' if current_lang == 'th' else 'Loading...') | tojson }};
         try {
           const response = await fetch(editorData.sourceDevicesRoute, {
             method: 'POST',
@@ -1847,7 +1915,7 @@
           });
           const payload = await response.json();
           if (!response.ok || payload.error) {
-            throw new Error(payload.error || 'Failed to fetch source devices');
+            throw new Error(payload.error || {{ ('ดึงข้อมูลอุปกรณ์จากแหล่งข้อมูลไม่สำเร็จ' if current_lang == 'th' else 'Failed to fetch source devices') | tojson }});
           }
           sourceDeviceCatalog[payload.source || sourceName] = payload.ready_device_items || payload.device_items || payload.devices || [];
           if (bulkSourceName) {
@@ -1858,10 +1926,10 @@
             previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
           }
         } catch (error) {
-          alert(`Use API failed: ${getRequestErrorMessage(error)}`);
+          alert(`{{ 'ใช้งาน API ไม่สำเร็จ:' if current_lang == 'th' else 'Use API failed:' }} ${getRequestErrorMessage(error)}`);
         } finally {
           useApiBtn.disabled = formatSelect && formatSelect.value !== 'api';
-          useApiBtn.textContent = 'Use API';
+          useApiBtn.textContent = {{ ('ใช้ API' if current_lang == 'th' else 'Use API') | tojson }};
         }
       });
     }
@@ -1889,14 +1957,14 @@
 
   if (previewLiv24DataBtn && previewLiv24DataOutput) {
     previewLiv24DataBtn.addEventListener('click', async () => {
-      previewLiv24DataOutput.textContent = 'Loading API data...';
+      previewLiv24DataOutput.textContent = {{ ('กำลังโหลดข้อมูล API...' if current_lang == 'th' else 'Loading API data...') | tojson }};
       try {
         const selectedSource = encodeURIComponent((bulkSourceName?.value || 'LIV-24 IAQ').trim() || 'LIV-24 IAQ');
         const response = await fetch(`/api/settings/source-preview?source_name=${selectedSource}`);
         const payload = await response.json();
         previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
       } catch (error) {
-        previewLiv24DataOutput.textContent = `Failed to load data: ${error}`;
+        previewLiv24DataOutput.textContent = `{{ 'โหลดข้อมูลไม่สำเร็จ:' if current_lang == 'th' else 'Failed to load data:' }} ${error}`;
       }
     });
   }
@@ -1932,7 +2000,7 @@
   const getRequestErrorMessage = (error) =>
     error instanceof Error ? error.message : String(error || 'Unknown error');
 
-  const projectDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  const projectDateTimeFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: {{ settings.project_timezone | tojson }},
     year: 'numeric',
     month: '2-digit',
@@ -1950,7 +2018,16 @@
     if (Number.isNaN(parsed.getTime())) {
       return String(value);
     }
-    return projectDateTimeFormatter.format(parsed);
+    const parts = Object.fromEntries(
+      projectDateTimeFormatter
+        .formatToParts(parsed)
+        .filter((part) => part.type !== 'literal')
+        .map((part) => [part.type, part.value])
+    );
+    const dateText = currentLanguage === 'th'
+      ? `${parts.day}/${parts.month}/${parts.year}`
+      : `${parts.year}/${parts.month}/${parts.day}`;
+    return `${dateText} ${parts.hour}:${parts.minute}`;
   };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
@@ -2318,10 +2395,10 @@
     const role = getEndpointRequestField(requestRow, 'endpoint_api_request_role')?.value || 'custom';
     const customName = (getEndpointRequestField(requestRow, 'endpoint_api_request_name')?.value || '').trim();
     const labelMap = {
-      organizations: 'Organizations',
-      devices: 'Devices',
-      latest_values: 'Latest Values',
-      custom: 'Custom',
+      organizations: {{ ('องค์กร' if current_lang == 'th' else 'Organizations') | tojson }},
+      devices: {{ ('อุปกรณ์' if current_lang == 'th' else 'Devices') | tojson }},
+      latest_values: {{ ('ค่าล่าสุด' if current_lang == 'th' else 'Latest Values') | tojson }},
+      custom: {{ ('กำหนดเอง' if current_lang == 'th' else 'Custom') | tojson }},
     };
     title.textContent = customName || labelMap[role] || 'Request';
   };
@@ -2379,6 +2456,7 @@
     const addParamBtn = requestRow.querySelector('[data-add-api-request-param]');
     const historyBtn = requestRow.querySelector('[data-toggle-api-history]');
     const refreshHistoryBtn = requestRow.querySelector('[data-refresh-api-history]');
+    const loadHistoryBtn = requestRow.querySelector('[data-load-api-history]');
     const exportHistoryBtn = requestRow.querySelector('[data-export-api-history]');
     const testBtn = requestRow.querySelector('[data-test-api-request]');
     const removeBtn = requestRow.querySelector('[data-remove-api-request]');
@@ -2429,11 +2507,11 @@
         const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(sourceRow));
         const draftRequest = collectEndpointRequestRow(requestRow);
         if (!draftSource.name) {
-          alert('Please enter source name before testing this request.');
+          alert({{ ('กรุณากรอกชื่อแหล่งข้อมูลก่อนทดสอบคำขอนี้' if current_lang == 'th' else 'Please enter source name before testing this request.') | tojson }});
           return;
         }
         if (draftSource.format !== 'api') {
-          alert('Request testing is available for API sources only.');
+          alert({{ ('การทดสอบคำขอใช้ได้เฉพาะแหล่งข้อมูลแบบ API เท่านั้น' if current_lang == 'th' else 'Request testing is available for API sources only.') | tojson }});
           return;
         }
         testBtn.disabled = true;
@@ -2457,7 +2535,7 @@
             previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
           }
         } catch (error) {
-          alert(`Test Request failed: ${getRequestErrorMessage(error)}`);
+          alert(`{{ 'ทดสอบคำขอไม่สำเร็จ:' if current_lang == 'th' else 'Test Request failed:' }} ${getRequestErrorMessage(error)}`);
         } finally {
           testBtn.disabled = false;
           testBtn.textContent = 'Test Request';
@@ -2473,7 +2551,9 @@
         }
         const willShow = historyPanel.classList.contains('d-none');
         historyPanel.classList.toggle('d-none', !willShow);
-        historyBtn.textContent = willShow ? 'Hide History' : 'History';
+        historyBtn.textContent = willShow
+          ? {{ ('ซ่อนประวัติ' if current_lang == 'th' else 'Hide History') | tojson }}
+          : {{ ('ประวัติ' if current_lang == 'th' else 'History') | tojson }};
         if (!willShow) {
           return;
         }
@@ -2481,7 +2561,7 @@
           await loadRequestHistory(requestRow, sourceRow);
         } catch (error) {
           renderRequestHistoryEntries(requestRow, []);
-          alert(`History failed: ${getRequestErrorMessage(error)}`);
+          alert(`{{ 'โหลดประวัติไม่สำเร็จ:' if current_lang == 'th' else 'History failed:' }} ${getRequestErrorMessage(error)}`);
         }
       });
     }
@@ -2492,9 +2572,37 @@
           refreshHistoryBtn.disabled = true;
           await loadRequestHistory(requestRow, sourceRow);
         } catch (error) {
-          alert(`History failed: ${getRequestErrorMessage(error)}`);
+          alert(`{{ 'โหลดประวัติไม่สำเร็จ:' if current_lang == 'th' else 'History failed:' }} ${getRequestErrorMessage(error)}`);
         } finally {
           refreshHistoryBtn.disabled = false;
+        }
+      });
+    }
+    if (loadHistoryBtn) {
+      loadHistoryBtn.addEventListener('click', async () => {
+        const sourceRow = requestRow.closest('[data-endpoint-source-row]');
+        const startVal = requestRow.querySelector('[data-api-history-start-date]')?.value || '';
+        const endVal = requestRow.querySelector('[data-api-history-end-date]')?.value || '';
+        if (startVal && endVal) {
+          const startMs = new Date(startVal).getTime();
+          const endMs = new Date(endVal).getTime();
+          if (endMs < startMs) {
+            alert({{ ('วันที่สิ้นสุดต้องมากกว่าหรือเท่ากับวันที่เริ่มต้น' if current_lang == 'th' else 'End date must be after start date.') | tojson }});
+            return;
+          }
+          const diffDays = (endMs - startMs) / (1000 * 60 * 60 * 24);
+          if (diffDays > 31) {
+            alert({{ ('ช่วงวันที่ต้องไม่เกิน 1 เดือน (31 วัน)' if current_lang == 'th' else 'Date range cannot exceed 1 month (31 days).') | tojson }});
+            return;
+          }
+        }
+        try {
+          loadHistoryBtn.disabled = true;
+          await loadRequestHistory(requestRow, sourceRow);
+        } catch (error) {
+          alert(`{{ 'โหลดประวัติไม่สำเร็จ:' if current_lang == 'th' else 'History failed:' }} ${getRequestErrorMessage(error)}`);
+        } finally {
+          loadHistoryBtn.disabled = false;
         }
       });
     }
@@ -2506,7 +2614,7 @@
         const startDate = requestRow.querySelector('[data-api-history-start-date]')?.value || '';
         const endDate = requestRow.querySelector('[data-api-history-end-date]')?.value || '';
         if (!draftSource.name) {
-          alert('Please enter source name before downloading CSV.');
+          alert({{ ('กรุณากรอกชื่อแหล่งข้อมูลก่อนดาวน์โหลด CSV' if current_lang == 'th' else 'Please enter source name before downloading CSV.') | tojson }});
           return;
         }
         window.location.href = buildSourceHistoryExportUrl({
@@ -2535,7 +2643,7 @@
         await loadRequestHistory(requestRow, sourceRow);
       } catch (error) {
         deleteBtn.disabled = false;
-        alert(`Delete history failed: ${getRequestErrorMessage(error)}`);
+        alert(`{{ 'ลบประวัติไม่สำเร็จ:' if current_lang == 'th' else 'Delete history failed:' }} ${getRequestErrorMessage(error)}`);
       }
     });
     updateEndpointRequestTitle(requestRow);
@@ -2641,20 +2749,20 @@
     return [
       {
         ...createDefaultEndpointRequest('organizations', 0),
-        name: organizationsRequest?.name || 'Organizations',
+        name: organizationsRequest?.name || {{ ('องค์กร' if current_lang == 'th' else 'Organizations') | tojson }},
         method: organizationsRequest?.method || 'GET',
         path: getTemplateRequestValue(template, template?.suggested?.organizations_request_id, 'organizations_path'),
       },
       {
         ...createDefaultEndpointRequest('devices', 1),
-        name: devicesRequest?.name || 'Devices',
+        name: devicesRequest?.name || {{ ('อุปกรณ์' if current_lang == 'th' else 'Devices') | tojson }},
         method: devicesRequest?.method || 'GET',
         path: getTemplateRequestValue(template, template?.suggested?.devices_request_id, 'devices_path'),
         params: devicesParam ? [{ key: devicesParam, value: '{% raw %}{{organization_uuid}}{% endraw %}' }] : [],
       },
       {
         ...createDefaultEndpointRequest('latest_values', 2),
-        name: latestValuesRequest?.name || 'Latest Values',
+        name: latestValuesRequest?.name || {{ ('ค่าล่าสุด' if current_lang == 'th' else 'Latest Values') | tojson }},
         method: latestValuesRequest?.method || 'GET',
         path: getTemplateRequestValue(template, template?.suggested?.latest_values_request_id, 'latest_values_path'),
         params: latestValuesParam ? [{ key: latestValuesParam, values: ['{% raw %}{{device_uuid}}{% endraw %}'] }] : [],
@@ -2726,7 +2834,7 @@
     });
     const payload = await response.json();
     if (!response.ok || payload.error) {
-      throw new Error(payload.error || 'Failed to load source data');
+      throw new Error(payload.error || {{ ('โหลดข้อมูลแหล่งข้อมูลไม่สำเร็จ' if current_lang == 'th' else 'Failed to load source data') | tojson }});
     }
     return payload;
   };
@@ -3020,7 +3128,7 @@
     });
     const payload = await response.json();
     if (!response.ok || payload.error) {
-      throw new Error(payload.error || 'Failed to test request');
+      throw new Error(payload.error || {{ ('ทดสอบคำขอไม่สำเร็จ' if current_lang == 'th' else 'Failed to test request') | tojson }});
     }
     return payload;
   };
@@ -3042,7 +3150,7 @@
     });
     const payload = await response.json();
     if (!response.ok || payload.error) {
-      throw new Error(payload.error || 'Failed to load request history');
+      throw new Error(payload.error || {{ ('โหลดประวัติคำขอไม่สำเร็จ' if current_lang == 'th' else 'Failed to load request history') | tojson }});
     }
     return payload.history || [];
   };
@@ -3053,7 +3161,7 @@
     );
     const payload = await response.json();
     if (!response.ok || payload.error) {
-      throw new Error(payload.error || 'Failed to load source device cache');
+      throw new Error(payload.error || {{ ('โหลดแคชอุปกรณ์ต้นทางไม่สำเร็จ' if current_lang == 'th' else 'Failed to load source device cache') | tojson }});
     }
     return payload;
   };
@@ -3068,7 +3176,7 @@
     });
     const payload = await response.json();
     if (!response.ok || payload.error) {
-      throw new Error(payload.error || 'Failed to delete request history');
+      throw new Error(payload.error || {{ ('ลบประวัติคำขอไม่สำเร็จ' if current_lang == 'th' else 'Failed to delete request history') | tojson }});
     }
     return payload;
   };
@@ -3102,12 +3210,14 @@
     }
     const entries = Array.isArray(historyEntries) ? historyEntries : [];
     if (!entries.length) {
-      historyList.innerHTML = '<div class="small text-muted">No request history saved yet.</div>';
+      historyList.innerHTML = {{ ('<div class="small text-muted">ยังไม่มีประวัติคำขอที่บันทึกไว้</div>' if current_lang == 'th' else '<div class="small text-muted">No request history saved yet.</div>') | tojson }};
       return;
     }
     historyList.innerHTML = entries.map((entry) => {
-      const title = entry.request_name || entry.request_role || entry.request_path || 'Request';
-      const statusLabel = entry.response_status === 'success' ? 'Success' : 'Error';
+      const title = entry.request_name || entry.request_role || entry.request_path || {{ ('คำขอ' if current_lang == 'th' else 'Request') | tojson }};
+      const statusLabel = entry.response_status === 'success'
+        ? {{ ('สำเร็จ' if current_lang == 'th' else 'Success') | tojson }}
+        : {{ ('ผิดพลาด' if current_lang == 'th' else 'Error') | tojson }};
       const badgeClass = entry.response_status === 'success' ? 'success' : 'danger';
       const responseValue = entry.response_status === 'success'
         ? (entry.response_payload || {})
@@ -3119,13 +3229,13 @@
             <span class="d-flex align-items-center gap-2">
               <span class="badge text-bg-${badgeClass}">${escapeHtml(statusLabel)}${entry.response_code ? ` ${escapeHtml(entry.response_code)}` : ''}</span>
               <small class="text-muted">${escapeHtml(formatProjectDateTime(entry.created_at || ''))}</small>
-              <button class="btn btn-outline-danger btn-sm" type="button" data-delete-api-history="${escapeHtml(entry.id)}">Delete</button>
+              <button class="btn btn-outline-danger btn-sm" type="button" data-delete-api-history="${escapeHtml(entry.id)}">${escapeHtml({{ ('ลบ' if current_lang == 'th' else 'Delete') | tojson }})}</button>
             </span>
           </summary>
           <div class="mt-2 small text-muted">${escapeHtml(entry.request_url || '')}</div>
           <div class="row g-2 mt-1">
             <div class="col-12 col-lg-6">
-              <label class="form-label small mb-1">Request</label>
+              <label class="form-label small mb-1">{{ 'คำขอ' if current_lang == 'th' else 'Request' }}</label>
               <pre class="small bg-body-tertiary border rounded p-2 mb-0" style="max-height: 220px; overflow: auto;">${escapeHtml(formatHistoryValue({
                 headers: entry.request_headers || {},
                 query: entry.request_query || {},
@@ -3134,7 +3244,7 @@
               }))}</pre>
             </div>
             <div class="col-12 col-lg-6">
-              <label class="form-label small mb-1">Response</label>
+              <label class="form-label small mb-1">{{ 'ผลลัพธ์' if current_lang == 'th' else 'Response' }}</label>
               <pre class="small bg-body-tertiary border rounded p-2 mb-0" style="max-height: 220px; overflow: auto;">${escapeHtml(formatHistoryValue(responseValue))}</pre>
             </div>
           </div>
@@ -3155,7 +3265,7 @@
     const history = await requestApiRequestHistory(draftSource, draftRequest, {
       startDate,
       endDate,
-      limit: 150,
+      limit: 10,
     });
     renderRequestHistoryEntries(requestRow, history);
   };
@@ -3231,12 +3341,12 @@
     }
     row.addEventListener('input', (event) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-        stopEndpointSourceAutoRefresh(row, 'Source changed. Click Use Source to restart auto refresh.');
+        stopEndpointSourceAutoRefresh(row, {{ ('แหล่งข้อมูลถูกเปลี่ยน กรุณากด ใช้แหล่งข้อมูล เพื่อเริ่มรีเฟรชอัตโนมัติอีกครั้ง' if current_lang == 'th' else 'Source changed. Click Use Source to restart auto refresh.') | tojson }});
       }
     });
     row.addEventListener('change', (event) => {
       if (event.target instanceof HTMLSelectElement) {
-        stopEndpointSourceAutoRefresh(row, 'Source changed. Click Use Source to restart auto refresh.');
+        stopEndpointSourceAutoRefresh(row, {{ ('แหล่งข้อมูลถูกเปลี่ยน กรุณากด ใช้แหล่งข้อมูล เพื่อเริ่มรีเฟรชอัตโนมัติอีกครั้ง' if current_lang == 'th' else 'Source changed. Click Use Source to restart auto refresh.') | tojson }});
       }
     });
     if (addRequestBtn) {
@@ -3255,15 +3365,15 @@
       useSourceBtn.addEventListener('click', async () => {
         const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
         if (!draftSource.name) {
-          alert('Please enter source name before using this source.');
+          alert({{ ('กรุณากรอกชื่อแหล่งข้อมูลก่อนใช้งานแหล่งข้อมูลนี้' if current_lang == 'th' else 'Please enter source name before using this source.') | tojson }});
           return;
         }
         if (draftSource.format !== 'api') {
-          alert('Use Source preview is available for API sources only.');
+          alert({{ ('การดูตัวอย่าง ใช้แหล่งข้อมูล ใช้ได้เฉพาะแหล่งข้อมูลแบบ API เท่านั้น' if current_lang == 'th' else 'Use Source preview is available for API sources only.') | tojson }});
           return;
         }
         useSourceBtn.disabled = true;
-        useSourceBtn.textContent = 'Loading...';
+        useSourceBtn.textContent = {{ ('กำลังโหลด...' if current_lang == 'th' else 'Loading...') | tojson }};
         try {
           const payload = await requestSourcePreview(draftSource);
           applySourcePreviewPayload(row, draftSource, payload);
@@ -3271,9 +3381,9 @@
           rememberUseSourceButtonActivated(row);
           startEndpointSourceAutoRefresh(row, payload.execution_state || {});
         } catch (error) {
-          alert(`Use Source failed: ${getRequestErrorMessage(error)}`);
+          alert(`{{ 'ใช้แหล่งข้อมูลไม่สำเร็จ:' if current_lang == 'th' else 'Use Source failed:' }} ${getRequestErrorMessage(error)}`);
         } finally {
-          useSourceBtn.textContent = 'Use Source';
+          useSourceBtn.textContent = {{ ('ใช้แหล่งข้อมูล' if current_lang == 'th' else 'Use Source') | tojson }};
           updateEndpointSourceVisibility(row);
         }
       });
@@ -3382,7 +3492,7 @@
     if (previewLiv24DataBtn && previewLiv24DataOutput && !previewLiv24DataBtn.dataset.endpointBound) {
       previewLiv24DataBtn.dataset.endpointBound = 'true';
       previewLiv24DataBtn.addEventListener('click', async () => {
-        previewLiv24DataOutput.textContent = 'Loading source data...';
+        previewLiv24DataOutput.textContent = {{ ('กำลังโหลดข้อมูลแหล่งข้อมูล...' if current_lang == 'th' else 'Loading source data...') | tojson }};
         try {
           const bulkSourceSelect = document.getElementById('bulkSourceName');
           const selectedSourceName = (bulkSourceSelect?.value || '').trim();
@@ -3394,14 +3504,14 @@
               ).then(async (response) => {
                 const data = await response.json();
                 if (!response.ok || data.error) {
-                  throw new Error(data.error || 'Failed to load source data');
+                  throw new Error(data.error || {{ ('โหลดข้อมูลแหล่งข้อมูลไม่สำเร็จ' if current_lang == 'th' else 'Failed to load source data') | tojson }});
                 }
                 return data;
               });
           previewLiv24DataOutput.dataset.sourceName = payload.source?.name || selectedSourceName || '';
           previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
         } catch (error) {
-          previewLiv24DataOutput.textContent = `Failed to load source data: ${getRequestErrorMessage(error)}`;
+          previewLiv24DataOutput.textContent = `{{ 'โหลดข้อมูลแหล่งข้อมูลไม่สำเร็จ:' if current_lang == 'th' else 'Failed to load source data:' }} ${getRequestErrorMessage(error)}`;
         }
       });
     }
@@ -3417,8 +3527,8 @@
         }
         window.location.href = buildSourceHistoryExportUrl({
           sourceName: selectedSourceName,
-          startDate: sourceDataExportStartDate?.value || '',
-          endDate: sourceDataExportEndDate?.value || '',
+          startDate: normalizeDisplayDateToIso(sourceDataExportStartDate?.value || ''),
+          endDate: normalizeDisplayDateToIso(sourceDataExportEndDate?.value || ''),
         });
       });
     }
@@ -3695,11 +3805,11 @@
         row.className = 'row g-2 align-items-end mb-2 top-definition-legend-row';
         row.innerHTML = `
           <div class="col-12 col-md-5">
-            <label class="form-label">Severity</label>
+            <label class="form-label">{{ 'ระดับ' if current_lang == 'th' else 'Severity' }}</label>
             <input class="form-control" type="text" name="top_definition_legend_label_${systemKey}" value="">
           </div>
           <div class="col-6 col-md-3">
-            <label class="form-label">Color</label>
+            <label class="form-label">{{ 'สี' if current_lang == 'th' else 'Color' }}</label>
             <input class="form-control form-control-color" type="color" name="top_definition_legend_color_${systemKey}" value="${defaultColor}">
           </div>
           <div class="col-6 col-md-2">
@@ -3854,14 +3964,14 @@
     onUpload = null
   ) => {
     if (!fileInput || !fileInput.files.length) {
-      alert('Choose a file to upload.');
+      alert({{ ('กรุณาเลือกไฟล์เพื่ออัปโหลด' if current_lang == 'th' else 'Choose a file to upload.') | tojson }});
       return;
     }
     const formData = new FormData();
     formData.append('file', fileInput.files[0]);
     const response = await fetch(uploadSettingsRoute, { method: 'POST', body: formData });
     if (!response.ok) {
-      alert('Upload failed.');
+      alert({{ ('อัปโหลดไม่สำเร็จ' if current_lang == 'th' else 'Upload failed.') | tojson }});
       return;
     }
     const data = await response.json();
@@ -3883,7 +3993,7 @@
     const targetSelect = selects.find(Boolean);
     const selected = targetSelect ? targetSelect.value : '';
     if (!selected) {
-      alert('Select a saved file to delete.');
+      alert({{ ('กรุณาเลือกไฟล์ที่บันทึกไว้เพื่อลบ' if current_lang == 'th' else 'Select a saved file to delete.') | tojson }});
       return;
     }
     const response = await fetch(deleteSettingsRoute, {
@@ -3892,7 +4002,7 @@
       body: JSON.stringify({ path: selected }),
     });
     if (!response.ok) {
-      alert('Delete failed.');
+      alert({{ ('ลบไม่สำเร็จ' if current_lang == 'th' else 'Delete failed.') | tojson }});
       return;
     }
     const data = await response.json();
@@ -5296,7 +5406,7 @@
       }
       const logoIconPath = getLogoIconPath();
       if (!logoIconPath) {
-        alert('Upload a floor plan logo before adding floor plan logos.');
+        alert({{ ('กรุณาอัปโหลดโลโก้ผังชั้นก่อนเพิ่มโลโก้ลงในผังชั้น' if current_lang == 'th' else 'Upload a floor plan logo before adding floor plan logos.') | tojson }});
         return;
       }
       const response = await fetch(editorData.createLogoRoute, {
