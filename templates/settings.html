@@ -1569,7 +1569,7 @@
   const getRequestErrorMessage = (error) =>
     error instanceof Error ? error.message : String(error || 'Unknown error');
 
-  const currentLanguage = {{ current_lang | tojson }};
+  window.currentLanguage = {{ current_lang | tojson }};
   const projectDateTimeFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: {{ settings.project_timezone | tojson }},
     year: 'numeric',
@@ -1594,7 +1594,8 @@
         .filter((part) => part.type !== 'literal')
         .map((part) => [part.type, part.value])
     );
-    const dateText = currentLanguage === 'th'
+    const language = window.currentLanguage || 'en';
+    const dateText = language === 'th'
       ? `${parts.day}/${parts.month}/${parts.year}`
       : `${parts.year}/${parts.month}/${parts.day}`;
     return `${dateText} ${parts.hour}:${parts.minute}`;
@@ -2000,7 +2001,7 @@
   const getRequestErrorMessage = (error) =>
     error instanceof Error ? error.message : String(error || 'Unknown error');
 
-  const currentLanguage = {{ current_lang | tojson }};
+  window.currentLanguage = {{ current_lang | tojson }};
   const projectDateTimeFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: {{ settings.project_timezone | tojson }},
     year: 'numeric',
@@ -2025,7 +2026,8 @@
         .filter((part) => part.type !== 'literal')
         .map((part) => [part.type, part.value])
     );
-    const dateText = currentLanguage === 'th'
+    const language = window.currentLanguage || 'en';
+    const dateText = language === 'th'
       ? `${parts.day}/${parts.month}/${parts.year}`
       : `${parts.year}/${parts.month}/${parts.day}`;
     return `${dateText} ${parts.hour}:${parts.minute}`;
