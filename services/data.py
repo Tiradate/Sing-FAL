@@ -1116,8 +1116,13 @@ def get_avg_signal_quality():
         return round(row["avg_signal"] or 0, 1)
 
 
-def get_active_alarms():
+def get_active_alarms(floor_id=None):
     with connect(SENSOR_DB) as conn:
+        if floor_id:
+            return conn.execute(
+                "SELECT * FROM alarm_events WHERE active = 1 AND floor_id = ? ORDER BY ts DESC",
+                (floor_id,),
+            ).fetchall()
         return conn.execute(
             "SELECT * FROM alarm_events WHERE active = 1 ORDER BY ts DESC"
         ).fetchall()
@@ -1275,12 +1280,13 @@ def _get_metric_avg_by_zone(metrics, floor_id=None, is_outdoor=False):
         return {row["metric"]: {"avg_value": row["avg_value"], "unit": row["unit"]} for row in rows}
 
 
-def get_daily_series(metric="pm25", floor_id=None, series_timezone=None):
+def get_daily_series(metric="pm25", floor_id=None, series_timezone=None, day_offset=0):
     return _get_time_series(
         metric=metric,
         floor_id=floor_id,
         bucket="hour",
         series_timezone=series_timezone,
+        day_offset=day_offset,
     )
 
 
@@ -1323,7 +1329,7 @@ def get_weekly_series(metric="pm25", floor_id=None, series_timezone=None):
     )
 
 
-def _get_time_series(metric="pm25", floor_id=None, bucket="hour", series_timezone=None):
+def _get_time_series(metric="pm25", floor_id=None, bucket="hour", series_timezone=None, day_offset=0):
     series_timezone = _coerce_series_timezone(series_timezone)
     latest_ts = _get_latest_metric_timestamp(metric, floor_id=floor_id)
     if latest_ts is None:
@@ -1356,7 +1362,7 @@ def _get_time_series(metric="pm25", floor_id=None, bucket="hour", series_timezon
         buckets = {label: [] for label in bucket_labels}
         label_format = "%Y-%m-%d"
     else:
-        local_end = local_latest.replace(minute=0, second=0, microsecond=0)
+        local_end = local_latest.replace(minute=0, second=0, microsecond=0) + timedelta(days=int(day_offset or 0))
         local_start = local_end - timedelta(hours=23)
         utc_start = local_start.astimezone(timezone.utc)
         utc_end = (local_end + timedelta(hours=1)).astimezone(timezone.utc)

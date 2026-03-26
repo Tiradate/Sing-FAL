@@ -265,6 +265,15 @@ _BACKGROUND_SOURCE_POLLING_LOCK = threading.Lock()
 _BACKGROUND_SOURCE_POLLING_STATE_LOCK = threading.Lock()
 _BACKGROUND_SOURCE_POLLING_THREAD = None
 _BACKGROUND_SOURCE_POLLING_STATE = {}
+_SOURCE_REQUEST_HISTORY_JOB_LOCK = threading.Lock()
+_SOURCE_REQUEST_HISTORY_JOBS = {}
+_SOURCE_REQUEST_HISTORY_JOB_RETENTION_SECONDS = 15 * 60
+_SOURCE_REQUEST_HISTORY_EXPORT_DIR = os.path.join(
+    BASE_DIR,
+    "tmp",
+    "source_request_history_exports",
+)
+os.makedirs(_SOURCE_REQUEST_HISTORY_EXPORT_DIR, exist_ok=True)
 
 SUPPORTED_LANGUAGES = {
     "en": "ENG",
@@ -866,7 +875,8 @@ def index():
     floor_id = floor_param or (floors[0] if floors else None)
     devices = data_service.get_devices()
     alarm_severity = data_service.get_device_alarm_severity()
-    active_alarms = data_service.get_active_alarms()
+    active_alarms = data_service.get_active_alarms(floor_id=floor_id)
+    all_active_alarms = data_service.get_active_alarms()
 
     device_label_map = {}
     for device in devices:
@@ -975,16 +985,29 @@ def index():
     device_severity = derive_device_severity(
         devices, device_metric_severity, alarm_severity, settings
     )
+    psychro_points = []
+    for device in devices:
+        did = device_value(device, "device_id")
+        label = device_value(device, "label") or did
+        m = device_metrics.get(did, {})
+        t_val = (m.get("temperature") or {}).get("value")
+        h_val = (m.get("humidity") or {}).get("value")
+        if t_val is not None and h_val is not None:
+            psychro_points.append({
+                "x": round(float(t_val), 1),
+                "y": round(float(h_val), 1),
+                "label": label,
+            })
     critical_levels = set(settings.get("critical_levels", []))
     if metric_keys:
         active_alarms = [alarm for alarm in active_alarms if alarm["metric"] in metric_keys]
 
     latest_alarm_id = None
-    if active_alarms:
+    if all_active_alarms:
         latest_alarm_id = max(
             (
                 record_value(alarm, "id")
-                for alarm in active_alarms
+                for alarm in all_active_alarms
                 if record_value(alarm, "id") is not None
             ),
             default=None,
@@ -1082,6 +1105,7 @@ def index():
         all_data_end=format_project_datetime_local_input(all_data_end, settings),
         default_view_interval=default_view_interval,
         status_label=data_service.aggregate_status_label(settings),
+        psychro_points=psychro_points,
     )
 
 
@@ -1690,12 +1714,18 @@ def graphs_daily():
     settings = settings_service.load_settings()
     metric = request.args.get("metric", "pm25")
     floor_id = request.args.get("floor")
+    try:
+        day_offset = int(request.args.get("day_offset", 0))
+    except (TypeError, ValueError):
+        day_offset = 0
+    day_offset = max(-30, min(0, day_offset))
     labels, values = data_service.get_daily_series(
         metric,
         floor_id,
         series_timezone=get_project_timezone(settings),
+        day_offset=day_offset,
     )
-    return jsonify({"labels": labels, "values": values})
+    return jsonify({"labels": labels, "values": values, "day_offset": day_offset})
 
 
 @app.route("/graphs/weekly")
@@ -3233,6 +3263,277 @@ def _normalize_history_date_text(value):
     raise ValueError("Invalid date format")
 
 
+def _source_request_history_owner_key():
+    user_id = session.get("user_id")
+    username = session.get("username")
+    return f"{user_id}:{username}"
+
+
+def _build_source_request_history_filename(source_name, start_date="", end_date=""):
+    filename_parts = ["source_request_history", str(source_name or "").strip().replace(" ", "_")]
+    if start_date:
+        filename_parts.append(str(start_date).strip())
+    if end_date:
+        filename_parts.append(str(end_date).strip())
+    return "_".join(part for part in filename_parts if part) + ".csv"
+
+
+def _write_source_request_history_csv(file_obj, rows):
+    writer = csv.writer(file_obj)
+    writer.writerow(
+        [
+            "id",
+            "created_at",
+            "source_name",
+            "request_role",
+            "request_name",
+            "request_method",
+            "request_path",
+            "request_url",
+            "use_auth",
+            "request_headers",
+            "request_query",
+            "request_body",
+            "response_status",
+            "response_code",
+            "response_payload",
+            "error_message",
+        ]
+    )
+    for row in rows:
+        writer.writerow(
+            [
+                row.get("id"),
+                row.get("created_at"),
+                row.get("source_name"),
+                row.get("request_role"),
+                row.get("request_name"),
+                row.get("request_method"),
+                row.get("request_path"),
+                row.get("request_url"),
+                1 if row.get("use_auth") else 0,
+                json.dumps(row.get("request_headers") or {}, ensure_ascii=False),
+                json.dumps(row.get("request_query") or {}, ensure_ascii=False),
+                row.get("request_body") or "",
+                row.get("response_status") or "",
+                row.get("response_code"),
+                json.dumps(row.get("response_payload") or {}, ensure_ascii=False),
+                row.get("error_message") or "",
+            ]
+        )
+
+
+def _remove_source_request_history_export_file(file_path):
+    path = str(file_path or "").strip()
+    if not path:
+        return
+    try:
+        if os.path.isfile(path):
+            os.remove(path)
+    except OSError:
+        pass
+
+
+def _parse_source_request_history_job_datetime(value):
+    text = str(value or "").strip()
+    if not text:
+        return datetime.now(timezone.utc)
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return datetime.now(timezone.utc)
+
+
+def _prune_source_request_history_jobs():
+    stale_jobs = []
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=_SOURCE_REQUEST_HISTORY_JOB_RETENTION_SECONDS)
+    with _SOURCE_REQUEST_HISTORY_JOB_LOCK:
+        for job_id in list(_SOURCE_REQUEST_HISTORY_JOBS.keys()):
+            job = _SOURCE_REQUEST_HISTORY_JOBS[job_id]
+            updated_at = _parse_source_request_history_job_datetime(job.get("updated_at"))
+            if updated_at >= cutoff:
+                continue
+            stale_jobs.append(_SOURCE_REQUEST_HISTORY_JOBS.pop(job_id))
+    for job in stale_jobs:
+        _remove_source_request_history_export_file(job.get("file_path"))
+
+
+def _update_source_request_history_job(job_id, **changes):
+    with _SOURCE_REQUEST_HISTORY_JOB_LOCK:
+        job = _SOURCE_REQUEST_HISTORY_JOBS.get(job_id)
+        if not job:
+            return None
+        job.update(changes)
+        job["updated_at"] = datetime.now(timezone.utc).isoformat()
+        return dict(job)
+
+
+def _serialize_source_request_history_job(job):
+    payload = {
+        "job_id": job.get("job_id"),
+        "mode": job.get("mode"),
+        "status": job.get("status"),
+        "created_at": job.get("created_at"),
+        "updated_at": job.get("updated_at"),
+        "row_count": int(job.get("row_count") or 0),
+    }
+    if job.get("error"):
+        payload["error"] = job.get("error")
+    if job.get("mode") == "list" and job.get("status") == "completed":
+        payload["history"] = job.get("history") or []
+    if job.get("mode") == "export" and job.get("status") == "completed":
+        payload["download_name"] = job.get("download_name") or ""
+        if job.get("file_path"):
+            payload["download_url"] = url_for(
+                "download_endpoint_source_request_history_job",
+                job_id=job.get("job_id"),
+            )
+    return payload
+
+
+def _get_source_request_history_job_for_current_user(job_id):
+    _prune_source_request_history_jobs()
+    owner_key = _source_request_history_owner_key()
+    with _SOURCE_REQUEST_HISTORY_JOB_LOCK:
+        job = _SOURCE_REQUEST_HISTORY_JOBS.get(job_id)
+        if not job:
+            return None
+        if job.get("owner_key") != owner_key:
+            return None
+        return dict(job)
+
+
+def _run_source_request_history_job(
+    job_id,
+    *,
+    mode,
+    history_filters,
+    limit,
+    source_name,
+    start_date="",
+    end_date="",
+):
+    _update_source_request_history_job(job_id, status="running", error="", history=[])
+    export_path = ""
+    try:
+        if mode == "list":
+            history = list_api_request_history(history_filters, limit=limit)
+            _update_source_request_history_job(
+                job_id,
+                status="completed",
+                history=history,
+                row_count=len(history),
+            )
+            return
+
+        if mode != "export":
+            raise ValueError("Unsupported source request history job mode")
+
+        rows = export_api_request_history(history_filters, limit=limit)
+        filename = _build_source_request_history_filename(source_name, start_date, end_date)
+        export_name = f"{job_id}_{secure_filename(filename) or 'source_request_history.csv'}"
+        export_path = os.path.join(_SOURCE_REQUEST_HISTORY_EXPORT_DIR, export_name)
+        with open(export_path, "w", encoding="utf-8-sig", newline="") as csv_file:
+            _write_source_request_history_csv(csv_file, rows)
+        _update_source_request_history_job(
+            job_id,
+            status="completed",
+            row_count=len(rows),
+            download_name=filename,
+            file_path=export_path,
+        )
+    except Exception as exc:
+        _remove_source_request_history_export_file(export_path)
+        _update_source_request_history_job(
+            job_id,
+            status="error",
+            error=str(exc),
+            history=[],
+            row_count=0,
+            download_name="",
+            file_path="",
+        )
+
+
+def _start_source_request_history_job(
+    *,
+    mode,
+    history_filters,
+    limit,
+    source_name,
+    start_date="",
+    end_date="",
+):
+    _prune_source_request_history_jobs()
+    job_id = uuid.uuid4().hex
+    now = datetime.now(timezone.utc).isoformat()
+    with _SOURCE_REQUEST_HISTORY_JOB_LOCK:
+        _SOURCE_REQUEST_HISTORY_JOBS[job_id] = {
+            "job_id": job_id,
+            "owner_key": _source_request_history_owner_key(),
+            "mode": mode,
+            "status": "queued",
+            "created_at": now,
+            "updated_at": now,
+            "error": "",
+            "history": [],
+            "row_count": 0,
+            "download_name": "",
+            "file_path": "",
+        }
+    worker = threading.Thread(
+        target=_run_source_request_history_job,
+        kwargs={
+            "job_id": job_id,
+            "mode": mode,
+            "history_filters": dict(history_filters or {}),
+            "limit": limit,
+            "source_name": source_name,
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+        daemon=True,
+    )
+    worker.start()
+    return _get_source_request_history_job_for_current_user(job_id)
+
+
+def _build_source_request_history_job_context(settings, payload):
+    mode = str(payload.get("mode") or "list").strip().lower()
+    if mode not in {"list", "export"}:
+        raise ValueError("Invalid source request history mode")
+
+    try:
+        source = _resolve_source_from_request(settings, payload=payload)
+    except LookupError as exc:
+        raise LookupError(str(exc))
+    except ValueError as exc:
+        raise ValueError(str(exc))
+
+    request_definition = payload.get("request")
+    if mode == "list" and not isinstance(request_definition, dict):
+        raise ValueError("Missing request definition")
+
+    start_date = str(payload.get("start_date") or "").strip()
+    end_date = str(payload.get("end_date") or "").strip()
+    history_filters = {"source_name": str(source.get("name") or "").strip()}
+    if isinstance(request_definition, dict):
+        history_filters.update(_source_request_history_filters(source, request_definition))
+    history_filters.update(_history_date_range_filters(start_date, end_date))
+
+    default_limit = 50000 if mode == "export" else 150
+    max_limit = 50000 if mode == "export" else 5000
+    limit = max(1, min(int(payload.get("limit") or default_limit), max_limit))
+    return {
+        "mode": mode,
+        "source_name": str(source.get("name") or "").strip(),
+        "start_date": start_date,
+        "end_date": end_date,
+        "history_filters": history_filters,
+        "limit": limit,
+    }
+
+
 def _payload_latest_value_timestamp(payload):
     latest_ts = None
     items = _coerce_collection_items(payload)
@@ -3321,6 +3622,46 @@ def _sync_latest_history_to_sensor_db(settings):
 @app.route("/api/settings/source-devices", methods=["GET", "POST"])
 def get_endpoint_source_devices():
     return preview_endpoint_source_data()
+
+
+@app.post("/api/settings/source-token")
+def get_endpoint_source_token():
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    settings = settings_service.load_settings()
+    payload = request.get_json(silent=True) or {}
+    if isinstance(payload.get("sources"), list):
+        settings["endpoint_sources"] = _normalize_endpoint_source_list(payload.get("sources"))
+
+    try:
+        source = _resolve_source_from_request(settings, payload=payload)
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    if source.get("format") != "api":
+        return jsonify({"error": "Token fetch is only supported for API format sources"}), 400
+
+    try:
+        token = _fetch_source_token(source)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    source["token"] = token
+    settings_updated = _save_shared_source_token(settings, source, token)
+    if settings_updated:
+        settings_service.save_settings(settings)
+
+    return jsonify(
+        {
+            "token": token,
+            "source": str(source.get("name") or "").strip(),
+            "cache_key": _get_source_cache_key(source),
+            "settings_updated": settings_updated,
+        }
+    )
 
 
 @app.route("/api/settings/source-preview", methods=["GET", "POST"])
@@ -3480,6 +3821,63 @@ def get_endpoint_source_request_history():
     return jsonify({"history": history})
 
 
+@app.post("/api/settings/source-request-history/jobs")
+def create_endpoint_source_request_history_job():
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    settings = settings_service.load_settings()
+    payload = request.get_json(silent=True) or {}
+
+    try:
+        job_context = _build_source_request_history_job_context(settings, payload)
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    job = _start_source_request_history_job(**job_context)
+    if not job:
+        return jsonify({"error": "Failed to start source request history job"}), 500
+    return jsonify(_serialize_source_request_history_job(job)), 202
+
+
+@app.get("/api/settings/source-request-history/jobs/<job_id>")
+def get_endpoint_source_request_history_job(job_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    job = _get_source_request_history_job_for_current_user(job_id)
+    if not job:
+        return jsonify({"error": "Source request history job not found"}), 404
+    return jsonify(_serialize_source_request_history_job(job))
+
+
+@app.get("/api/settings/source-request-history/jobs/<job_id>/download")
+def download_endpoint_source_request_history_job(job_id):
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    job = _get_source_request_history_job_for_current_user(job_id)
+    if not job:
+        return jsonify({"error": "Source request history job not found"}), 404
+    if job.get("mode") != "export":
+        return jsonify({"error": "Source request history job is not an export"}), 400
+    if job.get("status") != "completed":
+        return jsonify({"error": "Source request history export is not ready"}), 409
+
+    file_path = str(job.get("file_path") or "").strip()
+    if not file_path or not os.path.isfile(file_path):
+        return jsonify({"error": "Source request history export file not found"}), 404
+
+    return send_file(
+        file_path,
+        as_attachment=True,
+        download_name=job.get("download_name") or os.path.basename(file_path),
+        mimetype="text/csv",
+    )
+
+
 @app.get("/api/settings/source-request-history/export.csv")
 def export_endpoint_source_request_history():
     if not session.get("is_admin"):
@@ -3508,59 +3906,12 @@ def export_endpoint_source_request_history():
         return jsonify({"error": str(exc)}), 400
 
     csv_buffer = io.StringIO()
-    writer = csv.writer(csv_buffer)
-    writer.writerow(
-        [
-            "id",
-            "created_at",
-            "source_name",
-            "request_role",
-            "request_name",
-            "request_method",
-            "request_path",
-            "request_url",
-            "use_auth",
-            "request_headers",
-            "request_query",
-            "request_body",
-            "response_status",
-            "response_code",
-            "response_payload",
-            "error_message",
-        ]
-    )
-    for row in rows:
-        writer.writerow(
-            [
-                row.get("id"),
-                row.get("created_at"),
-                row.get("source_name"),
-                row.get("request_role"),
-                row.get("request_name"),
-                row.get("request_method"),
-                row.get("request_path"),
-                row.get("request_url"),
-                1 if row.get("use_auth") else 0,
-                json.dumps(row.get("request_headers") or {}, ensure_ascii=False),
-                json.dumps(row.get("request_query") or {}, ensure_ascii=False),
-                row.get("request_body") or "",
-                row.get("response_status") or "",
-                row.get("response_code"),
-                json.dumps(row.get("response_payload") or {}, ensure_ascii=False),
-                row.get("error_message") or "",
-            ]
-        )
-
+    _write_source_request_history_csv(csv_buffer, rows)
     csv_bytes = io.BytesIO(csv_buffer.getvalue().encode("utf-8-sig"))
     csv_bytes.seek(0)
-    filename_parts = ["source_request_history", source_name.replace(" ", "_")]
     start_date = str(request.args.get("start_date") or "").strip()
     end_date = str(request.args.get("end_date") or "").strip()
-    if start_date:
-        filename_parts.append(start_date)
-    if end_date:
-        filename_parts.append(end_date)
-    filename = "_".join(part for part in filename_parts if part) + ".csv"
+    filename = _build_source_request_history_filename(source_name, start_date, end_date)
     return send_file(csv_bytes, as_attachment=True, download_name=filename, mimetype="text/csv")
 
 

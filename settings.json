@@ -5,7 +5,7 @@
   "show_icons": {
     "bell": true,
     "calendar": true,
-    "download": true,
+    "download": false,
     "settings": true
   },
   "show_severity_lines": true,
@@ -442,8 +442,89 @@
             "max_round_times": 0,
             "max_interval_minutes": 0,
             "interval_unlimited": true,
-            "run_every_times": 5,
-            "run_interval_minutes": 5
+            "run_every_times": 10,
+            "run_interval_minutes": 10
+          },
+          {
+            "id": "history",
+            "role": "custom",
+            "name": "History",
+            "method": "GET",
+            "path": "/api/external/v1/history",
+            "params": [
+              {
+                "key": "device_uuid",
+                "values": [
+                  "{{device_uuid}}"
+                ],
+                "value": "{{device_uuid}}"
+              },
+              {
+                "key": "aggregation",
+                "values": [
+                  "raw"
+                ],
+                "value": "raw"
+              },
+              {
+                "key": "fields",
+                "values": [
+                  "all"
+                ],
+                "value": "all"
+              },
+              {
+                "key": "lookback_seconds",
+                "values": [
+                  "86400"
+                ],
+                "value": "86400"
+              }
+            ],
+            "body": "",
+            "use_auth": true,
+            "max_round_times": 0,
+            "max_interval_minutes": 0,
+            "interval_unlimited": false,
+            "run_every_times": 0,
+            "run_interval_minutes": 0
+          },
+          {
+            "id": "history_export",
+            "role": "custom",
+            "name": "History Export",
+            "method": "GET",
+            "path": "/api/external/v1/history/export",
+            "params": [
+              {
+                "key": "device_uuid",
+                "values": [
+                  "{{device_uuid}}"
+                ],
+                "value": "{{device_uuid}}"
+              },
+              {
+                "key": "aggregation",
+                "values": [
+                  "raw"
+                ],
+                "value": "raw"
+              },
+              {
+                "key": "fields",
+                "values": [
+                  "all"
+                ],
+                "value": "all"
+              }
+            ],
+            "body": "",
+            "use_auth": true,
+            "max_round_times": 0,
+            "max_interval_minutes": 0,
+            "interval_unlimited": false,
+            "run_every_times": 0,
+            "run_interval_minutes": 0
           }
         ]
       },

@@ -1,6 +1,40 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<style>
+  .custom-file-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .custom-file-picker-display {
+    min-width: 0;
+    flex: 1 1 12rem;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .custom-file-picker-display.text-muted {
+    color: var(--bs-secondary-color) !important;
+  }
+
+  .date-picker-proxy {
+    position: fixed;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    border: 0;
+    padding: 0;
+  }
+</style>
 <div class="card shadow-sm settings-card">
   <div class="card-header settings-card-header">
     <h5 class="mb-0">{{ 'การตั้งค่า' if current_lang == 'th' else 'Settings' }}</h5>
@@ -210,11 +244,11 @@
       <div class="row g-2 align-items-end mt-2">
         <div class="col-12 col-md-3">
           <label class="form-label form-label-sm" for="sourceDataExportStartDate">{{ 'วันที่เริ่มต้น' if current_lang == 'th' else 'Start Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
-          <input class="form-control form-control-sm" type="text" id="sourceDataExportStartDate" placeholder="dd/mm/yyyy" inputmode="numeric">
+          <input class="form-control form-control-sm" type="text" id="sourceDataExportStartDate" placeholder="dd/mm/yyyy" inputmode="numeric" data-display-date-input>
         </div>
         <div class="col-12 col-md-3">
           <label class="form-label form-label-sm" for="sourceDataExportEndDate">{{ 'วันที่สิ้นสุด' if current_lang == 'th' else 'End Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
-          <input class="form-control form-control-sm" type="text" id="sourceDataExportEndDate" placeholder="dd/mm/yyyy" inputmode="numeric">
+          <input class="form-control form-control-sm" type="text" id="sourceDataExportEndDate" placeholder="dd/mm/yyyy" inputmode="numeric" data-display-date-input>
         </div>
         <div class="col-12 col-md-3">
           <button class="btn btn-outline-primary btn-sm w-100" type="button" id="downloadSourceDataBtn">{{ 'ดาวน์โหลด CSV ข้อมูลแหล่งข้อมูล' if current_lang == 'th' else 'Download Source Data CSV' }}</button>
@@ -463,12 +497,12 @@
                 </div>
                 <div class="row g-2 align-items-end mt-2">
                   <div class="col-12 col-md-3">
-                    <label class="form-label form-label-sm">{{ 'วันที่เริ่มต้น' if current_lang == 'th' else 'Start Date' }}</label>
-                    <input class="form-control form-control-sm" type="date" data-api-history-start-date>
+                    <label class="form-label form-label-sm">{{ 'วันที่เริ่มต้น' if current_lang == 'th' else 'Start Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
+                    <input class="form-control form-control-sm" type="text" placeholder="dd/mm/yyyy" inputmode="numeric" data-api-history-start-date data-display-date-input>
                   </div>
                   <div class="col-12 col-md-3">
-                    <label class="form-label form-label-sm">{{ 'วันที่สิ้นสุด' if current_lang == 'th' else 'End Date' }}</label>
-                    <input class="form-control form-control-sm" type="date" data-api-history-end-date>
+                    <label class="form-label form-label-sm">{{ 'วันที่สิ้นสุด' if current_lang == 'th' else 'End Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
+                    <input class="form-control form-control-sm" type="text" placeholder="dd/mm/yyyy" inputmode="numeric" data-api-history-end-date data-display-date-input>
                   </div>
                   <div class="col-12 col-md-3">
                     <button class="btn btn-outline-secondary btn-sm w-100" type="button" data-load-api-history>{{ 'โหลด' if current_lang == 'th' else 'Load' }}</button>
@@ -1298,18 +1332,18 @@
                   <input type="hidden" name="tab" value="user">
                   <div class="col-12 col-lg-4">
                     <label class="form-label form-label-sm">{{ 'วันที่เริ่มต้น' if current_lang == 'th' else 'Start Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
-                    <input class="form-control form-control-sm" type="text" name="login_history_start_date" value="{{ login_history_start_date or '' }}" placeholder="dd/mm/yyyy" inputmode="numeric">
+                    <input class="form-control form-control-sm" type="text" name="login_history_start_date" value="{{ login_history_start_date or '' }}" placeholder="dd/mm/yyyy" inputmode="numeric" data-display-date-input data-login-history-start-date>
                   </div>
                   <div class="col-12 col-lg-4">
                     <label class="form-label form-label-sm">{{ 'วันที่สิ้นสุด' if current_lang == 'th' else 'End Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
-                    <input class="form-control form-control-sm" type="text" name="login_history_end_date" value="{{ login_history_end_date or '' }}" placeholder="dd/mm/yyyy" inputmode="numeric">
+                    <input class="form-control form-control-sm" type="text" name="login_history_end_date" value="{{ login_history_end_date or '' }}" placeholder="dd/mm/yyyy" inputmode="numeric" data-display-date-input data-login-history-end-date>
                   </div>
                   <div class="col-12 col-lg-4">
                     <label class="form-label form-label-sm d-block">&nbsp;</label>
                     <div class="d-grid gap-2 d-md-flex">
                       <button class="btn btn-outline-secondary btn-sm flex-fill" type="submit">{{ 'โหลด' if current_lang == 'th' else 'Load' }}</button>
                       <a class="btn btn-outline-dark btn-sm flex-fill" href="{{ url_for('settings', tab='user') }}">{{ 'รีเซ็ต' if current_lang == 'th' else 'Reset' }}</a>
-                      <a class="btn btn-outline-primary btn-sm flex-fill" href="{{ url_for('export_login_history_csv', login_history_start_date=login_history_start_date or '', login_history_end_date=login_history_end_date or '') }}">{{ 'ดาวน์โหลด CSV' if current_lang == 'th' else 'Download CSV' }}</a>
+                      <a class="btn btn-outline-primary btn-sm flex-fill" href="{{ url_for('export_login_history_csv', login_history_start_date=login_history_start_date or '', login_history_end_date=login_history_end_date or '') }}" data-login-history-export-link data-export-base="{{ url_for('export_login_history_csv') }}">{{ 'ดาวน์โหลด CSV' if current_lang == 'th' else 'Download CSV' }}</a>
                     </div>
                   </div>
                 </form>
@@ -1545,432 +1579,64 @@
     toggle();
   };
 
+  const customFileChooseLabel = {{ ('เลือกไฟล์' if current_lang == 'th' else 'Choose file') | tojson }};
+  const customFileEmptyLabel = {{ ('ยังไม่ได้เลือกไฟล์' if current_lang == 'th' else 'No file selected') | tojson }};
+
+  const updateCustomFileInputLabel = (fileInput) => {
+    const display = fileInput?.parentElement?.querySelector('[data-custom-file-display]');
+    if (!display) {
+      return;
+    }
+    const fileNames = Array.from(fileInput.files || [])
+      .map((file) => file?.name || '')
+      .filter(Boolean);
+    display.textContent = fileNames.length ? fileNames.join(', ') : customFileEmptyLabel;
+    display.classList.toggle('text-muted', !fileNames.length);
+  };
+
+  const bindCustomFileInput = (fileInput) => {
+    if (!fileInput || fileInput.dataset.customFileInputBound === 'true') {
+      return;
+    }
+
+    fileInput.dataset.customFileInputBound = 'true';
+    fileInput.classList.add('d-none');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'custom-file-picker';
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'btn btn-outline-secondary';
+    trigger.textContent = customFileChooseLabel;
+
+    const display = document.createElement('div');
+    display.className = 'form-control custom-file-picker-display text-muted';
+    display.setAttribute('data-custom-file-display', 'true');
+
+    fileInput.parentNode.insertBefore(wrapper, fileInput);
+    wrapper.appendChild(fileInput);
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(display);
+
+    const openPicker = () => fileInput.click();
+    trigger.addEventListener('click', openPicker);
+    display.addEventListener('click', openPicker);
+    fileInput.addEventListener('change', () => updateCustomFileInputLabel(fileInput));
+
+    updateCustomFileInputLabel(fileInput);
+  };
+
+  const initializeCustomFileInputs = (root = document) => {
+    root.querySelectorAll('input[type="file"]').forEach((fileInput) => {
+      bindCustomFileInput(fileInput);
+    });
+  };
+
   bindColorToggle('cardHeaderTransparent', 'cardHeaderColor');
   bindColorToggle('cardBodyTransparent', 'cardBodyColor');
   bindColorToggle('pageBackgroundTransparent', 'pageBackgroundColor');
-
-  if (false) {
-  const endpointSourceList = document.getElementById('endpointSourceList');
-  const endpointSourceRowTemplate = document.getElementById('endpointSourceRowTemplate');
-  const addEndpointSourceBtn = document.getElementById('addEndpointSourceBtn');
-  const previewLiv24DataBtn = document.getElementById('previewLiv24DataBtn');
-  const downloadSourceDataBtn = document.getElementById('downloadSourceDataBtn');
-  const sourceDataExportStartDate = document.getElementById('sourceDataExportStartDate');
-  const sourceDataExportEndDate = document.getElementById('sourceDataExportEndDate');
-  const previewLiv24DataOutput = document.getElementById('previewLiv24DataOutput');
-  const sourceDeviceCatalog = {};
-  const endpointApiTemplates = editorData.endpointApiTemplates || [];
-  const endpointApiTemplateMap = new Map(
-    endpointApiTemplates.map((template) => [template.id, template])
-  );
-
-  const getEndpointRowField = (row, name) => row?.querySelector(`[name="${name}"]`);
-
-  const getRequestErrorMessage = (error) =>
-    error instanceof Error ? error.message : String(error || 'Unknown error');
-
-  window.currentLanguage = {{ current_lang | tojson }};
-  const projectDateTimeFormatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: {{ settings.project_timezone | tojson }},
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: {{ (settings.project_time_format == '12h') | tojson }},
-  });
-
-  const formatProjectDateTime = (value) => {
-    if (!value) {
-      return '';
-    }
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-      return String(value);
-    }
-    const parts = Object.fromEntries(
-      projectDateTimeFormatter
-        .formatToParts(parsed)
-        .filter((part) => part.type !== 'literal')
-        .map((part) => [part.type, part.value])
-    );
-    const language = window.currentLanguage || 'en';
-    const dateText = language === 'th'
-      ? `${parts.day}/${parts.month}/${parts.year}`
-      : `${parts.year}/${parts.month}/${parts.day}`;
-    return `${dateText} ${parts.hour}:${parts.minute}`;
-  };
-
-  const normalizeDisplayDateToIso = (value) => {
-    const text = String(value || '').trim();
-    if (!text) {
-      return '';
-    }
-    const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (!match) {
-      return text;
-    }
-    const [, day, month, year] = match;
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  };
-
-  const formatIsoDateToDisplay = (value) => {
-    const text = String(value || '').trim();
-    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!match) {
-      return text;
-    }
-    const [, year, month, day] = match;
-    return `${day}/${month}/${year}`;
-  };
-
-  const buildSourceHistoryExportUrl = ({ sourceName, requestDefinition = null, startDate = '', endDate = '' }) => {
-    const params = new URLSearchParams();
-    if (sourceName) {
-      params.set('source_name', sourceName);
-    }
-    if (requestDefinition) {
-      const normalizedRequest = normalizeEndpointRequestData(requestDefinition, 0);
-      if (normalizedRequest.role) {
-        params.set('request_role', normalizedRequest.role);
-      }
-      if (normalizedRequest.name) {
-        params.set('request_name', normalizedRequest.name);
-      }
-      if (normalizedRequest.method) {
-        params.set('request_method', normalizedRequest.method);
-      }
-      if (normalizedRequest.path) {
-        params.set('request_path', normalizedRequest.path);
-      }
-    }
-    if (startDate) {
-      params.set('start_date', startDate);
-    }
-    if (endDate) {
-      params.set('end_date', endDate);
-    }
-    return `${editorData.sourceRequestHistoryExportRoute}?${params.toString()}`;
-  };
-
-  const normalizeEndpointCacheKey = (value) => {
-    const text = (value || '').trim();
-    if (!text) {
-      return '';
-    }
-    try {
-      const normalized = text.includes('://') ? text : `https://${text.replace(/^\/+/, '')}`;
-      return new URL(normalized).host.toLowerCase();
-    } catch (error) {
-      return text
-        .replace(/^https?:\/\//i, '')
-        .split('/')[0]
-        .toLowerCase();
-    }
-  };
-
-  const getEndpointSourceCacheKey = (row) => {
-    const tokenUrlValue = getEndpointRowField(row, 'endpoint_api_token_url')?.value;
-    const baseUrlValue = getEndpointRowField(row, 'endpoint_base_url')?.value;
-    return normalizeEndpointCacheKey(tokenUrlValue) || normalizeEndpointCacheKey(baseUrlValue);
-  };
-
-  const collectEndpointSourceRow = (row) => ({
-    name: (getEndpointRowField(row, 'endpoint_name')?.value || '').trim(),
-    format: (getEndpointRowField(row, 'endpoint_format')?.value || 'api').trim(),
-    base_url: (getEndpointRowField(row, 'endpoint_base_url')?.value || '').trim(),
-    token: (getEndpointRowField(row, 'endpoint_token')?.value || '').trim(),
-    api: {
-      template_id: (getEndpointRowField(row, 'endpoint_api_template_id')?.value || '').trim(),
-      organizations_path: (getEndpointRowField(row, 'endpoint_api_organizations_path')?.value || '').trim(),
-      devices_path: (getEndpointRowField(row, 'endpoint_api_devices_path')?.value || '').trim(),
-      devices_org_param: (getEndpointRowField(row, 'endpoint_api_devices_org_param')?.value || '').trim(),
-      latest_values_path: (getEndpointRowField(row, 'endpoint_api_latest_values_path')?.value || '').trim(),
-      latest_values_device_param: (getEndpointRowField(row, 'endpoint_api_latest_values_device_param')?.value || '').trim(),
-      request_headers: getEndpointRowField(row, 'endpoint_api_request_headers')?.value || '{}',
-      token_url: (getEndpointRowField(row, 'endpoint_api_token_url')?.value || '').trim(),
-      token_method: (getEndpointRowField(row, 'endpoint_api_token_method')?.value || 'POST').trim(),
-      token_field: (getEndpointRowField(row, 'endpoint_api_token_field')?.value || 'access_token').trim(),
-      auth_username: (getEndpointRowField(row, 'endpoint_api_auth_username')?.value || '').trim(),
-      auth_password: getEndpointRowField(row, 'endpoint_api_auth_password')?.value || '',
-      auth_headers: getEndpointRowField(row, 'endpoint_api_auth_headers')?.value || '{}',
-      auth_body: getEndpointRowField(row, 'endpoint_api_auth_body')?.value || '',
-    },
-    mqtt: {
-      host: (getEndpointRowField(row, 'endpoint_mqtt_host')?.value || '').trim(),
-      port: Number.parseInt(getEndpointRowField(row, 'endpoint_mqtt_port')?.value || '1883', 10) || 1883,
-      username: (getEndpointRowField(row, 'endpoint_mqtt_username')?.value || '').trim(),
-      password: getEndpointRowField(row, 'endpoint_mqtt_password')?.value || '',
-      topic: (getEndpointRowField(row, 'endpoint_mqtt_topic')?.value || '').trim(),
-    },
-  });
-
-  const collectAllEndpointSources = () => {
-    if (!endpointSourceList) {
-      return [];
-    }
-    return Array.from(endpointSourceList.querySelectorAll('[data-endpoint-source-row]'))
-      .map((row) => collectEndpointSourceRow(row))
-      .filter((source) => source.name);
-  };
-
-  const getMissingGetTokenFields = (source) => {
-    const missingFields = [];
-    if (!(source?.name || '').trim()) {
-      missingFields.push('Source Name');
-    }
-    if (!(source?.base_url || '').trim()) {
-      missingFields.push('API Base URL');
-    }
-    if (!(source?.api?.organizations_path || '').trim()) {
-      missingFields.push('Organizations Path');
-    }
-    if (!(source?.api?.token_url || '').trim()) {
-      missingFields.push('Token URL');
-    }
-    return missingFields;
-  };
-
-  const applyTextValue = (row, name, value) => {
-    const input = getEndpointRowField(row, name);
-    if (input && value !== undefined && value !== null && value !== '') {
-      input.value = String(value);
-    }
-  };
-
-  const applyJsonValue = (row, name, value) => {
-    const input = getEndpointRowField(row, name);
-    if (!input || value === undefined || value === null) {
-      return;
-    }
-    input.value = JSON.stringify(value, null, 2);
-  };
-
-  const getTemplateRequest = (template, requestId) =>
-    (template?.requests || []).find((request) => request.id === requestId);
-
-  const getTemplateRequestValue = (template, requestId, fallbackKey) => {
-    const request = getTemplateRequest(template, requestId);
-    if (request) {
-      return request.path || request.url || '';
-    }
-    return template?.suggested?.[fallbackKey] || '';
-  };
-
-  const applyEndpointTemplateToRow = (row, templateId) => {
-    const template = endpointApiTemplateMap.get(templateId);
-    if (!row || !template) {
-      return;
-    }
-    applyTextValue(row, 'endpoint_base_url', template.base_url || '');
-    applyTextValue(
-      row,
-      'endpoint_api_organizations_path',
-      getTemplateRequestValue(template, template.suggested?.organizations_request_id, 'organizations_path')
-    );
-    applyTextValue(
-      row,
-      'endpoint_api_devices_path',
-      getTemplateRequestValue(template, template.suggested?.devices_request_id, 'devices_path')
-    );
-    applyTextValue(
-      row,
-      'endpoint_api_latest_values_path',
-      getTemplateRequestValue(template, template.suggested?.latest_values_request_id, 'latest_values_path')
-    );
-    applyTextValue(
-      row,
-      'endpoint_api_devices_org_param',
-      template.suggested?.devices_org_param || 'org_uuid'
-    );
-    applyTextValue(
-      row,
-      'endpoint_api_latest_values_device_param',
-      template.suggested?.latest_values_device_param || 'device_uuid'
-    );
-    applyJsonValue(row, 'endpoint_api_request_headers', template.suggested?.request_headers || {});
-    applyTextValue(
-      row,
-      'endpoint_api_token_url',
-      getTemplateRequestValue(template, template.suggested?.token_request_id, 'token_url')
-    );
-    applyTextValue(row, 'endpoint_api_token_method', template.suggested?.token_method || 'POST');
-    applyTextValue(row, 'endpoint_api_token_field', template.suggested?.token_field || 'access_token');
-    applyJsonValue(row, 'endpoint_api_auth_headers', template.suggested?.token_headers || {});
-    applyTextValue(row, 'endpoint_api_auth_body', template.suggested?.token_body || '');
-  };
-
-  const syncSharedTokenInputs = (sourceRow, token, cacheKey) => {
-    if (!endpointSourceList) {
-      return;
-    }
-    endpointSourceList.querySelectorAll('[data-endpoint-source-row]').forEach((row) => {
-      const matchesCache = cacheKey && getEndpointSourceCacheKey(row) === cacheKey;
-      if (row === sourceRow || matchesCache) {
-        const tokenInput = getEndpointRowField(row, 'endpoint_token');
-        if (tokenInput) {
-          tokenInput.value = token;
-        }
-      }
-    });
-  };
-
-  const updateEndpointSourceVisibility = (row) => {
-    if (!row) {
-      return;
-    }
-    const formatSelect = row.querySelector('[data-endpoint-format-select]');
-    const selectedFormat = formatSelect ? formatSelect.value : 'api';
-    row.querySelectorAll('[data-endpoint-api-fields]').forEach((field) => {
-      field.classList.toggle('d-none', selectedFormat !== 'api');
-    });
-    row.querySelectorAll('[data-endpoint-mqtt-fields]').forEach((field) => {
-      field.classList.toggle('d-none', selectedFormat !== 'mqtt');
-    });
-  };
-
-  const bindEndpointSourceRow = (row) => {
-    if (!row) {
-      return;
-    }
-    const formatSelect = row.querySelector('[data-endpoint-format-select]');
-    const sourceNameInput = row.querySelector('input[name="endpoint_name"]');
-    const templateSelect = row.querySelector('[data-endpoint-api-template-select]');
-    const getTokenBtn = row.querySelector('[data-get-source-token]');
-    const useApiBtn = row.querySelector('[data-use-api-source]');
-    const applyFormatState = () => {
-      updateEndpointSourceVisibility(row);
-      if (formatSelect) {
-        const isApi = formatSelect.value === 'api';
-        if (useApiBtn) {
-          useApiBtn.disabled = !isApi;
-        }
-        if (getTokenBtn) {
-          getTokenBtn.disabled = !isApi;
-        }
-      }
-    };
-    if (formatSelect) {
-      formatSelect.addEventListener('change', applyFormatState);
-    }
-    if (templateSelect) {
-      templateSelect.addEventListener('change', () => {
-        applyEndpointTemplateToRow(row, templateSelect.value);
-      });
-    }
-    if (getTokenBtn) {
-      getTokenBtn.addEventListener('click', async () => {
-        const draftSource = collectEndpointSourceRow(row);
-        const missingFields = getMissingGetTokenFields(draftSource);
-        if (missingFields.length) {
-          alert(`{{ 'กรุณากรอกฟิลด์ API ที่จำเป็นก่อนขอโทเค็น:' if current_lang == 'th' else 'Please fill required API fields before getting a token:' }} ${missingFields.join(', ')}`);
-          return;
-        }
-        getTokenBtn.disabled = true;
-        getTokenBtn.textContent = {{ ('กำลังโหลด...' if current_lang == 'th' else 'Loading...') | tojson }};
-        try {
-          const response = await fetch(editorData.sourceTokenRoute, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              source_name: draftSource.name,
-              source: draftSource,
-              sources: collectAllEndpointSources(),
-            }),
-          });
-          const payload = await response.json();
-          if (!response.ok || payload.error) {
-            throw new Error(payload.error || {{ ('ดึง bearer token ไม่สำเร็จ' if current_lang == 'th' else 'Failed to fetch bearer token') | tojson }});
-          }
-          syncSharedTokenInputs(row, payload.token || '', payload.cache_key || '');
-          if (previewLiv24DataOutput) {
-            previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
-          }
-        } catch (error) {
-          alert(`{{ 'ขอโทเค็นไม่สำเร็จ:' if current_lang == 'th' else 'Get Token failed:' }} ${getRequestErrorMessage(error)}`);
-        } finally {
-          getTokenBtn.disabled = formatSelect && formatSelect.value !== 'api';
-          getTokenBtn.textContent = {{ ('ขอโทเค็น' if current_lang == 'th' else 'Get Token') | tojson }};
-        }
-      });
-    }
-    if (useApiBtn) {
-      useApiBtn.addEventListener('click', async () => {
-        const sourceName = (sourceNameInput?.value || '').trim();
-        if (!sourceName) {
-          alert({{ ('กรุณากรอกชื่อแหล่งข้อมูลก่อนใช้งาน API' if current_lang == 'th' else 'Please enter source name before using API.') | tojson }});
-          return;
-        }
-        const draftSource = collectEndpointSourceRow(row);
-        useApiBtn.disabled = true;
-        useApiBtn.textContent = {{ ('กำลังโหลด...' if current_lang == 'th' else 'Loading...') | tojson }};
-        try {
-          const response = await fetch(editorData.sourceDevicesRoute, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ source: draftSource }),
-          });
-          const payload = await response.json();
-          if (!response.ok || payload.error) {
-            throw new Error(payload.error || {{ ('ดึงข้อมูลอุปกรณ์จากแหล่งข้อมูลไม่สำเร็จ' if current_lang == 'th' else 'Failed to fetch source devices') | tojson }});
-          }
-          sourceDeviceCatalog[payload.source || sourceName] = payload.ready_device_items || payload.device_items || payload.devices || [];
-          if (bulkSourceName) {
-            bulkSourceName.value = payload.source || sourceName;
-            refreshBulkSourceDeviceOptions();
-          }
-          if (previewLiv24DataOutput) {
-            previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
-          }
-        } catch (error) {
-          alert(`{{ 'ใช้งาน API ไม่สำเร็จ:' if current_lang == 'th' else 'Use API failed:' }} ${getRequestErrorMessage(error)}`);
-        } finally {
-          useApiBtn.disabled = formatSelect && formatSelect.value !== 'api';
-          useApiBtn.textContent = {{ ('ใช้ API' if current_lang == 'th' else 'Use API') | tojson }};
-        }
-      });
-    }
-    const removeBtn = row.querySelector('[data-remove-endpoint-source]');
-    if (removeBtn) {
-      removeBtn.addEventListener('click', () => {
-        row.remove();
-      });
-    }
-    applyFormatState();
-  };
-
-  if (endpointSourceList) {
-    endpointSourceList.querySelectorAll('[data-endpoint-source-row]').forEach(bindEndpointSourceRow);
-  }
-
-  if (addEndpointSourceBtn && endpointSourceList && endpointSourceRowTemplate) {
-    addEndpointSourceBtn.addEventListener('click', () => {
-      const fragment = endpointSourceRowTemplate.content.cloneNode(true);
-      const row = fragment.querySelector('[data-endpoint-source-row]');
-      endpointSourceList.appendChild(fragment);
-      bindEndpointSourceRow(endpointSourceList.lastElementChild || row);
-    });
-  }
-
-  if (previewLiv24DataBtn && previewLiv24DataOutput) {
-    previewLiv24DataBtn.addEventListener('click', async () => {
-      previewLiv24DataOutput.textContent = {{ ('กำลังโหลดข้อมูล API...' if current_lang == 'th' else 'Loading API data...') | tojson }};
-      try {
-        const selectedSource = encodeURIComponent((bulkSourceName?.value || 'LIV-24 IAQ').trim() || 'LIV-24 IAQ');
-        const response = await fetch(`/api/settings/source-preview?source_name=${selectedSource}`);
-        const payload = await response.json();
-        previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
-      } catch (error) {
-        previewLiv24DataOutput.textContent = `{{ 'โหลดข้อมูลไม่สำเร็จ:' if current_lang == 'th' else 'Failed to load data:' }} ${error}`;
-      }
-    });
-  }
-
-  }
+  initializeCustomFileInputs();
 
   const settingsForm = document.getElementById('settingsForm');
   const settingsSectionInput = document.getElementById('settingsSectionInput');
@@ -1983,6 +1649,9 @@
   const addEndpointSourceBtn = document.getElementById('addEndpointSourceBtn');
   const previewLiv24DataBtn = document.getElementById('previewLiv24DataBtn');
   const previewLiv24DataOutput = document.getElementById('previewLiv24DataOutput');
+  const downloadSourceDataBtn = document.getElementById('downloadSourceDataBtn');
+  const sourceDataExportStartDate = document.getElementById('sourceDataExportStartDate');
+  const sourceDataExportEndDate = document.getElementById('sourceDataExportEndDate');
   const sourceDeviceCatalog = {};
   let endpointApiTemplates = [];
   let endpointApiTemplateMap = new Map();
@@ -2011,6 +1680,12 @@
     minute: '2-digit',
     hour12: {{ (settings.project_time_format == '12h') | tojson }},
   });
+  const projectDateFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: {{ settings.project_timezone | tojson }},
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
 
   const formatProjectDateTime = (value) => {
     if (!value) {
@@ -2031,6 +1706,193 @@
       ? `${parts.day}/${parts.month}/${parts.year}`
       : `${parts.year}/${parts.month}/${parts.day}`;
     return `${dateText} ${parts.hour}:${parts.minute}`;
+  };
+
+  const buildUtcDateMs = (isoDate) => {
+    if (!isoDate) {
+      return 0;
+    }
+    const parsed = new Date(`${isoDate}T00:00:00Z`);
+    return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+  };
+
+  const getTodayIsoDate = () => {
+    const parts = Object.fromEntries(
+      projectDateFormatter
+        .formatToParts(new Date())
+        .filter((part) => part.type !== 'literal')
+        .map((part) => [part.type, part.value])
+    );
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+
+  const normalizeDisplayDateToIso = (value) => {
+    const text = String(value || '').trim();
+    if (!text) {
+      return '';
+    }
+    const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const displayMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    let year = '';
+    let month = '';
+    let day = '';
+
+    if (isoMatch) {
+      [, year, month, day] = isoMatch;
+    } else if (displayMatch) {
+      [, day, month, year] = displayMatch;
+      month = month.padStart(2, '0');
+      day = day.padStart(2, '0');
+    } else {
+      throw new Error(
+        {{ ('กรุณาใช้รูปแบบวันที่ dd/mm/yyyy' if current_lang == 'th' else 'Please use the date format dd/mm/yyyy.') | tojson }}
+      );
+    }
+
+    const candidate = `${year}-${month}-${day}`;
+    const parsed = new Date(`${candidate}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== candidate) {
+      throw new Error(
+        {{ ('วันที่ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง' if current_lang == 'th' else 'Invalid date. Please check it again.') | tojson }}
+      );
+    }
+    return candidate;
+  };
+
+  const formatIsoDateToDisplay = (value) => {
+    const text = String(value || '').trim();
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) {
+      return text;
+    }
+    const [, year, month, day] = match;
+    return `${day}/${month}/${year}`;
+  };
+
+  const getDisplayDatePickerInput = (input) => {
+    if (!input) {
+      return null;
+    }
+    if (input._displayDatePickerInput instanceof HTMLInputElement) {
+      return input._displayDatePickerInput;
+    }
+    const picker = document.createElement('input');
+    picker.type = 'date';
+    picker.tabIndex = -1;
+    picker.className = 'date-picker-proxy';
+    picker.setAttribute('aria-hidden', 'true');
+    picker.addEventListener('change', () => {
+      input.value = formatIsoDateToDisplay(picker.value || '');
+      input.setCustomValidity('');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    document.body.appendChild(picker);
+    input._displayDatePickerInput = picker;
+    return picker;
+  };
+
+  const openDisplayDatePicker = (input) => {
+    const picker = getDisplayDatePickerInput(input);
+    if (!picker) {
+      return;
+    }
+    try {
+      picker.value = normalizeDisplayDateToIso(input.value || '');
+    } catch (error) {
+      picker.value = getTodayIsoDate();
+    }
+    if (!picker.value) {
+      picker.value = getTodayIsoDate();
+    }
+    if (typeof picker.showPicker === 'function') {
+      picker.showPicker();
+      return;
+    }
+    picker.focus({ preventScroll: true });
+    picker.click();
+  };
+
+  const bindDisplayDateInput = (input) => {
+    if (!input || input.dataset.displayDateBound === 'true') {
+      return;
+    }
+    input.dataset.displayDateBound = 'true';
+    input.value = formatIsoDateToDisplay(input.value || '');
+    if (!String(input.value || '').trim()) {
+      input.value = formatIsoDateToDisplay(getTodayIsoDate());
+    }
+    input.addEventListener('click', () => {
+      openDisplayDatePicker(input);
+    });
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        openDisplayDatePicker(input);
+      }
+    });
+    input.addEventListener('input', () => {
+      input.setCustomValidity('');
+    });
+    input.addEventListener('blur', () => {
+      const text = String(input.value || '').trim();
+      if (!text) {
+        input.setCustomValidity('');
+        return;
+      }
+      try {
+        input.value = formatIsoDateToDisplay(normalizeDisplayDateToIso(text));
+        input.setCustomValidity('');
+      } catch (error) {
+        input.setCustomValidity(getRequestErrorMessage(error));
+        if (typeof input.reportValidity === 'function') {
+          input.reportValidity();
+        }
+      }
+    });
+  };
+
+  document.querySelectorAll('[data-display-date-input]').forEach((input) => {
+    bindDisplayDateInput(input);
+  });
+
+  const syncLoginHistoryExportLink = () => {
+    const exportLink = document.querySelector('[data-login-history-export-link]');
+    if (!exportLink) {
+      return;
+    }
+    const startInput = document.querySelector('[data-login-history-start-date]');
+    const endInput = document.querySelector('[data-login-history-end-date]');
+    const basePath = exportLink.dataset.exportBase || exportLink.getAttribute('href') || '';
+    const exportUrl = new URL(basePath, window.location.origin);
+    const startValue = String(startInput?.value || '').trim();
+    const endValue = String(endInput?.value || '').trim();
+    if (startValue) {
+      exportUrl.searchParams.set('login_history_start_date', startValue);
+    }
+    if (endValue) {
+      exportUrl.searchParams.set('login_history_end_date', endValue);
+    }
+    exportLink.href = exportUrl.toString();
+  };
+
+  document.querySelectorAll('[data-login-history-start-date], [data-login-history-end-date]').forEach((input) => {
+    input.addEventListener('input', syncLoginHistoryExportLink);
+    input.addEventListener('change', syncLoginHistoryExportLink);
+  });
+  syncLoginHistoryExportLink();
+
+  const getApiHistoryDateFilters = (requestRow) => {
+    const startValue = requestRow?.querySelector('[data-api-history-start-date]')?.value || '';
+    const endValue = requestRow?.querySelector('[data-api-history-end-date]')?.value || '';
+    const startDate = normalizeDisplayDateToIso(startValue);
+    const endDate = normalizeDisplayDateToIso(endValue);
+    return {
+      startDate,
+      endDate,
+      startMs: buildUtcDateMs(startDate),
+      endMs: buildUtcDateMs(endDate),
+    };
   };
 
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
@@ -2468,6 +2330,8 @@
     const runIntervalInput = getEndpointRequestField(requestRow, 'endpoint_api_request_run_every_times');
     const maxIntervalGroup = requestRow.querySelector('[data-request-max-interval-group]');
     const runIntervalGroup = requestRow.querySelector('[data-request-run-interval-group]');
+    const historyStartDateInput = requestRow.querySelector('[data-api-history-start-date]');
+    const historyEndDateInput = requestRow.querySelector('[data-api-history-end-date]');
 
     const syncIntervalState = () => {
       if (!maxIntervalInput || !intervalUnlimitedCheckbox) {
@@ -2496,6 +2360,8 @@
         updateEndpointRequestTitle(requestRow);
       });
     }
+    bindDisplayDateInput(historyStartDateInput);
+    bindDisplayDateInput(historyEndDateInput);
     if (intervalUnlimitedCheckbox) {
       intervalUnlimitedCheckbox.addEventListener('change', syncIntervalState);
     }
@@ -2584,16 +2450,19 @@
     if (loadHistoryBtn) {
       loadHistoryBtn.addEventListener('click', async () => {
         const sourceRow = requestRow.closest('[data-endpoint-source-row]');
-        const startVal = requestRow.querySelector('[data-api-history-start-date]')?.value || '';
-        const endVal = requestRow.querySelector('[data-api-history-end-date]')?.value || '';
-        if (startVal && endVal) {
-          const startMs = new Date(startVal).getTime();
-          const endMs = new Date(endVal).getTime();
-          if (endMs < startMs) {
+        let historyDateFilters;
+        try {
+          historyDateFilters = getApiHistoryDateFilters(requestRow);
+        } catch (error) {
+          alert(getRequestErrorMessage(error));
+          return;
+        }
+        if (historyDateFilters.startDate && historyDateFilters.endDate) {
+          if (historyDateFilters.endMs < historyDateFilters.startMs) {
             alert({{ ('วันที่สิ้นสุดต้องมากกว่าหรือเท่ากับวันที่เริ่มต้น' if current_lang == 'th' else 'End date must be after start date.') | tojson }});
             return;
           }
-          const diffDays = (endMs - startMs) / (1000 * 60 * 60 * 24);
+          const diffDays = (historyDateFilters.endMs - historyDateFilters.startMs) / (1000 * 60 * 60 * 24);
           if (diffDays > 31) {
             alert({{ ('ช่วงวันที่ต้องไม่เกิน 1 เดือน (31 วัน)' if current_lang == 'th' else 'Date range cannot exceed 1 month (31 days).') | tojson }});
             return;
@@ -2601,7 +2470,7 @@
         }
         try {
           loadHistoryBtn.disabled = true;
-          await loadRequestHistory(requestRow, sourceRow);
+          await loadRequestHistory(requestRow, sourceRow, historyDateFilters);
         } catch (error) {
           alert(`{{ 'โหลดประวัติไม่สำเร็จ:' if current_lang == 'th' else 'History failed:' }} ${getRequestErrorMessage(error)}`);
         } finally {
@@ -2610,22 +2479,36 @@
       });
     }
     if (exportHistoryBtn) {
-      exportHistoryBtn.addEventListener('click', () => {
+      const exportHistoryDefaultText = exportHistoryBtn.textContent;
+      exportHistoryBtn.addEventListener('click', async () => {
         const sourceRow = requestRow.closest('[data-endpoint-source-row]');
         const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(sourceRow));
         const draftRequest = collectEndpointRequestRow(requestRow);
-        const startDate = requestRow.querySelector('[data-api-history-start-date]')?.value || '';
-        const endDate = requestRow.querySelector('[data-api-history-end-date]')?.value || '';
+        let historyDateFilters;
+        try {
+          historyDateFilters = getApiHistoryDateFilters(requestRow);
+        } catch (error) {
+          alert(getRequestErrorMessage(error));
+          return;
+        }
         if (!draftSource.name) {
           alert({{ ('กรุณากรอกชื่อแหล่งข้อมูลก่อนดาวน์โหลด CSV' if current_lang == 'th' else 'Please enter source name before downloading CSV.') | tojson }});
           return;
         }
-        window.location.href = buildSourceHistoryExportUrl({
-          sourceName: draftSource.name,
-          requestDefinition: draftRequest,
-          startDate,
-          endDate,
-        });
+        try {
+          exportHistoryBtn.disabled = true;
+          exportHistoryBtn.textContent = {{ ('กำลังเตรียม CSV...' if current_lang == 'th' else 'Preparing CSV...') | tojson }};
+          const exportPayload = await requestApiRequestHistoryExport(draftSource, draftRequest, {
+            startDate: historyDateFilters.startDate,
+            endDate: historyDateFilters.endDate,
+          });
+          window.location.href = exportPayload.download_url;
+        } catch (error) {
+          alert(`{{ 'ส่งออกประวัติไม่สำเร็จ:' if current_lang == 'th' else 'History export failed:' }} ${getRequestErrorMessage(error)}`);
+        } finally {
+          exportHistoryBtn.disabled = false;
+          exportHistoryBtn.textContent = exportHistoryDefaultText;
+        }
       });
     }
     if (removeBtn) {
@@ -3136,8 +3019,15 @@
     return payload;
   };
 
-  const requestApiRequestHistory = async (source, requestDefinition, options = {}) => {
-    const response = await fetch(editorData.sourceRequestHistoryRoute, {
+  const waitForRequestDelay = (ms) =>
+    new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  const getSourceRequestHistoryJobStatusRoute = (jobId) =>
+    editorData.sourceRequestHistoryJobStatusRoute.replace('__job__', encodeURIComponent(jobId));
+
+  const requestApiRequestHistoryJob = async (source, requestDefinition, options = {}) => {
+    const mode = options.mode || 'list';
+    const response = await fetch(editorData.sourceRequestHistoryJobRoute, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -3145,17 +3035,94 @@
       body: JSON.stringify({
         source_name: source.name,
         source,
-        request: requestDefinition,
+        request: requestDefinition || null,
+        mode,
         start_date: options.startDate || '',
         end_date: options.endDate || '',
-        limit: options.limit || 150,
+        limit: options.limit || (mode === 'export' ? 50000 : 150),
       }),
     });
     const payload = await response.json();
     if (!response.ok || payload.error) {
-      throw new Error(payload.error || {{ ('โหลดประวัติคำขอไม่สำเร็จ' if current_lang == 'th' else 'Failed to load request history') | tojson }});
+      throw new Error(
+        payload.error || (
+          mode === 'export'
+            ? {{ ('เริ่มงานส่งออกประวัติคำขอไม่สำเร็จ' if current_lang == 'th' else 'Failed to start request history export') | tojson }}
+            : {{ ('เริ่มงานโหลดประวัติคำขอไม่สำเร็จ' if current_lang == 'th' else 'Failed to start request history load') | tojson }}
+        )
+      );
     }
+    return payload;
+  };
+
+  const waitForApiRequestHistoryJob = async (jobId, options = {}) => {
+    const mode = options.mode || 'list';
+    const timeoutMs = options.timeoutMs || (mode === 'export' ? 180000 : 45000);
+    const intervalMs = options.intervalMs || 700;
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() <= deadline) {
+      const response = await fetch(getSourceRequestHistoryJobStatusRoute(jobId));
+      const payload = await response.json();
+      if (!response.ok || payload.error) {
+        throw new Error(
+          payload.error || (
+            mode === 'export'
+              ? {{ ('ตรวจสอบสถานะส่งออกประวัติคำขอไม่สำเร็จ' if current_lang == 'th' else 'Failed to check request history export status') | tojson }}
+              : {{ ('ตรวจสอบสถานะประวัติคำขอไม่สำเร็จ' if current_lang == 'th' else 'Failed to check request history status') | tojson }}
+          )
+        );
+      }
+      if (payload.status === 'completed') {
+        return payload;
+      }
+      if (payload.status === 'error') {
+        throw new Error(
+          payload.error || (
+            mode === 'export'
+              ? {{ ('ส่งออกประวัติคำขอไม่สำเร็จ' if current_lang == 'th' else 'Request history export failed') | tojson }}
+              : {{ ('โหลดประวัติคำขอไม่สำเร็จ' if current_lang == 'th' else 'Failed to load request history') | tojson }}
+          )
+        );
+      }
+      await waitForRequestDelay(intervalMs);
+    }
+
+    throw new Error(
+      mode === 'export'
+        ? {{ ('การส่งออกประวัติคำขอใช้เวลานานเกินไป' if current_lang == 'th' else 'Request history export timed out') | tojson }}
+        : {{ ('การโหลดประวัติคำขอใช้เวลานานเกินไป' if current_lang == 'th' else 'Request history load timed out') | tojson }}
+    );
+  };
+
+  const requestApiRequestHistory = async (source, requestDefinition, options = {}) => {
+    const job = await requestApiRequestHistoryJob(source, requestDefinition, {
+      ...options,
+      mode: 'list',
+    });
+    const payload = await waitForApiRequestHistoryJob(job.job_id, {
+      mode: 'list',
+      timeoutMs: options.timeoutMs || 45000,
+    });
     return payload.history || [];
+  };
+
+  const requestApiRequestHistoryExport = async (source, requestDefinition = null, options = {}) => {
+    const job = await requestApiRequestHistoryJob(source, requestDefinition, {
+      ...options,
+      mode: 'export',
+      limit: options.limit || 50000,
+    });
+    const payload = await waitForApiRequestHistoryJob(job.job_id, {
+      mode: 'export',
+      timeoutMs: options.timeoutMs || 180000,
+    });
+    if (!payload.download_url) {
+      throw new Error(
+        {{ ('ไฟล์ส่งออกประวัติคำขอยังไม่พร้อมดาวน์โหลด' if current_lang == 'th' else 'Request history export is not ready for download') | tojson }}
+      );
+    }
+    return payload;
   };
 
   const requestSourceDeviceCache = async (sourceName) => {
@@ -3256,18 +3223,17 @@
     }).join('');
   };
 
-  const loadRequestHistory = async (requestRow, sourceRow) => {
+  const loadRequestHistory = async (requestRow, sourceRow, dateFilters = null) => {
     const historyList = requestRow?.querySelector('[data-api-history-list]');
-    const startDate = requestRow?.querySelector('[data-api-history-start-date]')?.value || '';
-    const endDate = requestRow?.querySelector('[data-api-history-end-date]')?.value || '';
+    const historyDateFilters = dateFilters || getApiHistoryDateFilters(requestRow);
     if (historyList) {
       historyList.innerHTML = '<div class="small text-muted">Loading request history...</div>';
     }
     const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(sourceRow));
     const draftRequest = collectEndpointRequestRow(requestRow);
     const history = await requestApiRequestHistory(draftSource, draftRequest, {
-      startDate,
-      endDate,
+      startDate: historyDateFilters.startDate,
+      endDate: historyDateFilters.endDate,
       limit: 10,
     });
     renderRequestHistoryEntries(requestRow, history);
@@ -3471,6 +3437,8 @@
 
   const initializeEndpointSettings = () => {
     bindSettingsTabs();
+    bindDisplayDateInput(sourceDataExportStartDate);
+    bindDisplayDateInput(sourceDataExportEndDate);
     endpointApiTemplates = editorData.endpointApiTemplates || [];
     endpointApiTemplateMap = new Map(
       endpointApiTemplates.map((template) => [template.id, template])
@@ -3521,18 +3489,32 @@
 
     if (downloadSourceDataBtn && !downloadSourceDataBtn.dataset.endpointBound) {
       downloadSourceDataBtn.dataset.endpointBound = 'true';
-      downloadSourceDataBtn.addEventListener('click', () => {
+      const downloadSourceDataDefaultText = downloadSourceDataBtn.textContent;
+      downloadSourceDataBtn.addEventListener('click', async () => {
         const bulkSourceSelect = document.getElementById('bulkSourceName');
         const selectedSourceName = (bulkSourceSelect?.value || '').trim();
         if (!selectedSourceName) {
           alert('Please select source before downloading CSV.');
           return;
         }
-        window.location.href = buildSourceHistoryExportUrl({
-          sourceName: selectedSourceName,
-          startDate: normalizeDisplayDateToIso(sourceDataExportStartDate?.value || ''),
-          endDate: normalizeDisplayDateToIso(sourceDataExportEndDate?.value || ''),
-        });
+        try {
+          downloadSourceDataBtn.disabled = true;
+          downloadSourceDataBtn.textContent = {{ ('กำลังเตรียม CSV...' if current_lang == 'th' else 'Preparing CSV...') | tojson }};
+          const exportPayload = await requestApiRequestHistoryExport(
+            { name: selectedSourceName },
+            null,
+            {
+              startDate: normalizeDisplayDateToIso(sourceDataExportStartDate?.value || ''),
+              endDate: normalizeDisplayDateToIso(sourceDataExportEndDate?.value || ''),
+            }
+          );
+          window.location.href = exportPayload.download_url;
+        } catch (error) {
+          alert(`{{ 'ส่งออกประวัติไม่สำเร็จ:' if current_lang == 'th' else 'History export failed:' }} ${getRequestErrorMessage(error)}`);
+        } finally {
+          downloadSourceDataBtn.disabled = false;
+          downloadSourceDataBtn.textContent = downloadSourceDataDefaultText;
+        }
       });
     }
 
@@ -3896,10 +3878,14 @@
     updateDeviceLabelRoute: {{ url_for('update_device_label', device_id='__device__') | tojson }},
     updateDeviceSensorTypesRoute: {{ url_for('update_device_sensor_types', device_id='__device__') | tojson }},
     updateDeviceSourceMappingRoute: {{ url_for('update_device_source_mapping', device_id='__device__') | tojson }},
+    sourceTokenRoute: {{ url_for('get_endpoint_source_token') | tojson }},
+    sourceDevicesRoute: {{ url_for('get_endpoint_source_devices') | tojson }},
     sourcePreviewRoute: {{ url_for('preview_endpoint_source_data') | tojson }},
     sourceRequestTestRoute: {{ url_for('test_endpoint_source_request') | tojson }},
     sourceDeviceCacheRoute: {{ url_for('get_endpoint_source_device_cache') | tojson }},
     sourceRequestHistoryRoute: {{ url_for('get_endpoint_source_request_history') | tojson }},
+    sourceRequestHistoryJobRoute: {{ url_for('create_endpoint_source_request_history_job') | tojson }},
+    sourceRequestHistoryJobStatusRoute: {{ url_for('get_endpoint_source_request_history_job', job_id='__job__') | tojson }},
     sourceRequestHistoryExportRoute: {{ url_for('export_endpoint_source_request_history') | tojson }},
     sourceRequestHistoryDeleteRoute: {{ url_for('delete_endpoint_source_request_history') | tojson }},
     endpointSources: {{ (endpoint_sources if endpoint_sources is defined else settings.endpoint_sources) | default([]) | tojson }},
@@ -3984,6 +3970,7 @@
     ensureUploadOption(targetSelect, data.path, true);
     otherSelects.forEach((select) => ensureUploadOption(select, data.path, false));
     fileInput.value = '';
+    updateCustomFileInputLabel(fileInput);
     if (targetSelect === floorLogoSelect) {
       editorData.logoIconSelected = data.path;
     }
@@ -4126,6 +4113,7 @@
       </div>
     `;
     floorPlanContainer.appendChild(row);
+    initializeCustomFileInputs(row);
     syncEditorSelectOptions();
   });
 

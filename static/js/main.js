@@ -123,11 +123,65 @@
     dailyMetricSelect.value = data.dailyMetric || dailyMetricSelect.value;
     dailyMetricSelect.addEventListener('change', async (event) => {
       const metricKey = event.target.value;
-      const series = await fetchSeries(data.dailyRoute, metricKey);
+      const series = await fetchDailySeries(metricKey);
       if (!series || !dailyChart) {
         return;
       }
       applySeriesToChart(dailyChart, metricKey, series);
+    });
+  }
+
+  const prevDayBtn = document.getElementById('prevDayBtn');
+  const nextDayBtn = document.getElementById('nextDayBtn');
+  const dailyDateLabel = document.getElementById('dailyDateLabel');
+  const todayLabel = data.todayLabel || 'Today';
+  const yesterdayLabel = data.yesterdayLabel || 'Yesterday';
+
+  let dailyDayOffset = 0;
+
+  const fetchDailySeries = async (metricKey, offset) => {
+    if (!data.dailyRoute) return null;
+    const params = new URLSearchParams({ metric: metricKey || (dailyMetricSelect ? dailyMetricSelect.value : 'pm25') });
+    if (data.activeFloor) params.set('floor', data.activeFloor);
+    if (offset !== undefined) params.set('day_offset', offset);
+    else if (dailyDayOffset !== 0) params.set('day_offset', dailyDayOffset);
+    const response = await fetch(`${data.dailyRoute}?${params.toString()}`);
+    if (!response.ok) return null;
+    return response.json();
+  };
+
+  const updateDayLabel = () => {
+    if (!dailyDateLabel) return;
+    if (dailyDayOffset === 0) {
+      dailyDateLabel.textContent = todayLabel;
+    } else if (dailyDayOffset === -1) {
+      dailyDateLabel.textContent = yesterdayLabel;
+    } else {
+      const d = new Date();
+      d.setDate(d.getDate() + dailyDayOffset);
+      dailyDateLabel.textContent = d.toLocaleDateString();
+    }
+    if (nextDayBtn) nextDayBtn.disabled = dailyDayOffset >= 0;
+  };
+
+  if (prevDayBtn && dailyChart) {
+    prevDayBtn.addEventListener('click', async () => {
+      dailyDayOffset -= 1;
+      updateDayLabel();
+      const metricKey = dailyMetricSelect ? dailyMetricSelect.value : 'pm25';
+      const series = await fetchDailySeries(metricKey, dailyDayOffset);
+      if (series && dailyChart) applySeriesToChart(dailyChart, metricKey, series);
+    });
+  }
+
+  if (nextDayBtn && dailyChart) {
+    nextDayBtn.addEventListener('click', async () => {
+      if (dailyDayOffset >= 0) return;
+      dailyDayOffset += 1;
+      updateDayLabel();
+      const metricKey = dailyMetricSelect ? dailyMetricSelect.value : 'pm25';
+      const series = await fetchDailySeries(metricKey, dailyDayOffset);
+      if (series && dailyChart) applySeriesToChart(dailyChart, metricKey, series);
     });
   }
 

@@ -299,6 +299,13 @@
           <small class="text-muted">{{ t('timeline_24h') }}</small>
         </div>
         <div class="d-flex align-items-center gap-2">
+          {% if floors|length > 1 %}
+          <select class="form-select form-select-sm" data-card-floor-select>
+            {% for floor in floors %}
+            <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
           <select id="dailyMetricSelect" class="form-select form-select-sm">
             {% for metric in metric_options %}
             <option value="{{ metric.key }}" {% if metric.key == daily_metric %}selected{% endif %}>
@@ -325,23 +332,30 @@
       </div>
       <div class="card-body dashboard-card-body">
         <canvas id="dailyChart"></canvas>
-        <div class="d-flex justify-content-between mt-2">
-          <button class="btn btn-sm btn-outline-secondary">&lt;</button>
-          <span class="small text-muted">{{ t('today') }}</span>
-          <button class="btn btn-sm btn-outline-secondary">&gt;</button>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <button id="prevDayBtn" class="btn btn-sm btn-outline-secondary">&lt;</button>
+          <span id="dailyDateLabel" class="small text-muted">{{ t('today') }}</span>
+          <button id="nextDayBtn" class="btn btn-sm btn-outline-secondary" disabled>&gt;</button>
         </div>
       </div>
     </div>
     {% endif %}
 
     {% if show_weekly_overview %}
-    <div class="card shadow-sm">
+    <div class="card shadow-sm mb-3">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
         <div>
           <h6 class="mb-0">{{ t('weekly_overview') }}</h6>
           <small class="text-muted">{{ t('average_per_day') }}</small>
         </div>
         <div class="d-flex align-items-center gap-2">
+          {% if floors|length > 1 %}
+          <select class="form-select form-select-sm" data-card-floor-select>
+            {% for floor in floors %}
+            <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
           <select id="weeklyMetricSelect" class="form-select form-select-sm">
             {% for metric in metric_options %}
             <option value="{{ metric.key }}" {% if metric.key == weekly_metric %}selected{% endif %}>
@@ -369,8 +383,29 @@
       <div class="card-body dashboard-card-body">
         <canvas id="weeklyChart"></canvas>
         <div class="mt-2">
-          <input type="text" class="form-control form-control-sm" placeholder="dd/mm/yyyy" inputmode="numeric" />
+          <input type="text" class="form-control form-control-sm" placeholder="dd/mm/yyyy" inputmode="numeric" data-display-date-input />
         </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if psychro_points is defined %}
+    <div class="card shadow-sm">
+      <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
+        <div>
+          <h6 class="mb-0">{% if current_lang == 'th' %}ไซโครเมตริกชาร์ต{% else %}Psychrometric Chart{% endif %}</h6>
+          <small class="text-muted">{% if current_lang == 'th' %}อุณหภูมิ vs ความชื้น · Givoni Bioclimatic{% else %}Temperature vs Humidity · Givoni Bioclimatic{% endif %}</small>
+        </div>
+        {% if floors|length > 1 %}
+        <select class="form-select form-select-sm w-auto" data-card-floor-select>
+          {% for floor in floors %}
+          <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+      </div>
+      <div class="card-body dashboard-card-body">
+        <canvas id="psychroChart"></canvas>
       </div>
     </div>
     {% endif %}
@@ -404,9 +439,18 @@
 
     {% if show_alerts_notifications %}
     <div class="card shadow-sm {% if show_sensor_average %}mt-3{% else %}mt-0{% endif %}">
-      <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
+      <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h6 class="mb-0">{{ t('alerts_notifications') }}</h6>
-        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('alarms', system=active_system) }}">{{ t('see_all_alarm') }}</a>
+        <div class="d-flex align-items-center gap-2">
+          {% if floors|length > 1 %}
+          <select class="form-select form-select-sm w-auto" data-card-floor-select>
+            {% for floor in floors %}
+            <option value="{{ floor }}" {% if floor == active_floor %}selected{% endif %}>{{ settings.floor_names.get(floor, floor) if settings.floor_names else floor }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('alarms', system=active_system) }}">{{ t('see_all_alarm') }}</a>
+        </div>
       </div>
       <div class="card-body dashboard-card-body">
         {% if active_alarms %}
@@ -445,6 +489,29 @@
 
 {% block scripts %}
 <script>
+  /* ── Shared floor select sync ──────────────────────────────────────
+     All [data-card-floor-select] elements + the map's #floorSelect
+     navigate together: changing any one reloads the page with ?floor=x  */
+  (function () {
+    const cardSelects = Array.from(document.querySelectorAll('[data-card-floor-select]'));
+    if (!cardSelects.length) return;
+
+    function buildFloorUrl(floor) {
+      const url = new URL(window.location.href);
+      if (floor) { url.searchParams.set('floor', floor); }
+      else { url.searchParams.delete('floor'); }
+      return url.toString();
+    }
+
+    cardSelects.forEach(sel => {
+      sel.addEventListener('change', () => {
+        localStorage.setItem('dashboardActiveFloor', sel.value);
+        window.location = buildFloorUrl(sel.value);
+      });
+    });
+  }());
+
+  window.psychroPoints = {{ psychro_points | tojson }};
   window.dashboardData = {
     dailyLabels: {{ daily_labels|tojson }},
     dailyValues: {{ daily_values|tojson }},
@@ -461,6 +528,8 @@
     floorFromQuery: {{ floor_from_query|tojson }},
     dailyRoute: {{ url_for('graphs_daily')|tojson }},
     weeklyRoute: {{ url_for('graphs_weekly')|tojson }},
+    todayLabel: {{ (t('today') if t('today') else 'Today')|tojson }},
+    yesterdayLabel: {{ ('เมื่อวาน' if current_lang == 'th' else 'Yesterday')|tojson }},
     metricOptions: {{ metric_option_map|tojson }},
     severityLevels: {{ settings.severity_levels|tojson }},
     showSeverityLines: {{ settings.show_severity_lines|tojson }},
@@ -469,5 +538,342 @@
     hasCritical: {{ has_critical|tojson }},
     latestAlarmId: {{ latest_alarm_id|tojson }},
   };
+</script>
+<script>
+(function () {
+  const canvas = document.getElementById('psychroChart');
+  if (!canvas) return;
+
+  /* ── Psychrometric helpers ─────────────────────────────────────── */
+  function satPress(T) {          // kPa – Magnus formula
+    return 0.61078 * Math.exp(17.269 * T / (T + 237.3));
+  }
+  function humRatio(T, rh) {      // g/kg dry air
+    const pws = satPress(T);
+    const pw  = (rh / 100) * pws;
+    return Math.max(0, 621.9907 * pw / (101.325 - pw));
+  }
+
+  /* ── Convert sensor points (%RH) → humidity ratio (g/kg) ──────── */
+  const rawPts = window.psychroPoints || [];
+  const scatterPts = rawPts.map(p => ({
+    x: p.x,
+    y: +humRatio(p.x, p.y).toFixed(2),
+    label: p.label,
+  }));
+  let avgPt = null;
+  if (scatterPts.length) {
+    const ax = scatterPts.reduce((s, p) => s + p.x, 0) / scatterPts.length;
+    const ay = scatterPts.reduce((s, p) => s + p.y, 0) / scatterPts.length;
+    avgPt = { x: +ax.toFixed(1), y: +ay.toFixed(2), label: 'Average' };
+  }
+
+  /* ── Bioclimatic zone polygons [DBT °C, W g/kg] ───────────────── */
+  const ZONES = [
+    {
+      name: ['Heating'], at: [4, 6.5],
+      fill: 'rgba(255,140,40,0.18)', border: 'rgba(210,90,0,0.6)', bw: 1,
+      pts: [[0,0],[9,0],[9,13],[0,13]],
+    },
+    {
+      name: ['Passive Solar', 'Heating'], at: [13, 8],
+      fill: 'rgba(255,210,80,0.22)', border: 'rgba(200,150,0,0.65)', bw: 1.2,
+      pts: [[9,4],[18,4],[17,8],[18,13],[9,13]],
+    },
+    {
+      name: ['Humidification'], at: [22, 1.8],
+      fill: 'rgba(190,190,255,0.22)', border: 'rgba(100,100,210,0.5)', bw: 1,
+      pts: [[18,0],[27,0],[27,4],[18,4]],
+    },
+    {
+      name: ['Comfort', 'Zone'], at: [23, 8.5],
+      fill: 'rgba(60,200,80,0.28)', border: 'rgba(0,150,0,0.85)', bw: 2,
+      pts: [[18,4],[27,4],[28,9],[26,13],[20,13],[17,8]],
+    },
+    {
+      name: ['Natural', 'Ventilation'], at: [26, 17],
+      fill: 'rgba(100,175,255,0.2)', border: 'rgba(30,120,220,0.6)', bw: 1.2,
+      pts: [[20,13],[26,13],[34,17],[34,22],[20,22]],
+    },
+    {
+      name: ['Evaporative', 'Cooling'], at: [34, 2],
+      fill: 'rgba(60,225,230,0.22)', border: 'rgba(0,175,185,0.6)', bw: 1.2,
+      pts: [[27,0],[40,0],[40,4],[33,4],[28,9],[27,4]],
+    },
+    {
+      name: ['Mass Cooling &', 'Night Vent.'], at: [37, 8.5],
+      fill: 'rgba(180,155,255,0.22)', border: 'rgba(110,80,210,0.55)', bw: 1.2,
+      pts: [[33,4],[40,4],[40,13],[33,13]],
+    },
+    {
+      name: ['AC &', 'Dehumidification'], at: [34, 21],
+      fill: 'rgba(255,90,90,0.15)', border: 'rgba(200,30,30,0.55)', bw: 1.2,
+      pts: [[26,13],[40,13],[40,28],[26,28]],
+    },
+  ];
+
+  /* ── RH reference curves ───────────────────────────────────────── */
+  const RH_LINES = [20, 40, 60, 80, 100];
+  const rhCurves = RH_LINES.map(rh => {
+    const pts = [];
+    for (let T = 0; T <= 45; T += 0.5) {
+      const W = humRatio(T, rh);
+      if (W <= 28) pts.push({ x: T, y: W });
+    }
+    return { rh, pts };
+  });
+
+  /* ── Background plugin (draws before datasets) ────────────────── */
+  const bgPlugin = {
+    id: 'psychroBg',
+    beforeDatasetsDraw(chart) {
+      const { ctx } = chart;
+      const xs = chart.scales.x;
+      const ys = chart.scales.y;
+      const ca = chart.chartArea;
+      const px = (T, W) => ({ x: xs.getPixelForValue(T), y: ys.getPixelForValue(W) });
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(ca.left, ca.top, ca.width, ca.height);
+      ctx.clip();
+
+      /* zones */
+      ZONES.forEach(z => {
+        ctx.beginPath();
+        z.pts.forEach(([T, W], i) => {
+          const { x, y } = px(T, W);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.fillStyle = z.fill;
+        ctx.fill();
+        ctx.strokeStyle = z.border;
+        ctx.lineWidth = z.bw;
+        ctx.setLineDash([]);
+        ctx.stroke();
+      });
+
+      /* RH curves */
+      rhCurves.forEach(({ rh, pts }) => {
+        if (!pts.length) return;
+        ctx.beginPath();
+        pts.forEach(({ x: T, y: W }, i) => {
+          const { x, y } = px(T, W);
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = 'rgba(70,70,160,0.32)';
+        ctx.lineWidth = 0.85;
+        ctx.setLineDash([4, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        /* RH label at curve tail */
+        const tail = pts[pts.length - 1];
+        const tp = px(tail.x, tail.y);
+        if (tp.x <= ca.right + 2 && tp.y >= ca.top) {
+          ctx.fillStyle = 'rgba(50,50,140,0.65)';
+          ctx.font = '9px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(`${rh}%`, Math.min(tp.x + 2, ca.right - 20), tp.y + 3);
+        }
+      });
+
+      /* zone labels */
+      ZONES.forEach(z => {
+        const [T, W] = z.at;
+        const { x, y } = px(T, W);
+        ctx.fillStyle = 'rgba(20,20,20,0.6)';
+        ctx.font = 'bold 8.5px sans-serif';
+        ctx.textAlign = 'center';
+        z.name.forEach((line, li) => ctx.fillText(line, x, y + li * 10));
+      });
+
+      ctx.restore();
+    },
+  };
+
+  /* ── Chart ─────────────────────────────────────────────────────── */
+  new Chart(canvas, {
+    type: 'scatter',
+    plugins: [bgPlugin],
+    data: {
+      datasets: [
+        {
+          label: 'Devices',
+          data: scatterPts,
+          backgroundColor: 'rgba(13,110,253,0.82)',
+          borderColor: 'rgba(255,255,255,0.9)',
+          borderWidth: 1,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+          order: 1,
+        },
+        ...(avgPt ? [{
+          label: 'Average',
+          data: [avgPt],
+          backgroundColor: 'rgba(220,53,69,0.95)',
+          borderColor: 'rgba(255,255,255,0.9)',
+          borderWidth: 1.5,
+          pointRadius: 9,
+          pointStyle: 'star',
+          order: 0,
+        }] : []),
+      ],
+    },
+    options: {
+      responsive: true,
+      animation: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const p = ctx.raw;
+              const raw = rawPts.find(r => r.label === p.label);
+              const rh  = raw ? ` (${raw.y}%RH)` : '';
+              return `${p.label || ctx.dataset.label}: ${p.x}\u00b0C, ${p.y.toFixed(1)} g/kg${rh}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Dry Bulb Temperature (\u00b0C)', font: { size: 11 } },
+          min: 0, max: 45,
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          ticks: { stepSize: 5 },
+        },
+        y: {
+          title: { display: true, text: 'Humidity Ratio (g\u2009kg\u207b\u00b9)', font: { size: 11 } },
+          min: 0, max: 28,
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          ticks: { stepSize: 4 },
+        },
+      },
+    },
+  });
+}());
+
+(() => {
+  const dateInputs = document.querySelectorAll('[data-display-date-input]');
+  if (!dateInputs.length) {
+    return;
+  }
+
+  const projectDateFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: {{ settings.project_timezone | tojson }},
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  const getTodayIsoDate = () => {
+    const parts = Object.fromEntries(
+      projectDateFormatter
+        .formatToParts(new Date())
+        .filter((part) => part.type !== 'literal')
+        .map((part) => [part.type, part.value])
+    );
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+
+  const formatIsoDateToDisplay = (value) => {
+    const text = String(value || '').trim();
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) {
+      return text;
+    }
+    const [, year, month, day] = match;
+    return `${day}/${month}/${year}`;
+  };
+
+  const normalizeDisplayDateToIso = (value) => {
+    const text = String(value || '').trim();
+    if (!text) {
+      return '';
+    }
+    const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const displayMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    let year = '';
+    let month = '';
+    let day = '';
+
+    if (isoMatch) {
+      [, year, month, day] = isoMatch;
+    } else if (displayMatch) {
+      [, day, month, year] = displayMatch;
+      month = month.padStart(2, '0');
+      day = day.padStart(2, '0');
+    } else {
+      return '';
+    }
+
+    const candidate = `${year}-${month}-${day}`;
+    const parsed = new Date(`${candidate}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== candidate) {
+      return '';
+    }
+    return candidate;
+  };
+
+  const getDisplayDatePickerInput = (input) => {
+    if (input._displayDatePickerInput instanceof HTMLInputElement) {
+      return input._displayDatePickerInput;
+    }
+    const picker = document.createElement('input');
+    picker.type = 'date';
+    picker.tabIndex = -1;
+    picker.setAttribute('aria-hidden', 'true');
+    picker.style.position = 'fixed';
+    picker.style.width = '1px';
+    picker.style.height = '1px';
+    picker.style.opacity = '0';
+    picker.style.pointerEvents = 'none';
+    picker.style.border = '0';
+    picker.style.padding = '0';
+    picker.addEventListener('change', () => {
+      input.value = formatIsoDateToDisplay(picker.value || '');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    document.body.appendChild(picker);
+    input._displayDatePickerInput = picker;
+    return picker;
+  };
+
+  const openDisplayDatePicker = (input) => {
+    const picker = getDisplayDatePickerInput(input);
+    picker.value = normalizeDisplayDateToIso(input.value || '') || getTodayIsoDate();
+    if (typeof picker.showPicker === 'function') {
+      picker.showPicker();
+      return;
+    }
+    picker.focus({ preventScroll: true });
+    picker.click();
+  };
+
+  dateInputs.forEach((input) => {
+    if (!String(input.value || '').trim()) {
+      input.value = formatIsoDateToDisplay(getTodayIsoDate());
+    } else {
+      input.value = formatIsoDateToDisplay(input.value || '');
+    }
+    input.addEventListener('click', () => {
+      openDisplayDatePicker(input);
+    });
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        openDisplayDatePicker(input);
+      }
+    });
+    input.addEventListener('blur', () => {
+      const normalizedValue = normalizeDisplayDateToIso(input.value || '');
+      if (normalizedValue) {
+        input.value = formatIsoDateToDisplay(normalizedValue);
+      }
+    });
+  });
+})();
 </script>
 {% endblock %}

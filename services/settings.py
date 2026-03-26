@@ -115,6 +115,45 @@ DEFAULT_ENDPOINT_API = {
             "run_every_times": 0,
             "run_interval_minutes": 0,
         },
+        {
+            "id": "history",
+            "role": "history",
+            "name": "History",
+            "method": "GET",
+            "path": "/api/external/v1/history",
+            "params": [
+                {"key": "device_uuid", "values": ["{{device_uuid}}"]},
+                {"key": "aggregation", "values": ["raw"]},
+                {"key": "fields", "values": ["all"]},
+                {"key": "lookback_seconds", "values": ["86400"]},
+            ],
+            "body": "",
+            "use_auth": True,
+            "max_round_times": 0,
+            "max_interval_minutes": 0,
+            "interval_unlimited": True,
+            "run_every_times": 0,
+            "run_interval_minutes": 0,
+        },
+        {
+            "id": "history_export",
+            "role": "history_export",
+            "name": "History Export",
+            "method": "GET",
+            "path": "/api/external/v1/history/export",
+            "params": [
+                {"key": "device_uuid", "values": ["{{device_uuid}}"]},
+                {"key": "aggregation", "values": ["raw"]},
+                {"key": "fields", "values": ["all"]},
+            ],
+            "body": "",
+            "use_auth": True,
+            "max_round_times": 0,
+            "max_interval_minutes": 0,
+            "interval_unlimited": True,
+            "run_every_times": 0,
+            "run_interval_minutes": 0,
+        },
     ],
 }
 
@@ -561,7 +600,7 @@ def normalize_endpoint_api_request_definition(request_definition, index=0):
         return _default_endpoint_api_request("custom", index)
 
     role = str(request_definition.get("role") or "").strip().lower()
-    if role not in {"organizations", "devices", "latest_values", "custom"}:
+    if role not in {"organizations", "devices", "latest_values", "history", "history_export", "custom"}:
         role = "custom"
     normalized = _default_endpoint_api_request(role, index)
 
@@ -648,6 +687,11 @@ def normalize_endpoint_api_definition(api_config):
     ]
     if not normalized["requests"]:
         normalized["requests"] = copy.deepcopy(DEFAULT_ENDPOINT_API["requests"])
+    else:
+        existing_ids = {r.get("id") for r in normalized["requests"]}
+        for default_req in DEFAULT_ENDPOINT_API["requests"]:
+            if default_req.get("id") not in existing_ids:
+                normalized["requests"].append(copy.deepcopy(default_req))
 
     return normalized
 
