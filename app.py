@@ -1061,16 +1061,32 @@ def index():
 
     default_view_device = devices[0]["device_id"] if devices else None
     current_view_now = datetime.now(project_tz)
-    daily_view_end = current_view_now
+
+    default_view_start_bound = None
+    default_view_end = None
+    if default_view_device:
+        default_view_start_bound, default_view_end = data_service.get_sensor_time_bounds(
+            device_id=default_view_device
+        )
+    if not default_view_end:
+        default_view_end = current_view_now
+    elif default_view_end.tzinfo is None:
+        default_view_end = default_view_end.replace(tzinfo=timezone.utc).astimezone(project_tz)
+    else:
+        default_view_end = default_view_end.astimezone(project_tz)
+
+    daily_view_end = default_view_end
     daily_view_start = daily_view_end - timedelta(hours=24)
-    weekly_view_end = current_view_now
+    weekly_view_end = default_view_end
     weekly_view_start = weekly_view_end - timedelta(days=7)
-    all_data_start, all_data_end = data_service.get_sensor_time_bounds(floor_id=floor_id)
+    all_data_start = default_view_start_bound
+    all_data_end = default_view_end
     if not all_data_start:
         all_data_start = daily_view_start
     elif all_data_start.tzinfo is None:
         all_data_start = all_data_start.replace(tzinfo=timezone.utc).astimezone(project_tz)
-    all_data_end = current_view_now
+    else:
+        all_data_start = all_data_start.astimezone(project_tz)
     return render_template(
         "index.html",
         active_system=active_system,
@@ -1355,21 +1371,31 @@ def view_data():
 
     if not start or not end:
         if device == "__all__":
-            device_start, _device_end = data_service.get_sensor_time_bounds()
+            device_start, device_end = data_service.get_sensor_time_bounds()
         else:
-            device_start, _device_end = data_service.get_sensor_time_bounds(device_id=device)
+            device_start, device_end = data_service.get_sensor_time_bounds(device_id=device)
         if not device_start:
             return "Missing required parameters", 400
         if device_start.tzinfo is None:
             device_start = device_start.replace(tzinfo=timezone.utc)
-        end_now = datetime.now(project_tz)
-        end = end_now.strftime("%Y-%m-%dT%H:%M")
-        start = (end_now - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M")
+        if not device_end:
+            end_dt_default = datetime.now(project_tz)
+        elif device_end.tzinfo is None:
+            end_dt_default = device_end.replace(tzinfo=timezone.utc).astimezone(project_tz)
+        else:
+            end_dt_default = device_end.astimezone(project_tz)
+        end = end_dt_default.strftime("%Y-%m-%dT%H:%M")
+        start = (end_dt_default - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M")
 
     try:
         start_dt, end_dt = parse_date_range(start, end, project_tz)
     except ValueError:
         return "Invalid date format", 400
+
+    if len(str(start or "").strip()) == 16:
+        start_dt = start_dt.replace(second=0, microsecond=0)
+    if len(str(end or "").strip()) == 16:
+        end_dt = end_dt.replace(second=59, microsecond=999999)
 
     if end_dt < start_dt:
         return "Invalid date format", 400

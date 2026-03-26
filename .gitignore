@@ -1,6 +1,2 @@
 __pycache__/
-*.pyc
 *.db
-sensor_export.csv
-.env
-tmp_app*
