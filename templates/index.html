@@ -320,10 +320,10 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=daily_view_start, end=daily_view_end, interval=default_view_interval) }}">{{ t('last_24_hours') }}</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=daily_view_start, end=daily_view_end) }}">{{ t('last_24_hours') }}</a>
               </li>
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">{{ t('all_data') }}</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end) }}">{{ t('all_data') }}</a>
               </li>
             </ul>
           </div>
@@ -370,10 +370,10 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=weekly_view_start, end=weekly_view_end, interval=default_view_interval) }}">{{ t('last_7_days') }}</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=weekly_view_start, end=weekly_view_end) }}">{{ t('last_7_days') }}</a>
               </li>
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end, interval=default_view_interval) }}">{{ t('all_data') }}</a>
+                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end) }}">{{ t('all_data') }}</a>
               </li>
             </ul>
           </div>

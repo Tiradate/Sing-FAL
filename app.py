@@ -521,6 +521,25 @@ def format_project_datetime(value, settings):
     return local_ts.strftime(time_pattern)
 
 
+def format_project_datetime_seconds(value, settings):
+    if not value:
+        return ""
+    parsed = value
+    if isinstance(parsed, str):
+        try:
+            parsed = datetime.fromisoformat(parsed)
+        except ValueError:
+            return value
+    if not isinstance(parsed, datetime):
+        return str(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    local_ts = parsed.astimezone(get_project_timezone(settings))
+    date_pattern = get_project_date_format()
+    time_pattern = f"{date_pattern} %H:%M:%S" if get_project_time_format(settings) == "24h" else f"{date_pattern} %I:%M:%S %p"
+    return local_ts.strftime(time_pattern)
+
+
 def format_project_datetime_local_input(value, settings):
     if not value:
         return ""
@@ -1064,8 +1083,6 @@ def index():
         daily_view_start = daily_view_end - timedelta(hours=24)
         weekly_view_end = device_data_end
         weekly_view_start = weekly_view_end - timedelta(days=7)
-    default_view_interval = 10
-
     return render_template(
         "index.html",
         active_system=active_system,
@@ -1103,7 +1120,6 @@ def index():
         weekly_view_end=format_project_datetime_local_input(weekly_view_end, settings),
         all_data_start=format_project_datetime_local_input(all_data_start, settings),
         all_data_end=format_project_datetime_local_input(all_data_end, settings),
-        default_view_interval=default_view_interval,
         status_label=data_service.aggregate_status_label(settings),
         psychro_points=psychro_points,
     )
@@ -1343,7 +1359,6 @@ def view_data():
     device = (request.args.get("device") or "__all__").strip() or "__all__"
     start = request.args.get("start")
     end = request.args.get("end")
-    interval_minutes = request.args.get("interval", type=int) or 10
     project_tz = get_project_timezone(settings)
     if device != "__all__" and device not in device_ids:
         return "Unknown device", 400
@@ -1404,13 +1419,8 @@ def view_data():
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
         local_ts = ts.astimezone(local_tz).replace(tzinfo=None)
-        bucket = local_ts.replace(
-            minute=(local_ts.minute // interval_minutes) * interval_minutes,
-            second=0,
-            microsecond=0,
-        )
         topic = (row["topic"] or "Live").strip() or "Live"
-        key = (bucket, topic, row["device_id"], row["metric"])
+        key = (local_ts, topic, row["device_id"], row["metric"])
         if key not in aggregates:
             aggregates[key] = {"sum": 0.0, "count": 0, "unit": row["unit"]}
         aggregates[key]["sum"] += float(value)
@@ -1419,20 +1429,20 @@ def view_data():
     metric_options = get_enabled_metric_options(settings, active_system)
     metric_order = [option["key"] for option in metric_options]
     records = []
-    bucket_topics = sorted(
-        {(bucket, topic, device_id) for bucket, topic, device_id, _metric in aggregates.keys()},
+    timestamp_topics = sorted(
+        {(event_ts, topic, device_id) for event_ts, topic, device_id, _metric in aggregates.keys()},
         reverse=True,
     )
-    for bucket, topic, bucket_device in bucket_topics:
+    for event_ts, topic, bucket_device in timestamp_topics:
         record = {
-            "timestamp": format_project_datetime(bucket.replace(tzinfo=local_tz), settings),
+            "timestamp": format_project_datetime_seconds(event_ts.replace(tzinfo=local_tz), settings),
             "gateway": "N/A",
             "topic": topic,
             "device": bucket_device,
             "metrics": {},
         }
         for metric in metric_order:
-            stats = aggregates.get((bucket, topic, bucket_device, metric))
+            stats = aggregates.get((event_ts, topic, bucket_device, metric))
             if stats:
                 avg_value = stats["sum"] / stats["count"]
                 record["metrics"][metric] = round(avg_value, 2)
@@ -1453,7 +1463,6 @@ def view_data():
         start_date=start_date,
         end_date=end_date,
         active_device=device,
-        interval_minutes=interval_minutes,
         devices=devices,
         metric_options=metric_options,
         all_devices_value="__all__",
@@ -1469,15 +1478,15 @@ def delete_view_data():
     start = request.form.get("start")
     end = request.form.get("end")
     if not device or not start or not end:
-        return redirect(url_for("view_data", device=device, start=start, end=end, interval=10))
+        return redirect(url_for("view_data", device=device, start=start, end=end))
 
     try:
         start_dt, end_dt = parse_date_range(start, end, UTC_PLUS_7)
     except ValueError:
-        return redirect(url_for("view_data", device=device, start=start, end=end, interval=10))
+        return redirect(url_for("view_data", device=device, start=start, end=end))
 
     if end_dt < start_dt:
-        return redirect(url_for("view_data", device=device, start=start, end=end, interval=10))
+        return redirect(url_for("view_data", device=device, start=start, end=end))
 
     start_utc = start_dt.astimezone(timezone.utc).replace(tzinfo=None)
     end_utc = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
@@ -1496,7 +1505,6 @@ def delete_view_data():
             device=device,
             start=start,
             end=end,
-            interval=request.form.get("interval", type=int) or 10,
         )
     )
 
@@ -1516,7 +1524,6 @@ def seed_test_data():
                 device=device,
                 start=request.form.get("start"),
                 end=request.form.get("end"),
-                interval=request.form.get("interval", type=int) or 10,
             )
         )
 
@@ -1529,7 +1536,6 @@ def seed_test_data():
                 device=device,
                 start=request.form.get("start"),
                 end=request.form.get("end"),
-                interval=request.form.get("interval", type=int) or 10,
             )
         )
 
@@ -1556,7 +1562,6 @@ def seed_test_data():
             device=request.form.get("device"),
             start=request.form.get("start"),
             end=request.form.get("end"),
-            interval=request.form.get("interval", type=int) or 10,
         )
     )
 
@@ -1584,7 +1589,6 @@ def delete_test_data():
             device=request.form.get("device"),
             start=request.form.get("start"),
             end=request.form.get("end"),
-            interval=request.form.get("interval", type=int) or 10,
         )
     )
 
@@ -3534,6 +3538,45 @@ def _build_source_request_history_job_context(settings, payload):
     }
 
 
+def _coerce_latest_value_timestamp(value):
+    if value in (None, ""):
+        return None
+    try:
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if cleaned.endswith("Z"):
+                cleaned = cleaned[:-1] + "+00:00"
+            try:
+                parsed = datetime.fromisoformat(cleaned)
+            except ValueError:
+                epoch = float(cleaned)
+                if epoch > 1e12:
+                    epoch /= 1000
+                parsed = datetime.fromtimestamp(epoch, tz=timezone.utc)
+        elif isinstance(value, (int, float)):
+            epoch = float(value)
+            if epoch > 1e12:
+                epoch /= 1000
+            parsed = datetime.fromtimestamp(epoch, tz=timezone.utc)
+        else:
+            return None
+    except (TypeError, ValueError, OSError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _latest_value_entry_timestamp(item, value_item=None):
+    raw_ts = (
+        (value_item or {}).get("ts")
+        or (item or {}).get("ts")
+        or (value_item or {}).get("updated_at")
+        or (item or {}).get("updated_at")
+    )
+    return _coerce_latest_value_timestamp(raw_ts)
+
+
 def _payload_latest_value_timestamp(payload):
     latest_ts = None
     items = _coerce_collection_items(payload)
@@ -3546,47 +3589,137 @@ def _payload_latest_value_timestamp(payload):
         for value_item in values:
             if not isinstance(value_item, dict):
                 continue
-            raw_ts = (
-                value_item.get("ts")
-                or item.get("ts")
-                or value_item.get("updated_at")
-                or item.get("updated_at")
-            )
-            if raw_ts in (None, ""):
+            parsed = _latest_value_entry_timestamp(item, value_item)
+            if parsed is None:
                 continue
-            try:
-                if isinstance(raw_ts, str):
-                    cleaned = raw_ts.strip()
-                    if cleaned.endswith("Z"):
-                        cleaned = cleaned[:-1] + "+00:00"
-                    try:
-                        parsed = datetime.fromisoformat(cleaned)
-                    except ValueError:
-                        epoch = float(cleaned)
-                        if epoch > 1e12:
-                            epoch /= 1000
-                        parsed = datetime.fromtimestamp(epoch, tz=timezone.utc)
-                elif isinstance(raw_ts, (int, float)):
-                    epoch = float(raw_ts)
-                    if epoch > 1e12:
-                        epoch /= 1000
-                    parsed = datetime.fromtimestamp(epoch, tz=timezone.utc)
-                else:
-                    continue
-            except (TypeError, ValueError, OSError):
-                continue
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=timezone.utc)
             if latest_ts is None or parsed > latest_ts:
                 latest_ts = parsed
     return latest_ts
 
 
-def _sync_latest_history_to_sensor_db(settings):
-    _sensor_min_ts, sensor_max_ts = data_service.get_sensor_time_bounds(exclude_topic="Test")
-    if sensor_max_ts and sensor_max_ts.tzinfo is None:
-        sensor_max_ts = sensor_max_ts.replace(tzinfo=timezone.utc)
+def _latest_value_item_device_names(item):
+    if not isinstance(item, dict):
+        return []
+    nested_device = item.get("device")
+    candidates = [
+        item.get("display_name"),
+        item.get("name"),
+        item.get("device_name"),
+        item.get("label"),
+    ]
+    if isinstance(nested_device, dict):
+        candidates.extend(
+            [
+                nested_device.get("display_name"),
+                nested_device.get("name"),
+                nested_device.get("device_name"),
+                nested_device.get("label"),
+            ]
+        )
+    seen = set()
+    names = []
+    for value in candidates:
+        text = str(value or "").strip()
+        if not text:
+            continue
+        key = text.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        names.append(text)
+    return names
 
+
+def _latest_sensor_timestamps_by_device(device_ids, exclude_topic=None):
+    normalized_device_ids = [str(device_id or "").strip() for device_id in device_ids if str(device_id or "").strip()]
+    if not normalized_device_ids:
+        return {}
+    placeholders = ",".join("?" for _ in normalized_device_ids)
+    params = list(normalized_device_ids)
+    clauses = [f"device_id IN ({placeholders})"]
+    if exclude_topic:
+        clauses.append("(topic IS NULL OR topic != ?)")
+        params.append(exclude_topic)
+    query = f"""
+        SELECT device_id, MAX(ts) AS max_ts
+        FROM sensor_readings
+        WHERE {' AND '.join(clauses)}
+        GROUP BY device_id
+    """
+    with connect(SENSOR_DB) as conn:
+        rows = conn.execute(query, params).fetchall()
+    latest_by_device = {}
+    for row in rows:
+        parsed = _coerce_latest_value_timestamp(row["max_ts"])
+        if parsed is not None:
+            latest_by_device[row["device_id"]] = parsed
+    return latest_by_device
+
+
+def _filter_latest_history_payload_for_sensor_db(source_name, payload):
+    latest_items = payload.get("items") if isinstance(payload, dict) else payload
+    if not isinstance(latest_items, list):
+        return {"items": []}
+
+    normalized_source_name = str(source_name or "").strip()
+    devices = data_service.get_devices()
+    mapped_by_uuid = {}
+    mapped_by_name = {}
+    for device in devices:
+        mapped_source_name = str(device.get("source_name") or "").strip()
+        source_device_uuid = str(device.get("source_device_uuid") or "").strip()
+        source_device_name = str(device.get("source_device_name") or "").strip()
+        if source_device_uuid:
+            mapped_by_uuid[(mapped_source_name, source_device_uuid)] = device
+        if source_device_name:
+            mapped_by_name[(mapped_source_name, source_device_name)] = device
+
+    matched_items = []
+    candidate_device_ids = []
+    for item in latest_items:
+        if not isinstance(item, dict):
+            continue
+        device_uuid = _latest_value_item_device_uuid(item)
+        if not device_uuid:
+            continue
+        device_row = mapped_by_uuid.get((normalized_source_name, device_uuid))
+        if not device_row:
+            for candidate_name in _latest_value_item_device_names(item) + [device_uuid]:
+                device_row = mapped_by_name.get((normalized_source_name, str(candidate_name or "").strip()))
+                if device_row:
+                    break
+        if not device_row:
+            continue
+        matched_items.append((item, device_row))
+        candidate_device_ids.append(device_row["device_id"])
+
+    latest_by_device = _latest_sensor_timestamps_by_device(candidate_device_ids, exclude_topic="Test")
+    filtered_items = []
+    for item, device_row in matched_items:
+        values = item.get("values")
+        if not isinstance(values, list):
+            continue
+        device_latest_ts = latest_by_device.get(device_row["device_id"])
+        if device_latest_ts is None:
+            filtered_items.append(dict(item))
+            continue
+        filtered_values = []
+        for value_item in values:
+            if not isinstance(value_item, dict):
+                continue
+            entry_ts = _latest_value_entry_timestamp(item, value_item)
+            if entry_ts is not None and entry_ts <= device_latest_ts:
+                continue
+            filtered_values.append(value_item)
+        if not filtered_values:
+            continue
+        filtered_item = dict(item)
+        filtered_item["values"] = filtered_values
+        filtered_items.append(filtered_item)
+    return {"items": filtered_items}
+
+
+def _sync_latest_history_to_sensor_db(settings):
     for source in _normalize_endpoint_source_list(settings.get("endpoint_sources", [])):
         source_name = str(source.get("name") or "").strip()
         if not source_name:
@@ -3600,21 +3733,18 @@ def _sync_latest_history_to_sensor_db(settings):
         if not history_entry or history_entry.get("response_status") != "success":
             continue
         payload = history_entry.get("response_payload") or {}
-        payload_latest_ts = _payload_latest_value_timestamp(payload)
-        if payload_latest_ts is None:
-            continue
-        if sensor_max_ts and payload_latest_ts <= sensor_max_ts:
+        filtered_payload = _filter_latest_history_payload_for_sensor_db(source_name, payload)
+        if not _has_latest_value_payload(filtered_payload):
             continue
         try:
             fields_updated = data_service.sync_source_metric_fields(settings, source_name, payload)
             if fields_updated:
                 settings_service.save_settings(settings)
             data_service.ingest_source_latest_values_payload(
-                payload,
+                filtered_payload,
                 source_name=source_name,
                 settings=settings,
             )
-            sensor_max_ts = payload_latest_ts
         except Exception:
             continue
 

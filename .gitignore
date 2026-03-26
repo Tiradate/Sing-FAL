@@ -3,3 +3,4 @@ __pycache__/
 *.db
 sensor_export.csv
 .env
+tmp_app*
