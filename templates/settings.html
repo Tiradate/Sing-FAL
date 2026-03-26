@@ -1336,14 +1336,14 @@
                   </div>
                   <div class="col-12 col-lg-4">
                     <label class="form-label form-label-sm">{{ 'วันที่สิ้นสุด' if current_lang == 'th' else 'End Date' }} <small class="text-muted">(dd/mm/yyyy)</small></label>
-                    <input class="form-control form-control-sm" type="text" name="login_history_end_date" value="{{ login_history_end_date or '' }}" placeholder="dd/mm/yyyy" inputmode="numeric" data-display-date-input data-login-history-end-date>
+                    <input class="form-control form-control-sm" type="text" name="login_history_end_date" value="{{ login_history_end_date_value or '' }}" placeholder="dd/mm/yyyy" inputmode="numeric" data-display-date-input data-login-history-end-date>
                   </div>
                   <div class="col-12 col-lg-4">
                     <label class="form-label form-label-sm d-block">&nbsp;</label>
                     <div class="d-grid gap-2 d-md-flex">
                       <button class="btn btn-outline-secondary btn-sm flex-fill" type="submit">{{ 'โหลด' if current_lang == 'th' else 'Load' }}</button>
                       <a class="btn btn-outline-dark btn-sm flex-fill" href="{{ url_for('settings', tab='user') }}">{{ 'รีเซ็ต' if current_lang == 'th' else 'Reset' }}</a>
-                      <a class="btn btn-outline-primary btn-sm flex-fill" href="{{ url_for('export_login_history_csv', login_history_start_date=login_history_start_date or '', login_history_end_date=login_history_end_date or '') }}" data-login-history-export-link data-export-base="{{ url_for('export_login_history_csv') }}">{{ 'ดาวน์โหลด CSV' if current_lang == 'th' else 'Download CSV' }}</a>
+                      <a class="btn btn-outline-primary btn-sm flex-fill" href="{{ url_for('export_login_history_csv', login_history_start_date=login_history_start_date or '', login_history_end_date=login_history_end_date_value or '') }}" data-login-history-export-link data-export-base="{{ url_for('export_login_history_csv') }}">{{ 'ดาวน์โหลด CSV' if current_lang == 'th' else 'Download CSV' }}</a>
                     </div>
                   </div>
                 </form>

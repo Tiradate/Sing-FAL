@@ -1059,30 +1059,17 @@ def index():
             indoor_critical_count += 1
 
     default_view_device = devices[0]["device_id"] if devices else None
-    daily_view_end = datetime.now(project_tz)
+    current_view_now = datetime.now(project_tz)
+    daily_view_end = current_view_now
     daily_view_start = daily_view_end - timedelta(hours=24)
-    weekly_view_end = datetime.now(project_tz)
+    weekly_view_end = current_view_now
     weekly_view_start = weekly_view_end - timedelta(days=7)
     all_data_start, all_data_end = data_service.get_sensor_time_bounds(floor_id=floor_id)
-    device_data_start = None
-    device_data_end = None
-    if default_view_device:
-        device_data_start, device_data_end = data_service.get_sensor_time_bounds(
-            device_id=default_view_device
-        )
-    if not all_data_start or not all_data_end:
-        all_data_start, all_data_end = daily_view_start, daily_view_end
-    elif all_data_start.tzinfo is None and all_data_end.tzinfo is None:
+    if not all_data_start:
+        all_data_start = daily_view_start
+    elif all_data_start.tzinfo is None:
         all_data_start = all_data_start.replace(tzinfo=timezone.utc).astimezone(project_tz)
-        all_data_end = all_data_end.replace(tzinfo=timezone.utc).astimezone(project_tz)
-    if device_data_start and device_data_end:
-        if device_data_start.tzinfo is None and device_data_end.tzinfo is None:
-            device_data_start = device_data_start.replace(tzinfo=timezone.utc).astimezone(project_tz)
-            device_data_end = device_data_end.replace(tzinfo=timezone.utc).astimezone(project_tz)
-        daily_view_end = device_data_end
-        daily_view_start = daily_view_end - timedelta(hours=24)
-        weekly_view_end = device_data_end
-        weekly_view_start = weekly_view_end - timedelta(days=7)
+    all_data_end = current_view_now
     return render_template(
         "index.html",
         active_system=active_system,
@@ -1367,19 +1354,16 @@ def view_data():
 
     if not start or not end:
         if device == "__all__":
-            device_start, device_end = data_service.get_sensor_time_bounds()
+            device_start, _device_end = data_service.get_sensor_time_bounds()
         else:
-            device_start, device_end = data_service.get_sensor_time_bounds(device_id=device)
-        if not device_start or not device_end:
+            device_start, _device_end = data_service.get_sensor_time_bounds(device_id=device)
+        if not device_start:
             return "Missing required parameters", 400
         if device_start.tzinfo is None:
             device_start = device_start.replace(tzinfo=timezone.utc)
-        if device_end.tzinfo is None:
-            device_end = device_end.replace(tzinfo=timezone.utc)
         end_now = datetime.now(project_tz)
         end = end_now.strftime("%Y-%m-%dT%H:%M")
-        start_anchor = min(device_end.astimezone(project_tz), end_now)
-        start = (start_anchor - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M")
+        start = (end_now - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M")
 
     try:
         start_dt, end_dt = parse_date_range(start, end, project_tz)
@@ -4939,6 +4923,9 @@ def settings():
         login_history_start_date = ""
         login_history_end_date = ""
     login_history_limit = 10 if not (login_history_start_date or login_history_end_date) else None
+    login_history_end_date_value = (
+        login_history_end_date or datetime.now(get_project_timezone(settings)).date().isoformat()
+    )
 
     return render_template(
         "settings.html",
@@ -4960,6 +4947,7 @@ def settings():
         ),
         login_history_start_date=login_history_start_date,
         login_history_end_date=login_history_end_date,
+        login_history_end_date_value=login_history_end_date_value,
         source_metric_fields=data_service.get_source_metric_fields(settings),
         dynamic_severity_fields=[
             field
