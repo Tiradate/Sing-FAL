@@ -1382,6 +1382,18 @@ def view_data():
     start_utc = start_dt.astimezone(timezone.utc).replace(tzinfo=None)
     end_utc = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
 
+    def format_sensor_db_debug_timestamp(ts_value):
+        if not ts_value:
+            return "", ""
+        raw_text = str(ts_value)
+        try:
+            parsed = datetime.fromisoformat(raw_text)
+        except ValueError:
+            return raw_text, raw_text
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return raw_text, format_project_datetime_seconds(parsed, settings)
+
     query = """
         SELECT ts AS event_ts, ts, device_id, metric, value, unit, topic
         FROM sensor_readings
@@ -1397,7 +1409,24 @@ def view_data():
         params.append(device)
     query += " ORDER BY ts DESC"
     with connect(SENSOR_DB) as conn:
+        sensor_db_max_ts_row = conn.execute(
+            "SELECT MAX(ts) AS max_ts FROM sensor_readings"
+        ).fetchone()
+        if device == "__all__":
+            active_scope_max_ts_row = sensor_db_max_ts_row
+        else:
+            active_scope_max_ts_row = conn.execute(
+                "SELECT MAX(ts) AS max_ts FROM sensor_readings WHERE device_id = ?",
+                (device,),
+            ).fetchone()
         rows = conn.execute(query, params).fetchall()
+
+    sensor_db_max_ts_raw, sensor_db_max_ts_display = format_sensor_db_debug_timestamp(
+        sensor_db_max_ts_row["max_ts"] if sensor_db_max_ts_row else None
+    )
+    active_scope_max_ts_raw, active_scope_max_ts_display = format_sensor_db_debug_timestamp(
+        active_scope_max_ts_row["max_ts"] if active_scope_max_ts_row else None
+    )
 
     local_tz = project_tz
     aggregates = {}
@@ -1458,6 +1487,12 @@ def view_data():
         all_devices_value="__all__",
         range_limited=range_limited,
         max_range_hours=int(VIEW_DATA_MAX_RANGE.total_seconds() // 3600),
+        sensor_db_path=os.path.abspath(SENSOR_DB),
+        sensor_db_max_ts_raw=sensor_db_max_ts_raw,
+        sensor_db_max_ts_display=sensor_db_max_ts_display,
+        active_scope_label=("All devices" if device == "__all__" else device),
+        active_scope_max_ts_raw=active_scope_max_ts_raw,
+        active_scope_max_ts_display=active_scope_max_ts_display,
     )
 
 

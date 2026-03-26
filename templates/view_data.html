@@ -49,6 +49,34 @@
   </div>
 </div>
 
+{% if is_admin %}
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-3">
+    <div class="fw-semibold mb-2">{{ 'View Data Diagnostics' if current_lang == 'th' else 'View Data Diagnostics' }}</div>
+    <div class="small">
+      <strong>{{ 'Sensor DB' if current_lang == 'th' else 'Sensor DB' }}:</strong>
+      <code>{{ sensor_db_path }}</code>
+    </div>
+    <div class="small mt-1">
+      <strong>{{ 'Sensor DB max(ts)' if current_lang == 'th' else 'Sensor DB max(ts)' }}:</strong>
+      <code>{{ sensor_db_max_ts_raw or '-' }}</code>
+      {% if sensor_db_max_ts_display %}
+      <span class="text-muted">({{ sensor_db_max_ts_display }})</span>
+      {% endif %}
+    </div>
+    <div class="small mt-1">
+      <strong>{{ 'Current scope max(ts)' if current_lang == 'th' else 'Current scope max(ts)' }}:</strong>
+      <code>{{ active_scope_max_ts_raw or '-' }}</code>
+      {% if active_scope_max_ts_display %}
+      <span class="text-muted">({{ t('all_devices') if active_device == all_devices_value else active_scope_label }}: {{ active_scope_max_ts_display }})</span>
+      {% else %}
+      <span class="text-muted">({{ t('all_devices') if active_device == all_devices_value else active_scope_label }})</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% if is_admin and active_device != all_devices_value %}
 <div class="card shadow-sm mb-3">
   <div class="card-body">

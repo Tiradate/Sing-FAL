@@ -254,6 +254,7 @@
           <button class="btn btn-outline-primary btn-sm w-100" type="button" id="downloadSourceDataBtn">{{ 'ดาวน์โหลด CSV ข้อมูลแหล่งข้อมูล' if current_lang == 'th' else 'Download Source Data CSV' }}</button>
         </div>
       </div>
+      <div id="previewLiv24DataSummary" class="alert alert-secondary mt-2 mb-0 small d-none" style="white-space: pre-line;"></div>
       <pre id="previewLiv24DataOutput" class="mt-2 p-3 bg-light border rounded small" style="max-height: 320px; overflow: auto;">{{ 'คลิก "ใช้แหล่งข้อมูล" หรือ "ข้อมูลแหล่งข้อมูล" เพื่อโหลดตัวอย่าง' if current_lang == 'th' else 'Click "Use Source" or "Source Data" to load a source preview.' }}</pre>
       <div class="mt-4 d-flex justify-content-end">
         <button class="btn btn-primary" type="submit" data-save-settings-section="source">{{ 'บันทึกแหล่งข้อมูล' if current_lang == 'th' else 'Save Source' }}</button>
@@ -1648,6 +1649,7 @@
   const endpointSourcesJson = document.getElementById('endpointSourcesJson');
   const addEndpointSourceBtn = document.getElementById('addEndpointSourceBtn');
   const previewLiv24DataBtn = document.getElementById('previewLiv24DataBtn');
+  const previewLiv24DataSummary = document.getElementById('previewLiv24DataSummary');
   const previewLiv24DataOutput = document.getElementById('previewLiv24DataOutput');
   const downloadSourceDataBtn = document.getElementById('downloadSourceDataBtn');
   const sourceDataExportStartDate = document.getElementById('sourceDataExportStartDate');
@@ -2889,6 +2891,54 @@
     ) || 0;
   };
 
+  const hideSourcePreviewSummary = () => {
+    if (!previewLiv24DataSummary) {
+      return;
+    }
+    previewLiv24DataSummary.textContent = '';
+    previewLiv24DataSummary.classList.add('d-none');
+    previewLiv24DataSummary.classList.remove('alert-danger');
+    previewLiv24DataSummary.classList.add('alert-secondary');
+  };
+
+  const setSourcePreviewSummaryError = (message) => {
+    if (!previewLiv24DataSummary) {
+      return;
+    }
+    if (!message) {
+      hideSourcePreviewSummary();
+      return;
+    }
+    previewLiv24DataSummary.textContent = message;
+    previewLiv24DataSummary.classList.remove('d-none', 'alert-secondary');
+    previewLiv24DataSummary.classList.add('alert-danger');
+  };
+
+  const updateSourcePreviewSummary = (payload) => {
+    if (!previewLiv24DataSummary) {
+      return;
+    }
+    const ingestResult = payload?.ingest_result && typeof payload.ingest_result === 'object'
+      ? payload.ingest_result
+      : {};
+    const matchedDevices = Number.parseInt(ingestResult.matched_devices ?? 0, 10) || 0;
+    const insertedRows = Number.parseInt(ingestResult.inserted ?? 0, 10) || 0;
+    const latestValueItems = Array.isArray(payload?.latest_values?.items)
+      ? payload.latest_values.items.length
+      : Array.isArray(payload?.latest_values)
+        ? payload.latest_values.length
+        : 0;
+    const sourceName = String(payload?.source?.name || '').trim() || '-';
+    previewLiv24DataSummary.textContent = [
+      {{ ('แหล่งข้อมูล' if current_lang == 'th' else 'Source') | tojson }} + `: ${sourceName}`,
+      {{ ('Latest Values items' if current_lang == 'th' else 'Latest Values items') | tojson }} + `: ${latestValueItems}`,
+      {{ ('Matched devices' if current_lang == 'th' else 'Matched devices') | tojson }} + `: ${matchedDevices}`,
+      {{ ('Inserted rows' if current_lang == 'th' else 'Inserted rows') | tojson }} + `: ${insertedRows}`,
+    ].join(' | ');
+    previewLiv24DataSummary.classList.remove('d-none', 'alert-danger');
+    previewLiv24DataSummary.classList.add('alert-secondary');
+  };
+
   const applySourcePreviewPayload = (row, draftSource, payload, options = {}) => {
     const settings = {
       updatePreviewOutput: true,
@@ -2909,6 +2959,7 @@
     if (settings.updatePreviewOutput && previewLiv24DataOutput) {
       previewLiv24DataOutput.dataset.sourceName = sourceName;
       previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
+      updateSourcePreviewSummary(payload);
     }
   };
 
@@ -3464,6 +3515,7 @@
       previewLiv24DataBtn.dataset.endpointBound = 'true';
       previewLiv24DataBtn.addEventListener('click', async () => {
         previewLiv24DataOutput.textContent = {{ ('กำลังโหลดข้อมูลแหล่งข้อมูล...' if current_lang == 'th' else 'Loading source data...') | tojson }};
+        hideSourcePreviewSummary();
         try {
           const bulkSourceSelect = document.getElementById('bulkSourceName');
           const selectedSourceName = (bulkSourceSelect?.value || '').trim();
@@ -3481,8 +3533,11 @@
               });
           previewLiv24DataOutput.dataset.sourceName = payload.source?.name || selectedSourceName || '';
           previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
+          updateSourcePreviewSummary(payload);
         } catch (error) {
-          previewLiv24DataOutput.textContent = `{{ 'โหลดข้อมูลแหล่งข้อมูลไม่สำเร็จ:' if current_lang == 'th' else 'Failed to load source data:' }} ${getRequestErrorMessage(error)}`;
+          const errorMessage = `{{ 'โหลดข้อมูลแหล่งข้อมูลไม่สำเร็จ:' if current_lang == 'th' else 'Failed to load source data:' }} ${getRequestErrorMessage(error)}`;
+          previewLiv24DataOutput.textContent = errorMessage;
+          setSourcePreviewSummaryError(errorMessage);
         }
       });
     }
