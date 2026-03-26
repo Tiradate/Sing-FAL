@@ -10,7 +10,7 @@
 
 <div class="card shadow-sm mb-3">
   <div class="card-body">
-    <form class="row g-3 align-items-end" method="get" action="{{ url_for('view_data', system=current_system) }}">
+    <form class="row g-3 align-items-end" method="get" action="{{ url_for('view_data', system=current_system) }}" id="viewDataFilterForm">
       <div class="col-12 col-md-3">
         <label class="form-label">{{ t('device') }}</label>
         <select class="form-select" name="device" required>
@@ -40,6 +40,12 @@
         <button class="btn btn-primary" type="submit">{{ t('filter') }}</button>
       </div>
     </form>
+    <div class="small text-muted mt-3">Maximum query range: {{ max_range_hours }} hours. Longer selections are trimmed automatically.</div>
+    {% if range_limited %}
+    <div class="alert alert-warning py-2 px-3 mt-3 mb-0" role="alert">
+      The selected range was reduced to the latest {{ max_range_hours }} hours to keep loading fast.
+    </div>
+    {% endif %}
   </div>
 </div>
 
@@ -156,6 +162,47 @@
 <script>
   let _sortCol = -1;
   let _sortDir = 'asc';
+  const _viewDataFilterForm = document.getElementById('viewDataFilterForm');
+  const _viewDataStartInput = _viewDataFilterForm?.querySelector('input[name="start"]');
+  const _viewDataEndInput = _viewDataFilterForm?.querySelector('input[name="end"]');
+  const _viewDataMaxRangeMs = {{ max_range_hours }} * 60 * 60 * 1000;
+
+  function parseDateTimeLocal(value) {
+    if (!value || !value.includes('T')) return null;
+    const [datePart, timePart] = value.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute] = timePart.split(':').map(Number);
+    if ([year, month, day, hour, minute].some(Number.isNaN)) return null;
+    return new Date(year, month - 1, day, hour, minute, 0, 0);
+  }
+
+  function formatDateTimeLocal(date) {
+    const pad = (value) => String(value).padStart(2, '0');
+    return [
+      date.getFullYear(),
+      pad(date.getMonth() + 1),
+      pad(date.getDate()),
+    ].join('-') + 'T' + [
+      pad(date.getHours()),
+      pad(date.getMinutes()),
+    ].join(':');
+  }
+
+  function clampViewDataRange() {
+    if (!_viewDataStartInput || !_viewDataEndInput) return;
+    const startDate = parseDateTimeLocal(_viewDataStartInput.value);
+    const endDate = parseDateTimeLocal(_viewDataEndInput.value);
+    if (!startDate || !endDate) return;
+
+    if (endDate.getTime() < startDate.getTime()) {
+      _viewDataEndInput.value = _viewDataStartInput.value;
+      return;
+    }
+
+    if (endDate.getTime() - startDate.getTime() > _viewDataMaxRangeMs) {
+      _viewDataStartInput.value = formatDateTimeLocal(new Date(endDate.getTime() - _viewDataMaxRangeMs));
+    }
+  }
 
   function sortTable(columnIndex) {
     const table = document.getElementById('dataTable');
@@ -186,5 +233,9 @@
       if (i === columnIndex) th.classList.add(_sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
     });
   }
+
+  _viewDataStartInput?.addEventListener('change', clampViewDataRange);
+  _viewDataEndInput?.addEventListener('change', clampViewDataRange);
+  _viewDataFilterForm?.addEventListener('submit', clampViewDataRange);
 </script>
 {% endblock %}

@@ -444,6 +444,7 @@ TRANSLATIONS = {
 }
 
 UTC_PLUS_7 = timezone(timedelta(hours=7))
+VIEW_DATA_MAX_RANGE = timedelta(days=1)
 PROJECT_TIMEZONE_FALLBACKS = {
     "UTC": timezone.utc,
     "Asia/Bangkok": timezone(timedelta(hours=7)),
@@ -1373,6 +1374,11 @@ def view_data():
     if end_dt < start_dt:
         return "Invalid date format", 400
 
+    range_limited = False
+    if end_dt - start_dt > VIEW_DATA_MAX_RANGE:
+        start_dt = end_dt - VIEW_DATA_MAX_RANGE
+        range_limited = True
+
     start_utc = start_dt.astimezone(timezone.utc).replace(tzinfo=None)
     end_utc = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
 
@@ -1450,6 +1456,8 @@ def view_data():
         devices=devices,
         metric_options=metric_options,
         all_devices_value="__all__",
+        range_limited=range_limited,
+        max_range_hours=int(VIEW_DATA_MAX_RANGE.total_seconds() // 3600),
     )
 
 
