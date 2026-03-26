@@ -52,21 +52,6 @@
     chart.update();
   };
 
-  const fetchSeries = async (route, metricKey) => {
-    if (!route) {
-      return null;
-    }
-    const params = new URLSearchParams({ format: 'json', metric: metricKey });
-    if (data.activeFloor) {
-      params.set('floor', data.activeFloor);
-    }
-    const response = await fetch(`${route}?${params.toString()}`);
-    if (!response.ok) {
-      return null;
-    }
-    return response.json();
-  };
-
   const dailyCtx = document.getElementById('dailyChart');
   const dailyMetricSelect = document.getElementById('dailyMetricSelect');
   let dailyChart = null;
@@ -96,7 +81,14 @@
 
   const weeklyCtx = document.getElementById('weeklyChart');
   const weeklyMetricSelect = document.getElementById('weeklyMetricSelect');
+  const weeklyWeekSelect = document.getElementById('weeklyWeekSelect');
+  const prevWeekBtn = document.getElementById('prevWeekBtn');
+  const nextWeekBtn = document.getElementById('nextWeekBtn');
+  const weeklyViewDataRangeLink = document.getElementById('weeklyViewDataRangeLink');
+  const weeklyViewDataRangeText = document.getElementById('weeklyViewDataRangeText');
   let weeklyChart = null;
+  let weeklyWeeks = Array.isArray(data.weeklyWeeks) ? data.weeklyWeeks : [];
+  let activeWeeklyWeekKey = data.activeWeeklyWeekKey || (weeklyWeekSelect ? weeklyWeekSelect.value : '');
   if (weeklyCtx && data.weeklyLabels) {
     const baseDataset = {
       type: 'bar',
@@ -150,6 +142,101 @@
     return response.json();
   };
 
+  const fetchWeeklySeries = async (metricKey, weekKey) => {
+    if (!data.weeklyRoute) return null;
+    const params = new URLSearchParams({ metric: metricKey || (weeklyMetricSelect ? weeklyMetricSelect.value : 'pm25') });
+    if (data.activeFloor) params.set('floor', data.activeFloor);
+    if (weekKey) params.set('week_key', weekKey);
+    const response = await fetch(`${data.weeklyRoute}?${params.toString()}`);
+    if (!response.ok) return null;
+    return response.json();
+  };
+
+  const populateWeeklyWeekOptions = (weeks, activeKey) => {
+    if (!weeklyWeekSelect) {
+      return;
+    }
+    weeklyWeekSelect.innerHTML = '';
+    weeks.forEach((week) => {
+      const option = document.createElement('option');
+      option.value = week.key;
+      option.textContent = week.label;
+      option.selected = week.key === activeKey;
+      weeklyWeekSelect.appendChild(option);
+    });
+    weeklyWeekSelect.disabled = weeks.length === 0;
+  };
+
+  const updateWeeklyButtons = (canPrevious, canNext) => {
+    if (prevWeekBtn) {
+      prevWeekBtn.disabled = !canPrevious;
+    }
+    if (nextWeekBtn) {
+      nextWeekBtn.disabled = !canNext;
+    }
+  };
+
+  const updateWeeklyViewDataLink = (series) => {
+    if (weeklyViewDataRangeText) {
+      weeklyViewDataRangeText.textContent = (
+        series?.active_week_label
+        || data.activeWeeklyWeekLabel
+        || weeklyViewDataRangeText.textContent
+      );
+    }
+    if (!weeklyViewDataRangeLink || !data.weeklyViewDataRoute) {
+      return;
+    }
+    const url = new URL(data.weeklyViewDataRoute, window.location.origin);
+    if (series?.view_start) {
+      url.searchParams.set('start', series.view_start);
+    }
+    if (series?.view_end) {
+      url.searchParams.set('end', series.view_end);
+    }
+    weeklyViewDataRangeLink.href = `${url.pathname}${url.search}`;
+  };
+
+  const syncWeeklyControls = (series) => {
+    if (!series) {
+      return;
+    }
+    weeklyWeeks = Array.isArray(series.weeks) ? series.weeks : [];
+    activeWeeklyWeekKey = series.active_week_key || '';
+    populateWeeklyWeekOptions(weeklyWeeks, activeWeeklyWeekKey);
+    updateWeeklyButtons(Boolean(series.can_previous), Boolean(series.can_next));
+    updateWeeklyViewDataLink(series);
+  };
+
+  const refreshWeeklyChart = async (metricKey, weekKey) => {
+    const series = await fetchWeeklySeries(metricKey, weekKey);
+    if (!series || !weeklyChart) {
+      return;
+    }
+    applySeriesToChart(weeklyChart, metricKey, series);
+    syncWeeklyControls(series);
+  };
+
+  const moveWeeklySelection = async (direction) => {
+    if (!weeklyWeeks.length) {
+      return;
+    }
+    const currentIndex = weeklyWeeks.findIndex((week) => week.key === activeWeeklyWeekKey);
+    if (currentIndex === -1) {
+      return;
+    }
+    const nextIndex = Math.max(0, Math.min(weeklyWeeks.length - 1, currentIndex + direction));
+    if (nextIndex === currentIndex) {
+      return;
+    }
+    activeWeeklyWeekKey = weeklyWeeks[nextIndex].key;
+    if (weeklyWeekSelect) {
+      weeklyWeekSelect.value = activeWeeklyWeekKey;
+    }
+    const metricKey = weeklyMetricSelect ? weeklyMetricSelect.value : 'pm25';
+    await refreshWeeklyChart(metricKey, activeWeeklyWeekKey);
+  };
+
   const updateDayLabel = () => {
     if (!dailyDateLabel) return;
     if (dailyDayOffset === 0) {
@@ -185,15 +272,62 @@
     });
   }
 
+  syncWeeklyControls({
+    weeks: weeklyWeeks,
+    active_week_key: activeWeeklyWeekKey,
+    active_week_label: data.activeWeeklyWeekLabel || '',
+    can_previous: Boolean(data.weeklyCanPrevious),
+    can_next: Boolean(data.weeklyCanNext),
+    view_start: data.weeklyViewStart || '',
+    view_end: data.weeklyViewEnd || '',
+  });
+
   if (weeklyMetricSelect) {
     weeklyMetricSelect.value = data.weeklyMetric || weeklyMetricSelect.value;
     weeklyMetricSelect.addEventListener('change', async (event) => {
       const metricKey = event.target.value;
-      const series = await fetchSeries(data.weeklyRoute, metricKey);
-      if (!series || !weeklyChart) {
+      await refreshWeeklyChart(metricKey, activeWeeklyWeekKey);
+    });
+  }
+
+  if (weeklyWeekSelect) {
+    weeklyWeekSelect.addEventListener('change', async (event) => {
+      activeWeeklyWeekKey = event.target.value;
+      const metricKey = weeklyMetricSelect ? weeklyMetricSelect.value : 'pm25';
+      await refreshWeeklyChart(metricKey, activeWeeklyWeekKey);
+    });
+
+    weeklyWeekSelect.addEventListener('wheel', (event) => {
+      if (!weeklyWeeks.length) {
         return;
       }
-      applySeriesToChart(weeklyChart, metricKey, series);
+      event.preventDefault();
+      const currentIndex = weeklyWeeks.findIndex((week) => week.key === activeWeeklyWeekKey);
+      if (currentIndex === -1) {
+        return;
+      }
+      const nextIndex = Math.max(
+        0,
+        Math.min(weeklyWeeks.length - 1, currentIndex + (event.deltaY > 0 ? 1 : -1))
+      );
+      if (nextIndex === currentIndex) {
+        return;
+      }
+      activeWeeklyWeekKey = weeklyWeeks[nextIndex].key;
+      weeklyWeekSelect.value = activeWeeklyWeekKey;
+      weeklyWeekSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }, { passive: false });
+  }
+
+  if (prevWeekBtn) {
+    prevWeekBtn.addEventListener('click', async () => {
+      await moveWeeklySelection(-1);
+    });
+  }
+
+  if (nextWeekBtn) {
+    nextWeekBtn.addEventListener('click', async () => {
+      await moveWeeklySelection(1);
     });
   }
 

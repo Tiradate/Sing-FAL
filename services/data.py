@@ -1,3 +1,4 @@
+from calendar import month_abbr, monthrange
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import json
@@ -1320,13 +1321,189 @@ def _get_latest_metric_timestamp(metric, floor_id=None):
     return datetime.fromisoformat(row["max_ts"])
 
 
+def _get_metric_time_bounds(metric, floor_id=None):
+    params = [metric]
+    floor_clause = ""
+    if floor_id:
+        floor_clause = "AND floor_id = ?"
+        params.append(floor_id)
+    query = f"""
+        SELECT MIN(ts) AS min_ts, MAX(ts) AS max_ts
+        FROM sensor_readings
+        WHERE metric = ? {floor_clause}
+    """
+    with connect(SENSOR_DB) as conn:
+        row = conn.execute(query, params).fetchone()
+    if not row or not row["min_ts"] or not row["max_ts"]:
+        return None, None
+    return datetime.fromisoformat(row["min_ts"]), datetime.fromisoformat(row["max_ts"])
+
+
+def _build_month_week_ranges(start_local, end_local):
+    if not start_local or not end_local:
+        return []
+
+    start_date = start_local.date()
+    end_date = end_local.date()
+    if end_date < start_date:
+        return []
+
+    weeks = []
+    year = start_date.year
+    month = start_date.month
+    tzinfo = start_local.tzinfo
+
+    while (year, month) <= (end_date.year, end_date.month):
+        days_in_month = monthrange(year, month)[1]
+        first_day_of_month = datetime(year, month, 1, tzinfo=tzinfo).date()
+        last_day_of_month = datetime(year, month, days_in_month, tzinfo=tzinfo).date()
+        week_count = (days_in_month + 6) // 7
+
+        for week_index in range(week_count):
+            period_start = first_day_of_month + timedelta(days=week_index * 7)
+            period_end = min(last_day_of_month, period_start + timedelta(days=6))
+            if period_end < start_date or period_start > end_date:
+                continue
+
+            actual_start = max(period_start, start_date)
+            actual_end = min(period_end, end_date)
+            local_start = datetime(
+                actual_start.year,
+                actual_start.month,
+                actual_start.day,
+                tzinfo=tzinfo,
+            )
+            local_end_exclusive = datetime(
+                actual_end.year,
+                actual_end.month,
+                actual_end.day,
+                tzinfo=tzinfo,
+            ) + timedelta(days=1)
+            weeks.append(
+                {
+                    "key": f"{year:04d}-{month:02d}-w{week_index + 1}",
+                    "label": f"{month_abbr[month].upper()} Week{week_index + 1}",
+                    "local_start": local_start,
+                    "local_end_exclusive": local_end_exclusive,
+                }
+            )
+
+        if month == 12:
+            year += 1
+            month = 1
+        else:
+            month += 1
+
+    return weeks
+
+
+def get_weekly_series_payload(metric="pm25", floor_id=None, series_timezone=None, week_key=None):
+    series_timezone = _coerce_series_timezone(series_timezone)
+    earliest_ts, latest_ts = _get_metric_time_bounds(metric, floor_id=floor_id)
+    if earliest_ts is None or latest_ts is None:
+        return {
+            "labels": [],
+            "values": [],
+            "weeks": [],
+            "active_week_key": "",
+            "active_week_label": "",
+            "can_previous": False,
+            "can_next": False,
+            "view_start": "",
+            "view_end": "",
+        }
+
+    if earliest_ts.tzinfo is None:
+        earliest_ts = earliest_ts.replace(tzinfo=timezone.utc)
+    if latest_ts.tzinfo is None:
+        latest_ts = latest_ts.replace(tzinfo=timezone.utc)
+
+    local_earliest = earliest_ts.astimezone(series_timezone)
+    local_latest = latest_ts.astimezone(series_timezone)
+    weeks = _build_month_week_ranges(local_earliest, local_latest)
+    if not weeks:
+        return {
+            "labels": [],
+            "values": [],
+            "weeks": [],
+            "active_week_key": "",
+            "active_week_label": "",
+            "can_previous": False,
+            "can_next": False,
+            "view_start": "",
+            "view_end": "",
+        }
+
+    active_index = next(
+        (index for index, week in enumerate(weeks) if week["key"] == week_key),
+        len(weeks) - 1,
+    )
+    active_week = weeks[active_index]
+
+    params = [metric]
+    floor_clause = ""
+    if floor_id:
+        floor_clause = "AND floor_id = ?"
+        params.append(floor_id)
+
+    utc_start = active_week["local_start"].astimezone(timezone.utc)
+    utc_end = active_week["local_end_exclusive"].astimezone(timezone.utc)
+    query = f"""
+        SELECT ts, value
+        FROM sensor_readings
+        WHERE metric = ? AND ts >= ? AND ts < ? {floor_clause}
+        ORDER BY ts
+    """
+    query_params = [metric, utc_start.isoformat(), utc_end.isoformat(), *params[1:]]
+    day_count = (active_week["local_end_exclusive"].date() - active_week["local_start"].date()).days
+    bucket_labels = [
+        (active_week["local_start"].date() + timedelta(days=offset)).isoformat()
+        for offset in range(day_count)
+    ]
+    buckets = {label: [] for label in bucket_labels}
+
+    with connect(SENSOR_DB) as conn:
+        rows = conn.execute(query, query_params).fetchall()
+
+    for row in rows:
+        row_ts = datetime.fromisoformat(row["ts"])
+        if row_ts.tzinfo is None:
+            row_ts = row_ts.replace(tzinfo=timezone.utc)
+        bucket_label = row_ts.astimezone(series_timezone).strftime("%Y-%m-%d")
+        if bucket_label in buckets and row["value"] is not None:
+            buckets[bucket_label].append(float(row["value"]))
+
+    labels = []
+    values = []
+    for label in bucket_labels:
+        bucket_values = buckets[label]
+        if not bucket_values:
+            continue
+        labels.append(label)
+        values.append(round(sum(bucket_values) / len(bucket_values), 2))
+
+    return {
+        "labels": labels,
+        "values": values,
+        "weeks": [{"key": week["key"], "label": week["label"]} for week in weeks],
+        "active_week_key": active_week["key"],
+        "active_week_label": active_week["label"],
+        "can_previous": active_index > 0,
+        "can_next": active_index < len(weeks) - 1,
+        "view_start": active_week["local_start"].strftime("%Y-%m-%dT%H:%M"),
+        "view_end": (active_week["local_end_exclusive"] - timedelta(minutes=1)).strftime(
+            "%Y-%m-%dT%H:%M"
+        ),
+    }
+
+
 def get_weekly_series(metric="pm25", floor_id=None, series_timezone=None):
-    return _get_time_series(
+    payload = get_weekly_series_payload(
         metric=metric,
         floor_id=floor_id,
-        bucket="day",
         series_timezone=series_timezone,
     )
+    return payload["labels"], payload["values"]
 
 
 def _get_time_series(metric="pm25", floor_id=None, bucket="hour", series_timezone=None, day_offset=0):

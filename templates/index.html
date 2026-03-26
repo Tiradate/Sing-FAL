@@ -322,9 +322,6 @@
               <li>
                 <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=daily_view_start, end=daily_view_end) }}">{{ t('last_24_hours') }}</a>
               </li>
-              <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end) }}">{{ t('all_devices') }}</a>
-              </li>
             </ul>
           </div>
           {% endif %}
@@ -370,10 +367,13 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=weekly_view_start, end=weekly_view_end) }}">{{ t('last_7_days') }}</a>
-              </li>
-              <li>
-                <a class="dropdown-item" href="{{ url_for('view_data', system=active_system, device=default_view_device, start=all_data_start, end=all_data_end) }}">{{ t('all_devices') }}</a>
+                <a
+                  class="dropdown-item"
+                  id="weeklyViewDataRangeLink"
+                  href="{{ url_for('view_data', system=active_system, device=default_view_device, start=weekly_view_start, end=weekly_view_end) }}"
+                >
+                  <span id="weeklyViewDataRangeText">{{ active_weekly_week_label or t('last_7_days') }}</span>
+                </a>
               </li>
             </ul>
           </div>
@@ -382,8 +382,28 @@
       </div>
       <div class="card-body dashboard-card-body">
         <canvas id="weeklyChart"></canvas>
-        <div class="mt-2">
-          <input type="text" class="form-control form-control-sm" placeholder="dd/mm/yyyy" inputmode="numeric" data-display-date-input />
+        <div class="d-flex justify-content-between align-items-center gap-2 mt-2">
+          <button
+            id="prevWeekBtn"
+            class="btn btn-sm btn-outline-secondary"
+            type="button"
+            title="{{ t('previous_week') }}"
+            {% if not weekly_can_previous %}disabled{% endif %}
+          >&lt;</button>
+          <select id="weeklyWeekSelect" class="form-select form-select-sm text-center" aria-label="{{ t('week') }}">
+            {% for week in weekly_weeks %}
+            <option value="{{ week.key }}" {% if week.key == active_weekly_week_key %}selected{% endif %}>
+              {{ week.label }}
+            </option>
+            {% endfor %}
+          </select>
+          <button
+            id="nextWeekBtn"
+            class="btn btn-sm btn-outline-secondary"
+            type="button"
+            title="{{ t('next_week') }}"
+            {% if not weekly_can_next %}disabled{% endif %}
+          >&gt;</button>
         </div>
       </div>
     </div>
@@ -517,6 +537,13 @@
     dailyValues: {{ daily_values|tojson }},
     weeklyLabels: {{ weekly_labels|tojson }},
     weeklyValues: {{ weekly_values|tojson }},
+    weeklyWeeks: {{ weekly_weeks|tojson }},
+    activeWeeklyWeekKey: {{ active_weekly_week_key|tojson }},
+    activeWeeklyWeekLabel: {{ active_weekly_week_label|tojson }},
+    weeklyCanPrevious: {{ weekly_can_previous|tojson }},
+    weeklyCanNext: {{ weekly_can_next|tojson }},
+    weeklyViewStart: {{ weekly_view_start|tojson }},
+    weeklyViewEnd: {{ weekly_view_end|tojson }},
     dailyMetric: {{ daily_metric|tojson }},
     weeklyMetric: {{ weekly_metric|tojson }},
     floors: {{ floors|tojson }},
@@ -528,6 +555,7 @@
     floorFromQuery: {{ floor_from_query|tojson }},
     dailyRoute: {{ url_for('graphs_daily')|tojson }},
     weeklyRoute: {{ url_for('graphs_weekly')|tojson }},
+    weeklyViewDataRoute: {{ (url_for('view_data', system=active_system, device=default_view_device) if default_view_device else '')|tojson }},
     todayLabel: {{ (t('today') if t('today') else 'Today')|tojson }},
     yesterdayLabel: {{ ('เมื่อวาน' if current_lang == 'th' else 'Yesterday')|tojson }},
     metricOptions: {{ metric_option_map|tojson }},
@@ -611,6 +639,30 @@
       pts: [[26,13],[40,13],[40,28],[26,28]],
     },
   ];
+
+  const isPointInPolygon = (point, polygon) => {
+    if (!point || !Array.isArray(polygon) || polygon.length < 3) {
+      return false;
+    }
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+      const [xi, yi] = polygon[i];
+      const [xj, yj] = polygon[j];
+      const intersects = ((yi > point.y) !== (yj > point.y))
+        && (point.x < (((xj - xi) * (point.y - yi)) / ((yj - yi) || Number.EPSILON)) + xi);
+      if (intersects) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  };
+
+  const comfortZone = ZONES.find((zone) => zone.name.join(' ') === 'Comfort Zone');
+  const avgInComfortZone = avgPt && comfortZone
+    ? isPointInPolygon(avgPt, comfortZone.pts)
+    : false;
+  const avgColor = avgInComfortZone ? 'rgba(25,135,84,0.95)' : 'rgba(220,53,69,0.95)';
+  const avgBorderColor = avgInComfortZone ? 'rgba(15,81,50,1)' : 'rgba(132,32,41,1)';
 
   /* ── RH reference curves ───────────────────────────────────────── */
   const RH_LINES = [20, 40, 60, 80, 100];
@@ -711,8 +763,8 @@
         ...(avgPt ? [{
           label: 'Average',
           data: [avgPt],
-          backgroundColor: 'rgba(220,53,69,0.95)',
-          borderColor: 'rgba(255,255,255,0.9)',
+          backgroundColor: avgColor,
+          borderColor: avgBorderColor,
           borderWidth: 1.5,
           pointRadius: 9,
           pointStyle: 'star',
@@ -724,7 +776,15 @@
       responsive: true,
       animation: false,
       plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            pointStyleWidth: 14,
+            boxWidth: 12,
+            font: { size: 11 },
+          },
+        },
         tooltip: {
           callbacks: {
             label: (ctx) => {

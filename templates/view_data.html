@@ -40,10 +40,10 @@
         <button class="btn btn-primary" type="submit">{{ t('filter') }}</button>
       </div>
     </form>
-    <div class="small text-muted mt-3">Maximum query range: {{ max_range_hours }} hours. Longer selections are trimmed automatically.</div>
+    <div class="small text-muted mt-3">{{ t('view_data_max_range_notice').format(hours=max_range_hours) }}</div>
     {% if range_limited %}
     <div class="alert alert-warning py-2 px-3 mt-3 mb-0" role="alert">
-      The selected range was reduced to the latest {{ max_range_hours }} hours to keep loading fast.
+      {{ t('view_data_range_limited_notice').format(hours=max_range_hours) }}
     </div>
     {% endif %}
   </div>

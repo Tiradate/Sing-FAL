@@ -1017,14 +1017,14 @@
                     {{ 'ล้าง' if current_lang == 'th' else 'Clear' }}
                   </button>
                 </div>
-                <div class="form-text" id="bulkSelectionHint">{{ 'เลือกเซนเซอร์เพื่อเติมโซน/ประเภทอัตโนมัติ' if current_lang == 'th' else 'Select sensors to smart-fill zone/type.' }}</div>
+                <div class="form-text" id="bulkSelectionHint">{{ 'เลือกเซนเซอร์เพื่อเติมโซน/ฟิลด์อัตโนมัติ' if current_lang == 'th' else 'Select sensors to smart-fill zone/field.' }}</div>
                 <div class="border rounded p-2 small" id="bulkSensorList"></div>
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label mb-1" for="bulkSensorZone">{{ 'โซน' if current_lang == 'th' else 'Zone' }}</label>
                 <input class="form-control form-control-sm" id="bulkSensorZone" type="text" placeholder="{{ 'โซน' if current_lang == 'th' else 'Zone' }}">
-                <label class="form-label mb-1" for="bulkSensorType">{{ 'ประเภทเซนเซอร์' if current_lang == 'th' else 'Sensor type(s)' }}</label>
-                <input class="form-control form-control-sm" id="bulkSensorType" type="text" list="bulkSensorTypeOptions" placeholder="{{ 'ประเภทเซนเซอร์ (คั่นด้วยจุลภาค)' if current_lang == 'th' else 'Sensor types (comma-separated)' }}">
+                <label class="form-label mb-1" for="bulkSensorType">{{ 'ฟิลด์เซนเซอร์' if current_lang == 'th' else 'Sensor Field' }}</label>
+                <input class="form-control form-control-sm" id="bulkSensorType" type="text" list="bulkSensorTypeOptions" placeholder="{{ 'ฟิลด์เซนเซอร์ (คั่นด้วยจุลภาค)' if current_lang == 'th' else 'Sensor Field (comma-separated)' }}">
                 <datalist id="bulkSensorTypeOptions">
                   {% for option in bulk_sensor_type_options %}
                   {% if option %}
@@ -4715,13 +4715,13 @@
     }
     if (!selectedInputs.length) {
       if (bulkSelectionHint) {
-        bulkSelectionHint.textContent = 'Select sensors to smart-fill zone/type.';
+        bulkSelectionHint.textContent = 'Select sensors to smart-fill zone/field.';
       }
       if (bulkSensorZone) {
         bulkSensorZone.placeholder = 'Zone';
       }
       if (bulkSensorType) {
-        bulkSensorType.placeholder = 'Sensor types (comma-separated)';
+        bulkSensorType.placeholder = 'Sensor Field (comma-separated)';
       }
       if (bulkSourceDeviceName) {
         setBulkSourceDeviceValue('');
@@ -4749,7 +4749,7 @@
       const zoneSummary = zones.size === 1 ? Array.from(zones)[0] : 'Mixed';
       const typeSummary = types.size === 1 ? Array.from(types)[0] : 'Mixed';
       const sourceSummary = sourceDevices.size === 1 ? Array.from(sourceDevices)[0] : (sourceDevices.size ? 'Mixed' : 'None');
-      bulkSelectionHint.textContent = `Detected zone: ${zoneSummary} · Type: ${typeSummary} · Source device: ${sourceSummary}`;
+      bulkSelectionHint.textContent = `Detected zone: ${zoneSummary} · Field: ${typeSummary} · Source device: ${sourceSummary}`;
     }
     if (bulkSensorZone) {
       bulkSensorZone.placeholder = zones.size === 1 ? Array.from(zones)[0] : 'Mixed';
@@ -4759,7 +4759,7 @@
     }
     if (bulkSensorType) {
       const typeSummary = typeSignatures.length === 1 ? typeSignatures[0] : 'Mixed';
-      bulkSensorType.placeholder = typeSummary || 'Sensor types (comma-separated)';
+      bulkSensorType.placeholder = typeSummary || 'Sensor Field (comma-separated)';
       if (typeSignatures.length === 1) {
         bulkSensorType.value = typeSignatures[0];
       }

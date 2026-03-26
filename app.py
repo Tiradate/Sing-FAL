@@ -304,6 +304,8 @@ TRANSLATIONS = {
         "interval": "Interval",
         "minutes_short": "min",
         "filter": "Filter",
+        "view_data_max_range_notice": "Maximum query range: {hours} hours. Longer selections are trimmed automatically.",
+        "view_data_range_limited_notice": "The selected range was reduced to the latest {hours} hours to keep loading fast.",
         "admin_data_tools": "Admin Data Tools",
         "delete_current_data_range": "Delete current data range",
         "confirm_delete_selected_range": "Delete data for the selected device and range?",
@@ -343,6 +345,9 @@ TRANSLATIONS = {
         "all_data": "All data",
         "all_devices": "All devices",
         "today": "Today",
+        "week": "Week",
+        "previous_week": "Previous week",
+        "next_week": "Next week",
         "weekly_overview": "Weekly Overview",
         "average_per_day": "Average per day",
         "last_7_days": "Last 7 days",
@@ -400,6 +405,8 @@ TRANSLATIONS = {
         "interval": "ช่วงเวลา",
         "minutes_short": "นาที",
         "filter": "กรอง",
+        "view_data_max_range_notice": "ช่วงการค้นหาสูงสุด: {hours} ชั่วโมง ระบบจะย่อช่วงเวลาที่เลือกเกินให้อัตโนมัติ",
+        "view_data_range_limited_notice": "ระบบได้ลดช่วงเวลาที่เลือกเหลือ {hours} ชั่วโมงล่าสุดเพื่อให้โหลดข้อมูลได้รวดเร็ว",
         "admin_data_tools": "เครื่องมือข้อมูลสำหรับผู้ดูแล",
         "delete_current_data_range": "ลบข้อมูลช่วงเวลาปัจจุบัน",
         "confirm_delete_selected_range": "ลบข้อมูลของอุปกรณ์และช่วงเวลาที่เลือกหรือไม่?",
@@ -434,6 +441,9 @@ TRANSLATIONS = {
         "all_data": "ข้อมูลทั้งหมด",
         "all_devices": "ทุกอุปกรณ์",
         "today": "วันนี้",
+        "week": "สัปดาห์",
+        "previous_week": "สัปดาห์ก่อนหน้า",
+        "next_week": "สัปดาห์ถัดไป",
         "weekly_overview": "ภาพรวมรายสัปดาห์",
         "average_per_day": "ค่าเฉลี่ยต่อวัน",
         "last_7_days": "7 วันล่าสุด",
@@ -963,6 +973,7 @@ def index():
     fallback_metric = metric_keys[0] if metric_keys else "pm25"
     daily_metric = request.args.get("daily_metric") or fallback_metric
     weekly_metric = request.args.get("weekly_metric") or fallback_metric
+    weekly_week_key = request.args.get("weekly_week")
     if daily_metric not in metric_keys:
         daily_metric = fallback_metric
     if weekly_metric not in metric_keys:
@@ -974,11 +985,14 @@ def index():
         floor_id=floor_id,
         series_timezone=project_tz,
     )
-    weekly_labels, weekly_values = data_service.get_weekly_series(
+    weekly_series = data_service.get_weekly_series_payload(
         weekly_metric,
         floor_id=floor_id,
         series_timezone=project_tz,
+        week_key=weekly_week_key,
     )
+    weekly_labels = weekly_series["labels"]
+    weekly_values = weekly_series["values"]
 
     sensor_cards = data_service.get_latest_avg_metrics(
         floor_id=floor_id,
@@ -1087,6 +1101,13 @@ def index():
         all_data_start = all_data_start.replace(tzinfo=timezone.utc).astimezone(project_tz)
     else:
         all_data_start = all_data_start.astimezone(project_tz)
+
+    weekly_view_start_display = weekly_series.get("view_start") or format_project_datetime_local_input(
+        weekly_view_start, settings
+    )
+    weekly_view_end_display = weekly_series.get("view_end") or format_project_datetime_local_input(
+        weekly_view_end, settings
+    )
     return render_template(
         "index.html",
         active_system=active_system,
@@ -1102,6 +1123,11 @@ def index():
         daily_values=daily_values,
         weekly_labels=weekly_labels,
         weekly_values=weekly_values,
+        weekly_weeks=weekly_series["weeks"],
+        active_weekly_week_key=weekly_series["active_week_key"],
+        active_weekly_week_label=weekly_series["active_week_label"],
+        weekly_can_previous=weekly_series["can_previous"],
+        weekly_can_next=weekly_series["can_next"],
         daily_metric=daily_metric,
         weekly_metric=weekly_metric,
         sensor_cards=sensor_cards,
@@ -1120,8 +1146,8 @@ def index():
         default_view_device=default_view_device,
         daily_view_start=format_project_datetime_local_input(daily_view_start, settings),
         daily_view_end=format_project_datetime_local_input(daily_view_end, settings),
-        weekly_view_start=format_project_datetime_local_input(weekly_view_start, settings),
-        weekly_view_end=format_project_datetime_local_input(weekly_view_end, settings),
+        weekly_view_start=weekly_view_start_display,
+        weekly_view_end=weekly_view_end_display,
         all_data_start=format_project_datetime_local_input(all_data_start, settings),
         all_data_end=format_project_datetime_local_input(all_data_end, settings),
         status_label=data_service.aggregate_status_label(settings),
@@ -1791,12 +1817,14 @@ def graphs_weekly():
     settings = settings_service.load_settings()
     metric = request.args.get("metric", "pm25")
     floor_id = request.args.get("floor")
-    labels, values = data_service.get_weekly_series(
+    week_key = request.args.get("week_key")
+    payload = data_service.get_weekly_series_payload(
         metric,
         floor_id,
         series_timezone=get_project_timezone(settings),
+        week_key=week_key,
     )
-    return jsonify({"labels": labels, "values": values})
+    return jsonify(payload)
 
 
 @app.route("/alarms")
