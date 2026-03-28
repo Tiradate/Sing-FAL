@@ -725,7 +725,7 @@ def get_role_page_access_map(settings=None):
 
 
 def get_current_role():
-    return str(session.get("role") or ("admin" if session.get("is_admin") else "user")).strip().lower()
+    return str(session.get("role") or ("admin" if session.get("is_admin") else "guest")).strip().lower()
 
 
 def has_page_access(page_key):

@@ -12,7 +12,7 @@ def _utc_now():
 def normalize_role(role):
     normalized = str(role or "").strip().lower()
     normalized = "".join(character for character in normalized if character.isalnum() or character in {"_", "-"})
-    return normalized or "user"
+    return normalized or "guest"
 
 
 def ensure_default_admin_user(settings):

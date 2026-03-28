@@ -1410,7 +1410,7 @@
                   {% for page_key in role_page_keys %}
                   <div class="form-check mb-0">
                     <input class="form-check-input" type="checkbox" id="newRolePermission{{ page_key|title }}" name="new_role_permission__{{ page_key }}">
-                    <label class="form-check-label small" for="newRolePermission{{ page_key|title }}">{{ 'ดูได้' if current_lang == 'th' else 'Can See' }} {{ page_key.replace('_', ' ')|title }}</label>
+                    <label class="form-check-label small" for="newRolePermission{{ page_key|title }}">{{ 'เข้าถึง' if current_lang == 'th' else 'Access' }} {{ page_key.replace('_', ' ')|title }}</label>
                   </div>
                   {% endfor %}
                   <button class="btn btn-outline-primary" type="submit" data-save-settings-section="user" name="user_action" value="create_role">{{ 'เพิ่มบทบาท' if current_lang == 'th' else 'Add Role' }}</button>
@@ -1422,7 +1422,7 @@
                     <tr>
                       <th>{{ 'บทบาท' if current_lang == 'th' else 'Role' }}</th>
                       {% for page_key in role_page_keys %}
-                      <th class="text-center">{{ 'ดูได้' if current_lang == 'th' else 'Can See' }} {{ page_key.replace('_', ' ')|title }}</th>
+                      <th class="text-center">{{ 'เข้าถึง' if current_lang == 'th' else 'Access' }} {{ page_key.replace('_', ' ')|title }}</th>
                       {% endfor %}
                       <th class="text-end">{{ 'การทำงาน' if current_lang == 'th' else 'Action' }}</th>
                     </tr>

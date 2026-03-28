@@ -187,7 +187,7 @@ DEFAULT_ROLE_PERMISSIONS = {
         "map": False,
         "settings": False,
     },
-    "user": {
+    "guest": {
         "home": False,
         "alarms": False,
         "map": True,
@@ -388,7 +388,7 @@ def _normalize_bool(value, default=False):
     return bool(value)
 
 
-def normalize_role_name(role_name, default="user"):
+def normalize_role_name(role_name, default="guest"):
     normalized = str(role_name or "").strip().lower()
     normalized = "".join(character for character in normalized if character.isalnum() or character in {"_", "-"})
     return normalized or default

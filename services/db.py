@@ -252,6 +252,7 @@ def init_auth_db():
             conn.execute("ALTER TABLE login_history ADD COLUMN user_agent TEXT")
         if "session_id" not in history_columns:
             conn.execute("ALTER TABLE login_history ADD COLUMN session_id TEXT")
+        conn.execute("UPDATE users SET role = 'guest' WHERE role = 'user'")
 
 
 def init_all():

@@ -747,7 +747,7 @@
       "map": true,
       "settings": false
     },
-    "user": {
+    "guest": {
       "home": false,
       "alarms": false,
       "map": true,
