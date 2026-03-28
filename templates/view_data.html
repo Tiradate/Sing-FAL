@@ -6,6 +6,14 @@
     <h4 class="fw-bold mb-0">{{ t('sensor_data_explorer') }}</h4>
     <div class="text-muted small">{{ data|length }} {{ t('records') }}</div>
   </div>
+  <div class="btn-group" role="group" aria-label="View type">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnTableView" onclick="setViewType('table')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1 mb-1"><path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm15 2h-4v3h4zm0 4h-4v3h4zm0 4h-4v3h3a1 1 0 0 0 1-1zm-5 3v-3H6v3zm-5 0v-3H1v2a1 1 0 0 0 1 1zm-4-4h4V8H1zm0-4h4V4H1zm5-3v3h4V4zm4 4H6v3h4z"/></svg>Table
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnChartView" onclick="setViewType('chart')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1 mb-1"><path d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07"/></svg>Chart
+    </button>
+  </div>
 </div>
 
 <div class="card shadow-sm mb-3">
@@ -13,7 +21,7 @@
     <form class="row g-3 align-items-end" method="get" action="{{ url_for('view_data', system=current_system) }}" id="viewDataFilterForm">
       <div class="col-12 col-md-3">
         <label class="form-label">{{ t('device') }}</label>
-        <select class="form-select" name="device" required>
+        <select class="form-select" name="device" id="deviceSelect" required>
           <option value="{{ all_devices_value }}" {% if active_device == all_devices_value %}selected{% endif %}>
             {{ t('all_devices') }}
           </option>
@@ -49,23 +57,74 @@
   </div>
 </div>
 
+<!-- Chart Controls (visible only in chart view) -->
+<div class="card shadow-sm mb-3" id="chartControls" style="display:none;">
+  <div class="card-body">
+    <div class="row g-3 align-items-start">
+      <div class="col-12 col-md-3">
+        <label class="form-label fw-semibold mb-1">Metric</label>
+        <select class="form-select form-select-sm" id="chartMetricSelect" onchange="refreshChart()">
+          {% for metric in metric_options %}
+          <option value="{{ metric.key }}">{{ metric.label }}{% if metric.unit %} ({{ metric.unit }}){% endif %}</option>
+          {% endfor %}
+        </select>
+        <div class="mt-2">
+          <label class="form-label fw-semibold mb-1 d-block">Chart Type</label>
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-outline-secondary active" id="btnLine" onclick="setChartType('line')">Line</button>
+            <button type="button" class="btn btn-outline-secondary" id="btnBar" onclick="setChartType('bar')">Bar</button>
+            <button type="button" class="btn btn-outline-secondary" id="btnArea" onclick="setChartType('area')">Area</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-9">
+        <label class="form-label fw-semibold mb-1">Compare Devices</label>
+        <div class="small text-muted mb-2">Drag devices between panels, or click a chip to move it</div>
+        <div class="d-flex gap-2 align-items-stretch">
+          <div class="flex-grow-1">
+            <div class="device-pool-label text-muted small mb-1">Available</div>
+            <div id="availablePool" class="device-pool border rounded p-2"
+                 ondragover="event.preventDefault(); this.classList.add('pool-hover')"
+                 ondragleave="this.classList.remove('pool-hover')"
+                 ondrop="onDropPool(event,'available')">
+            </div>
+          </div>
+          <div class="d-flex flex-column align-items-center justify-content-center px-1 text-muted" style="font-size:1.1rem;">⇄</div>
+          <div class="flex-grow-1">
+            <div class="device-pool-label text-muted small mb-1">
+              Comparing
+              <button type="button" class="btn btn-link btn-sm p-0 ms-1 text-danger" style="font-size:.75rem;" onclick="clearCompare()">Clear all</button>
+            </div>
+            <div id="comparePool" class="device-pool border border-primary rounded p-2"
+                 ondragover="event.preventDefault(); this.classList.add('pool-hover')"
+                 ondragleave="this.classList.remove('pool-hover')"
+                 ondrop="onDropPool(event,'compare')">
+              <span class="text-muted small" id="dropHint">Drop devices here to compare</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% if is_admin %}
 <div class="card shadow-sm mb-3">
   <div class="card-body py-3">
-    <div class="fw-semibold mb-2">{{ 'View Data Diagnostics' if current_lang == 'th' else 'View Data Diagnostics' }}</div>
+    <div class="fw-semibold mb-2">View Data Diagnostics</div>
     <div class="small">
-      <strong>{{ 'Sensor DB' if current_lang == 'th' else 'Sensor DB' }}:</strong>
+      <strong>Sensor DB:</strong>
       <code>{{ sensor_db_path }}</code>
     </div>
     <div class="small mt-1">
-      <strong>{{ 'Sensor DB max(ts)' if current_lang == 'th' else 'Sensor DB max(ts)' }}:</strong>
+      <strong>Sensor DB max(ts):</strong>
       <code>{{ sensor_db_max_ts_raw or '-' }}</code>
       {% if sensor_db_max_ts_display %}
       <span class="text-muted">({{ sensor_db_max_ts_display }})</span>
       {% endif %}
     </div>
     <div class="small mt-1">
-      <strong>{{ 'Current scope max(ts)' if current_lang == 'th' else 'Current scope max(ts)' }}:</strong>
+      <strong>Current scope max(ts):</strong>
       <code>{{ active_scope_max_ts_raw or '-' }}</code>
       {% if active_scope_max_ts_display %}
       <span class="text-muted">({{ t('all_devices') if active_device == all_devices_value else active_scope_label }}: {{ active_scope_max_ts_display }})</span>
@@ -136,49 +195,67 @@
 </div>
 {% endif %}
 
-<div class="card shadow-sm">
-  <div class="card-body">
-    <div class="table-responsive">
-      <table class="table table-striped align-middle" id="dataTable">
-        <thead>
-          <tr>
-            <th scope="col" class="sortable-col" role="button" onclick="sortTable(0)">{{ t('timestamp') }} <span class="sort-icon">⇅</span></th>
-            <th scope="col" class="sortable-col" role="button" onclick="sortTable(1)">{{ t('gateway') }} <span class="sort-icon">⇅</span></th>
-            <th scope="col" class="sortable-col" role="button" onclick="sortTable(2)">{{ t('topic') }} <span class="sort-icon">⇅</span></th>
-            <th scope="col" class="sortable-col" role="button" onclick="sortTable(3)">{{ t('device') }} <span class="sort-icon">⇅</span></th>
-            {% for metric in metric_options %}
-            <th scope="col" class="sortable-col" role="button" onclick="sortTable({{ loop.index + 3 }})">
-              {{ metric.label }}{% if metric.unit %}({{ metric.unit }}){% endif %} <span class="sort-icon">⇅</span>
-            </th>
+<!-- Table View -->
+<div id="tableView">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-striped align-middle" id="dataTable">
+          <thead>
+            <tr>
+              <th scope="col" class="sortable-col" role="button" onclick="sortTable(0)">{{ t('timestamp') }} <span class="sort-icon">⇅</span></th>
+              <th scope="col" class="sortable-col" role="button" onclick="sortTable(1)">{{ t('gateway') }} <span class="sort-icon">⇅</span></th>
+              <th scope="col" class="sortable-col" role="button" onclick="sortTable(2)">{{ t('topic') }} <span class="sort-icon">⇅</span></th>
+              <th scope="col" class="sortable-col" role="button" onclick="sortTable(3)">{{ t('device') }} <span class="sort-icon">⇅</span></th>
+              {% for metric in metric_options %}
+              <th scope="col" class="sortable-col" role="button" onclick="sortTable({{ loop.index + 3 }})">
+                {{ metric.label }}{% if metric.unit %}({{ metric.unit }}){% endif %} <span class="sort-icon">⇅</span>
+              </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in data %}
+            <tr>
+              <td>{{ row.timestamp }}</td>
+              <td>{{ row.gateway }}</td>
+              <td>{{ row.topic }}</td>
+              <td>{{ row.device }}</td>
+              {% for metric in metric_options %}
+              <td>{{ row.metrics[metric.key] if row.metrics[metric.key] is not none else "" }}</td>
+              {% endfor %}
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="{{ 4 + metric_options|length }}" class="text-center text-muted">
+                {{ t('no_data_for_range') }}
+              </td>
+            </tr>
             {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in data %}
-          <tr>
-            <td>{{ row.timestamp }}</td>
-            <td>{{ row.gateway }}</td>
-            <td>{{ row.topic }}</td>
-            <td>{{ row.device }}</td>
-            {% for metric in metric_options %}
-            <td>{{ row.metrics[metric.key] if row.metrics[metric.key] is not none else "" }}</td>
-            {% endfor %}
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="{{ 4 + metric_options|length }}" class="text-center text-muted">
-              {{ t('no_data_for_range') }}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart View -->
+<div id="chartView" style="display:none;">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div id="chartNoData" class="text-center text-muted py-5" style="display:none;">
+        No devices selected for comparison. Drag devices from Available to Comparing.
+      </div>
+      <div id="chartWrapper" style="position:relative; height:460px;">
+        <canvas id="sensorChart"></canvas>
+      </div>
     </div>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   .sortable-col { cursor: pointer; user-select: none; white-space: nowrap; }
   .sortable-col:hover { background: rgba(0,0,0,.04); }
@@ -186,51 +263,399 @@
   .sort-asc .sort-icon::after  { content: ' ↑'; opacity: 1; }
   .sort-desc .sort-icon::after { content: ' ↓'; opacity: 1; }
   .sort-asc .sort-icon, .sort-desc .sort-icon { opacity: 0; }
+
+  #chartWrapper {
+    position: relative;
+    min-height: 460px;
+  }
+  #chartWrapper > canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .device-pool {
+    min-height: 56px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-content: flex-start;
+    transition: background .15s;
+  }
+  .pool-hover { background: rgba(13,110,253,.06) !important; }
+  .device-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: .8rem;
+    font-weight: 500;
+    cursor: grab;
+    user-select: none;
+    border: 1.5px solid transparent;
+    transition: opacity .15s, box-shadow .15s;
+    white-space: nowrap;
+  }
+  .device-chip:active { cursor: grabbing; opacity: .7; }
+  .device-chip:hover { box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .device-chip .chip-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .device-chip .chip-remove {
+    margin-left: 2px;
+    font-size: .9em;
+    line-height: 1;
+    opacity: .6;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+    color: inherit;
+  }
+  .device-chip .chip-remove:hover { opacity: 1; }
+  #btnTableView.active, #btnChartView.active {
+    background: var(--bs-secondary);
+    color: #fff;
+    border-color: var(--bs-secondary);
+  }
+  #btnLine.active, #btnBar.active, #btnArea.active {
+    background: var(--bs-secondary);
+    color: #fff;
+    border-color: var(--bs-secondary);
+  }
+
+  @media (max-width: 767px) {
+    #chartWrapper {
+      min-height: 340px;
+    }
+  }
 </style>
 <script>
-  let _sortCol = -1;
-  let _sortDir = 'asc';
-  const _viewDataFilterForm = document.getElementById('viewDataFilterForm');
-  const _viewDataStartInput = _viewDataFilterForm?.querySelector('input[name="start"]');
-  const _viewDataEndInput = _viewDataFilterForm?.querySelector('input[name="end"]');
-  const _viewDataMaxRangeMs = {{ max_range_hours }} * 60 * 60 * 1000;
+  // ── Data from server ──────────────────────────────────────────────────────
+  const _allData = {{ data | tojson | safe }};
+  const _metricOptions = {{ metric_options | tojson | safe }};
 
-  function parseDateTimeLocal(value) {
-    if (!value || !value.includes('T')) return null;
-    const [datePart, timePart] = value.split('T');
-    const [year, month, day] = datePart.split('-').map(Number);
-    const [hour, minute] = timePart.split(':').map(Number);
-    if ([year, month, day, hour, minute].some(Number.isNaN)) return null;
-    return new Date(year, month - 1, day, hour, minute, 0, 0);
+  // ── Device colours ────────────────────────────────────────────────────────
+  const PALETTE = [
+    '#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6',
+    '#ec4899','#06b6d4','#f97316','#84cc16','#6366f1',
+    '#14b8a6','#fb923c','#a855f7','#22d3ee','#fbbf24',
+  ];
+  const _deviceColors = {};
+  function deviceColor(id) {
+    if (!_deviceColors[id]) {
+      const idx = Object.keys(_deviceColors).length;
+      _deviceColors[id] = PALETTE[idx % PALETTE.length];
+    }
+    return _deviceColors[id];
   }
 
-  function formatDateTimeLocal(date) {
-    const pad = (value) => String(value).padStart(2, '0');
-    return [
-      date.getFullYear(),
-      pad(date.getMonth() + 1),
-      pad(date.getDate()),
-    ].join('-') + 'T' + [
-      pad(date.getHours()),
-      pad(date.getMinutes()),
-    ].join(':');
+  // Pre-assign colors for all devices in data order
+  const _uniqueDevices = [...new Set(_allData.map(r => r.device))];
+  _uniqueDevices.forEach(id => deviceColor(id));
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let _viewType = localStorage.getItem('viewDataViewType') || 'table';
+  let _chartType = 'line';
+  let _compareDevices = [];
+  let _sensorChart = null;
+  let _draggingChip = null;
+  const _metricValueFormatter = new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 2
+  });
+
+  // ── View toggle ───────────────────────────────────────────────────────────
+  function setViewType(type) {
+    _viewType = type;
+    localStorage.setItem('viewDataViewType', type);
+
+    document.getElementById('tableView').style.display = type === 'table' ? '' : 'none';
+    document.getElementById('chartView').style.display = type === 'chart' ? '' : 'none';
+    document.getElementById('chartControls').style.display = type === 'chart' ? '' : 'none';
+
+    document.getElementById('btnTableView').classList.toggle('active', type === 'table');
+    document.getElementById('btnChartView').classList.toggle('active', type === 'chart');
+
+    if (type === 'chart') {
+      if (_compareDevices.length === 0) initDefaultCompare();
+      refreshChart();
+    }
   }
 
-  function clampViewDataRange() {
-    if (!_viewDataStartInput || !_viewDataEndInput) return;
-    const startDate = parseDateTimeLocal(_viewDataStartInput.value);
-    const endDate = parseDateTimeLocal(_viewDataEndInput.value);
-    if (!startDate || !endDate) return;
+  function setChartType(type) {
+    _chartType = type;
+    ['line','bar','area'].forEach(t => {
+      document.getElementById('btn' + t.charAt(0).toUpperCase() + t.slice(1))
+        .classList.toggle('active', t === type);
+    });
+    refreshChart();
+  }
 
-    if (endDate.getTime() < startDate.getTime()) {
-      _viewDataEndInput.value = _viewDataStartInput.value;
+  // ── Device pools ──────────────────────────────────────────────────────────
+  function initDefaultCompare() {
+    // Add first device (or all if few) to compare by default
+    const toCompare = _uniqueDevices.length <= 3 ? _uniqueDevices.slice() : _uniqueDevices.slice(0, 2);
+    _compareDevices = [...toCompare];
+    renderPools();
+  }
+
+  function renderPools() {
+    const availablePool = document.getElementById('availablePool');
+    const comparePool = document.getElementById('comparePool');
+    const dropHint = document.getElementById('dropHint');
+
+    const availableDevices = _uniqueDevices.filter(id => !_compareDevices.includes(id));
+
+    availablePool.innerHTML = '';
+    comparePool.innerHTML = '';
+
+    availableDevices.forEach(id => availablePool.appendChild(makeChip(id, 'available')));
+    _compareDevices.forEach(id => comparePool.appendChild(makeChip(id, 'compare')));
+
+    if (dropHint) dropHint.remove();
+    if (_compareDevices.length === 0) {
+      const hint = document.createElement('span');
+      hint.id = 'dropHint';
+      hint.className = 'text-muted small align-self-center';
+      hint.textContent = 'Drop devices here to compare';
+      comparePool.appendChild(hint);
+    }
+  }
+
+  function makeChip(deviceId, pool) {
+    const color = deviceColor(deviceId);
+    const chip = document.createElement('div');
+    chip.className = 'device-chip';
+    chip.dataset.device = deviceId;
+    chip.dataset.pool = pool;
+    chip.draggable = true;
+    chip.style.background = color + '18';
+    chip.style.borderColor = color + '80';
+    chip.style.color = color;
+
+    const dot = document.createElement('span');
+    dot.className = 'chip-dot';
+    dot.style.background = color;
+
+    const label = document.createElement('span');
+    label.textContent = deviceId;
+
+    chip.appendChild(dot);
+    chip.appendChild(label);
+
+    if (pool === 'compare') {
+      const rm = document.createElement('button');
+      rm.className = 'chip-remove';
+      rm.innerHTML = '×';
+      rm.title = 'Remove';
+      rm.onclick = (e) => { e.stopPropagation(); moveToAvailable(deviceId); };
+      chip.appendChild(rm);
+    }
+
+    chip.addEventListener('dragstart', (e) => {
+      _draggingChip = { deviceId, pool };
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    chip.addEventListener('dragend', () => { _draggingChip = null; });
+
+    // Click to move between pools
+    chip.addEventListener('click', () => {
+      if (pool === 'available') moveToCompare(deviceId);
+      else moveToAvailable(deviceId);
+    });
+
+    return chip;
+  }
+
+  function moveToCompare(deviceId) {
+    if (!_compareDevices.includes(deviceId)) {
+      _compareDevices.push(deviceId);
+      renderPools();
+      refreshChart();
+    }
+  }
+
+  function moveToAvailable(deviceId) {
+    _compareDevices = _compareDevices.filter(id => id !== deviceId);
+    renderPools();
+    refreshChart();
+  }
+
+  function clearCompare() {
+    _compareDevices = [];
+    renderPools();
+    refreshChart();
+  }
+
+  function onDropPool(event, targetPool) {
+    event.preventDefault();
+    document.getElementById('availablePool').classList.remove('pool-hover');
+    document.getElementById('comparePool').classList.remove('pool-hover');
+    if (!_draggingChip) return;
+    if (targetPool === 'compare' && _draggingChip.pool !== 'compare') {
+      moveToCompare(_draggingChip.deviceId);
+    } else if (targetPool === 'available' && _draggingChip.pool !== 'available') {
+      moveToAvailable(_draggingChip.deviceId);
+    }
+  }
+
+  // ── Chart rendering ───────────────────────────────────────────────────────
+  function buildChartDatasets(metricKey) {
+    // Build map: timestamp -> device -> value (data comes desc, reverse for asc)
+    const timeMap = new Map();
+    const timeOrder = [];
+    for (let i = _allData.length - 1; i >= 0; i--) {
+      const row = _allData[i];
+      if (!timeMap.has(row.timestamp)) {
+        timeMap.set(row.timestamp, {});
+        timeOrder.push(row.timestamp);
+      }
+      if (row.metrics[metricKey] !== null && row.metrics[metricKey] !== undefined) {
+        timeMap.get(row.timestamp)[row.device] = row.metrics[metricKey];
+      }
+    }
+
+    // Limit label density for readability
+    const maxLabels = 60;
+    let labels = timeOrder;
+    let step = 1;
+    if (timeOrder.length > maxLabels) {
+      step = Math.ceil(timeOrder.length / maxLabels);
+      labels = timeOrder.filter((_, i) => i % step === 0);
+    }
+
+    const isArea = _chartType === 'area';
+    const isBar = _chartType === 'bar';
+
+    const datasets = _compareDevices.map(deviceId => {
+      const color = deviceColor(deviceId);
+      const dataPoints = labels.map(ts => {
+        const val = timeMap.get(ts)?.[deviceId];
+        return val !== undefined ? val : null;
+      });
+      return {
+        label: deviceId,
+        data: dataPoints,
+        borderColor: color,
+        backgroundColor: isArea ? color + '30' : (isBar ? color + 'cc' : color + '20'),
+        fill: isArea ? 'origin' : false,
+        spanGaps: true,
+        tension: 0.25,
+        pointRadius: labels.length > 80 ? 0 : 3,
+        pointHoverRadius: 5,
+        borderWidth: 2,
+        type: isBar ? 'bar' : 'line',
+      };
+    });
+
+    // Shorten labels: keep only "HH:MM" if same date, else "DD HH:MM"
+    const shortLabels = labels.map(ts => {
+      // ts format: "2026/03/28 10:02:44"
+      const parts = ts.split(' ');
+      if (parts.length >= 2) {
+        const timePart = parts[1].slice(0, 5); // "HH:MM"
+        const datePart = parts[0].slice(5);    // "03/28"
+        return [datePart, timePart];
+      }
+      return ts;
+    });
+
+    return { labels: shortLabels, rawLabels: labels, datasets };
+  }
+
+  function formatMetricValue(value) {
+    if (value === null || value === undefined || value === '') return '-';
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return String(value);
+    return _metricValueFormatter.format(numericValue);
+  }
+
+  function refreshChart() {
+    const metricKey = document.getElementById('chartMetricSelect')?.value;
+    const noData = document.getElementById('chartNoData');
+    const wrapper = document.getElementById('chartWrapper');
+
+    if (_compareDevices.length === 0) {
+      noData.style.display = '';
+      wrapper.style.display = 'none';
+      if (_sensorChart) { _sensorChart.destroy(); _sensorChart = null; }
       return;
     }
 
-    if (endDate.getTime() - startDate.getTime() > _viewDataMaxRangeMs) {
-      _viewDataStartInput.value = formatDateTimeLocal(new Date(endDate.getTime() - _viewDataMaxRangeMs));
+    noData.style.display = 'none';
+    wrapper.style.display = '';
+
+    const { labels, rawLabels, datasets } = buildChartDatasets(metricKey);
+    const metricOpt = _metricOptions.find(m => m.key === metricKey) || {};
+    const yLabel = metricOpt.label + (metricOpt.unit ? ` (${metricOpt.unit})` : '');
+
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+
+    if (_sensorChart) {
+      _sensorChart.destroy();
+      _sensorChart = null;
     }
+
+    _sensorChart = new Chart(ctx, {
+      type: _chartType === 'bar' ? 'bar' : 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        maintainAspectRatio: false,
+        layout: { padding: { left: 8, right: 16, top: 8, bottom: 8 } },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { boxWidth: 14, boxHeight: 14, padding: 20, font: { size: 13 } }
+          },
+          tooltip: {
+            callbacks: {
+              title: (items) => {
+                if (!items.length) return '';
+                return rawLabels[items[0].dataIndex] || '';
+              },
+              label: (ctx) => {
+                const val = ctx.raw;
+                return val !== null
+                  ? ` ${ctx.dataset.label}: ${formatMetricValue(val)}${metricOpt.unit ? ' ' + metricOpt.unit : ''}`
+                  : null;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxTicksLimit: 8,
+              maxRotation: 0,
+              minRotation: 0,
+              autoSkip: true,
+              padding: 8,
+              color: '#495057',
+              font: { size: 12, weight: '500' }
+            },
+            grid: { display: false }
+          },
+          y: {
+            title: { display: true, text: yLabel, font: { size: 12 }, padding: { bottom: 8 } },
+            ticks: {
+              color: '#495057',
+              font: { size: 12 },
+              callback: (value) => formatMetricValue(value)
+            },
+            grid: { color: 'rgba(0,0,0,.05)' }
+          }
+        }
+      }
+    });
   }
+
+  // ── Table sort ────────────────────────────────────────────────────────────
+  let _sortCol = -1;
+  let _sortDir = 'asc';
 
   function sortTable(columnIndex) {
     const table = document.getElementById('dataTable');
@@ -262,8 +687,46 @@
     });
   }
 
+  // ── Date range clamp ──────────────────────────────────────────────────────
+  const _viewDataFilterForm = document.getElementById('viewDataFilterForm');
+  const _viewDataStartInput = _viewDataFilterForm?.querySelector('input[name="start"]');
+  const _viewDataEndInput = _viewDataFilterForm?.querySelector('input[name="end"]');
+  const _viewDataMaxRangeMs = {{ max_range_hours }} * 60 * 60 * 1000;
+
+  function parseDateTimeLocal(value) {
+    if (!value || !value.includes('T')) return null;
+    const [datePart, timePart] = value.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute] = timePart.split(':').map(Number);
+    if ([year, month, day, hour, minute].some(Number.isNaN)) return null;
+    return new Date(year, month - 1, day, hour, minute, 0, 0);
+  }
+
+  function formatDateTimeLocal(date) {
+    const pad = (v) => String(v).padStart(2, '0');
+    return [date.getFullYear(), pad(date.getMonth()+1), pad(date.getDate())].join('-')
+      + 'T' + [pad(date.getHours()), pad(date.getMinutes())].join(':');
+  }
+
+  function clampViewDataRange() {
+    if (!_viewDataStartInput || !_viewDataEndInput) return;
+    const startDate = parseDateTimeLocal(_viewDataStartInput.value);
+    const endDate = parseDateTimeLocal(_viewDataEndInput.value);
+    if (!startDate || !endDate) return;
+    if (endDate.getTime() < startDate.getTime()) {
+      _viewDataEndInput.value = _viewDataStartInput.value;
+      return;
+    }
+    if (endDate.getTime() - startDate.getTime() > _viewDataMaxRangeMs) {
+      _viewDataStartInput.value = formatDateTimeLocal(new Date(endDate.getTime() - _viewDataMaxRangeMs));
+    }
+  }
+
   _viewDataStartInput?.addEventListener('change', clampViewDataRange);
   _viewDataEndInput?.addEventListener('change', clampViewDataRange);
   _viewDataFilterForm?.addEventListener('submit', clampViewDataRange);
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  setViewType(_viewType);
 </script>
 {% endblock %}

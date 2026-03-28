@@ -308,7 +308,9 @@ body.dashboard-bg {
   line-height: 1;
 }
 
-canvas {
+#dailyChart,
+#weeklyChart,
+#psychroChart {
   width: 100% !important;
   height: 180px !important;
 }
