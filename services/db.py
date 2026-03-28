@@ -86,6 +86,12 @@ def init_sensor_db():
             conn.execute("ALTER TABLE sensor_readings ADD COLUMN topic TEXT DEFAULT 'Live'")
         if "raw_value" not in columns:
             conn.execute("ALTER TABLE sensor_readings ADD COLUMN raw_value TEXT")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sensor_ts ON sensor_readings (ts)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sensor_device_ts ON sensor_readings (device_id, ts)"
+        )
 
 
 def init_calendar_db():

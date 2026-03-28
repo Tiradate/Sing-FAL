@@ -1481,20 +1481,26 @@ def view_data():
             parsed = parsed.replace(tzinfo=timezone.utc)
         return raw_text, format_project_datetime_seconds(parsed, settings)
 
-    query = """
-        SELECT ts AS event_ts, ts, device_id, metric, value, unit, topic
+    VIEW_DATA_ROW_LIMIT = 5000
+    agg_query = """
+        SELECT ts, COALESCE(NULLIF(TRIM(topic), ''), 'Live') AS topic,
+               device_id, metric,
+               ROUND(AVG(CAST(value AS REAL)), 2) AS avg_value, unit
         FROM sensor_readings
         WHERE ts BETWEEN ? AND ?
+          AND value IS NOT NULL AND value != '' AND value != 'N/A'
     """
     params = [start_utc.isoformat(), end_utc.isoformat()]
     if device == "__all__":
         placeholders = ",".join("?" for _ in device_ids)
-        query += f" AND device_id IN ({placeholders})"
+        agg_query += f" AND device_id IN ({placeholders})"
         params.extend(device_ids)
     else:
-        query += " AND device_id = ?"
+        agg_query += " AND device_id = ?"
         params.append(device)
-    query += " ORDER BY ts DESC"
+    agg_query += " GROUP BY ts, topic, device_id, metric ORDER BY ts DESC LIMIT ?"
+    params.append(VIEW_DATA_ROW_LIMIT)
+
     with connect(SENSOR_DB) as conn:
         sensor_db_max_ts_row = conn.execute(
             "SELECT MAX(ts) AS max_ts FROM sensor_readings"
@@ -1506,7 +1512,7 @@ def view_data():
                 "SELECT MAX(ts) AS max_ts FROM sensor_readings WHERE device_id = ?",
                 (device,),
             ).fetchone()
-        rows = conn.execute(query, params).fetchall()
+        rows = conn.execute(agg_query, params).fetchall()
 
     sensor_db_max_ts_raw, sensor_db_max_ts_display = format_sensor_db_debug_timestamp(
         sensor_db_max_ts_row["max_ts"] if sensor_db_max_ts_row else None
@@ -1516,44 +1522,37 @@ def view_data():
     )
 
     local_tz = project_tz
-    aggregates = {}
+    metric_options = get_enabled_metric_options(settings, active_system)
+    metric_order = [option["key"] for option in metric_options]
+
+    # Group SQL-aggregated rows by (local_ts, topic, device_id)
+    bucket_map = {}
+    bucket_order = []
     for row in rows:
-        value = row["value"]
-        if value is None or value == "" or str(value).strip().upper() == "N/A":
-            continue
-        ts = datetime.fromisoformat(row["event_ts"])
+        ts = datetime.fromisoformat(row["ts"])
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
         local_ts = ts.astimezone(local_tz).replace(tzinfo=None)
-        topic = (row["topic"] or "Live").strip() or "Live"
-        key = (local_ts, topic, row["device_id"], row["metric"])
-        if key not in aggregates:
-            aggregates[key] = {"sum": 0.0, "count": 0, "unit": row["unit"]}
-        aggregates[key]["sum"] += float(value)
-        aggregates[key]["count"] += 1
+        topic = row["topic"]
+        key = (local_ts, topic, row["device_id"])
+        if key not in bucket_map:
+            bucket_map[key] = {}
+            bucket_order.append(key)
+        if row["metric"] in metric_order:
+            bucket_map[key][row["metric"]] = row["avg_value"]
 
-    metric_options = get_enabled_metric_options(settings, active_system)
-    metric_order = [option["key"] for option in metric_options]
     records = []
-    timestamp_topics = sorted(
-        {(event_ts, topic, device_id) for event_ts, topic, device_id, _metric in aggregates.keys()},
-        reverse=True,
-    )
-    for event_ts, topic, bucket_device in timestamp_topics:
+    for local_ts, topic, bucket_device in bucket_order:
         record = {
-            "timestamp": format_project_datetime_seconds(event_ts.replace(tzinfo=local_tz), settings),
+            "timestamp": format_project_datetime_seconds(local_ts.replace(tzinfo=local_tz), settings),
             "gateway": "N/A",
             "topic": topic,
             "device": bucket_device,
             "metrics": {},
         }
+        metrics_data = bucket_map[(local_ts, topic, bucket_device)]
         for metric in metric_order:
-            stats = aggregates.get((event_ts, topic, bucket_device, metric))
-            if stats:
-                avg_value = stats["sum"] / stats["count"]
-                record["metrics"][metric] = round(avg_value, 2)
-            else:
-                record["metrics"][metric] = None
+            record["metrics"][metric] = metrics_data.get(metric)
         records.append(record)
 
     start_display = start_dt.strftime("%Y-%m-%dT%H:%M")

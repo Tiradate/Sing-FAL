@@ -1510,40 +1510,40 @@
       <a class="btn btn-outline-secondary" href="{{ url_for('export_settings_assets_zip') }}">{{ 'ส่งออก Assets ZIP' if current_lang == 'th' else 'Export Assets ZIP' }}</a>
     </div>
     <form method="post" action="{{ url_for('import_settings_csv') }}" enctype="multipart/form-data" id="importSettingsForm">
-      <label class="form-label">Import Settings CSV</label>
+      <label class="form-label">{{ 'นำเข้า Settings CSV' if current_lang == 'th' else 'Import Settings CSV' }}</label>
       <div class="d-flex flex-wrap gap-2">
         <input class="form-control" type="file" name="settings_csv" accept=".csv">
-        <button class="btn btn-outline-primary" type="submit">Import CSV</button>
+        <button class="btn btn-outline-primary" type="submit">{{ 'นำเข้า CSV' if current_lang == 'th' else 'Import CSV' }}</button>
       </div>
-      <label class="form-label mt-3">Import Assets ZIP</label>
+      <label class="form-label mt-3">{{ 'นำเข้า Assets ZIP' if current_lang == 'th' else 'Import Assets ZIP' }}</label>
       <div class="d-flex flex-wrap gap-2">
         <input class="form-control" type="file" name="settings_assets_zip" accept=".zip">
-        <button class="btn btn-outline-primary" type="submit">Import ZIP</button>
+        <button class="btn btn-outline-primary" type="submit">{{ 'นำเข้า ZIP' if current_lang == 'th' else 'Import ZIP' }}</button>
       </div>
-      <label class="form-label mt-3">Import Postman Collection JSON</label>
+      <label class="form-label mt-3">{{ 'นำเข้า Postman Collection JSON' if current_lang == 'th' else 'Import Postman Collection JSON' }}</label>
       <div class="d-flex flex-wrap gap-2">
         <input class="form-control" type="file" name="postman_collection" accept=".json">
-        <button class="btn btn-outline-primary" type="submit">Import Collection</button>
+        <button class="btn btn-outline-primary" type="submit">{{ 'นำเข้า Collection' if current_lang == 'th' else 'Import Collection' }}</button>
       </div>
-      <small class="text-muted d-block mt-2">Imported collections are saved in <code>settings.json</code> and can be applied from each API source row.</small>
+      <small class="text-muted d-block mt-2">{{ 'คอลเลกชันที่นำเข้าจะถูกบันทึกใน' if current_lang == 'th' else 'Imported collections are saved in' }} <code>settings.json</code> {{ 'และสามารถใช้งานได้จากแต่ละแถวแหล่งข้อมูล API' if current_lang == 'th' else 'and can be applied from each API source row.' }}</small>
       {% set imported_api_templates = settings.endpoint_api_templates if settings.endpoint_api_templates is defined else [] %}
       <div class="mt-3">
-        <label class="form-label">Saved API Templates</label>
+        <label class="form-label">{{ 'เทมเพลต API ที่บันทึกไว้' if current_lang == 'th' else 'Saved API Templates' }}</label>
         {% if imported_api_templates %}
         <div class="list-group">
           {% for template in imported_api_templates %}
           <div class="list-group-item">
             <div class="fw-semibold">{{ template.name }}</div>
             <small class="text-muted">
-              {{ template.requests | length }} requests
+              {{ template.requests | length }} {{ 'คำขอ' if current_lang == 'th' else 'requests' }}
               {% if template.base_url %} | Base URL: {{ template.base_url }}{% endif %}
-              {% if template.source %} | File: {{ template.source }}{% endif %}
+              {% if template.source %} | {{ 'ไฟล์' if current_lang == 'th' else 'File' }}: {{ template.source }}{% endif %}
             </small>
           </div>
           {% endfor %}
         </div>
         {% else %}
-        <small class="text-muted">No imported Postman collection yet.</small>
+        <small class="text-muted">{{ 'ยังไม่มี Postman Collection ที่นำเข้า' if current_lang == 'th' else 'No imported Postman collection yet.' }}</small>
         {% endif %}
       </div>
     </form>
