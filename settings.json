@@ -5,7 +5,7 @@
   "show_icons": {
     "bell": true,
     "calendar": true,
-    "download": false,
+    "download": true,
     "settings": true
   },
   "show_severity_lines": true,
@@ -216,9 +216,9 @@
       }
     ]
   },
-  "card_header_color": "#f9fbff",
-  "card_body_color": "transparent",
-  "page_background_color": "#e8f1ff",
+  "card_header_color": "#ededed",
+  "card_body_color": "#ffffff",
+  "page_background_color": "#e0eef5",
   "modules": {
     "top_definition": {
       "iaq": {

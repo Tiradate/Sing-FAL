@@ -1244,18 +1244,53 @@ def map_full():
 @app.route("/export/sensor.csv")
 def export_sensor_csv():
     settings = settings_service.load_settings()
-    active_system = resolve_active_system(settings)
+    system_param = request.args.get("system", "").strip().lower()
+    active_system = system_param if system_param else resolve_active_system(settings)
     metric_options = get_enabled_metric_options(settings, active_system)
-    allowed_metrics = {option["key"] for option in metric_options}
+    allowed_metrics = [option["key"] for option in metric_options]
+
+    # Build column headers: metric label + unit
+    METRIC_LABELS = {
+        "temperature": "Temperature(\u00b0C)",
+        "humidity": "Humidity(%RH)",
+        "co2": "CO\u2082(ppm)",
+        "pm25": "PM2.5(\u03bcg/m\u00b3)",
+        "pm10": "PM10(\u03bcg/m\u00b3)",
+        "tvoc": "TVOC(mg/m\u00b3)",
+    }
+    metric_cols = [m for m in allowed_metrics if m in METRIC_LABELS] or list(METRIC_LABELS.keys())
+    headers = [METRIC_LABELS[m] for m in metric_cols]
+
     rows = data_service.get_sensor_readings_csv()
+
+    # Pivot: latest value per (device_id, metric)
+    latest = {}
+    device_floor = {}
+    for row in rows:
+        metric = row["metric"]
+        if metric not in metric_cols:
+            continue
+        device_id = row["device_id"]
+        key = (device_id, metric)
+        if key not in latest:
+            latest[key] = row["value"]
+            device_floor[device_id] = row["floor_id"]
+
+    # Collect unique devices preserving order
+    devices_seen = []
+    devices_set = set()
+    for row in rows:
+        if row["device_id"] not in devices_set and row["metric"] in metric_cols:
+            devices_seen.append(row["device_id"])
+            devices_set.add(row["device_id"])
+
     csv_path = os.path.join(BASE_DIR, "sensor_export.csv")
     with open(csv_path, "w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["ts", "device_id", "floor_id", "metric", "value", "unit"])
-        for row in rows:
-            if allowed_metrics and row["metric"] not in allowed_metrics:
-                continue
-            writer.writerow([row["ts"], row["device_id"], row["floor_id"], row["metric"], row["value"], row["unit"]])
+        writer.writerow(["Device"] + headers)
+        for device_id in devices_seen:
+            values = [latest.get((device_id, m), "") for m in metric_cols]
+            writer.writerow([device_id] + values)
     return send_file(csv_path, as_attachment=True, download_name="sensor_readings.csv")
 
 
@@ -4518,6 +4553,22 @@ def settings():
                 "waste": bool(request.form.get("nav_system_waste")),
                 "fire": bool(request.form.get("nav_system_fire")),
             }
+            card_header_color = request.form.get("card_header_color", settings["card_header_color"])
+            card_body_color = request.form.get("card_body_color", settings["card_body_color"])
+            page_background_color = request.form.get(
+                "page_background_color", settings["page_background_color"]
+            )
+            settings["card_header_color"] = (
+                "transparent" if request.form.get("card_header_transparent") else card_header_color
+            )
+            settings["card_body_color"] = (
+                "transparent" if request.form.get("card_body_transparent") else card_body_color
+            )
+            settings["page_background_color"] = (
+                "transparent"
+                if request.form.get("page_background_transparent")
+                else page_background_color
+            )
 
         if settings_section == "source":
             settings["endpoint_sources"] = _parse_endpoint_sources(request.form)
@@ -4542,22 +4593,6 @@ def settings():
                 "gas": bool(request.form.get("fire_tag_gas")),
             }
             settings["tag_visibility"] = tag_visibility
-            card_header_color = request.form.get("card_header_color", settings["card_header_color"])
-            card_body_color = request.form.get("card_body_color", settings["card_body_color"])
-            page_background_color = request.form.get(
-                "page_background_color", settings["page_background_color"]
-            )
-            settings["card_header_color"] = (
-                "transparent" if request.form.get("card_header_transparent") else card_header_color
-            )
-            settings["card_body_color"] = (
-                "transparent" if request.form.get("card_body_transparent") else card_body_color
-            )
-            settings["page_background_color"] = (
-                "transparent"
-                if request.form.get("page_background_transparent")
-                else page_background_color
-            )
 
             modules = settings.get("modules", {})
             existing_top_definition = modules.get("top_definition", {})
