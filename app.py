@@ -4878,8 +4878,8 @@ def settings():
             if sensor_icon_existing:
                 settings["sensor_icon"] = sensor_icon_existing
             next_sensor_icon = settings.get("sensor_icon", "")
-            if previous_sensor_icon and next_sensor_icon != previous_sensor_icon:
-                data_service.set_sensor_icon_for_missing(previous_sensor_icon)
+            if next_sensor_icon and next_sensor_icon != previous_sensor_icon:
+                data_service.set_sensor_icon_for_missing(next_sensor_icon)
 
             if "floor_logo_icon" in request.files:
                 file = request.files["floor_logo_icon"]

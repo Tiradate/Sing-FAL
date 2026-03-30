@@ -5,3 +5,4 @@ __pycache__/
 sensor_export.csv
 .env
 tmp_app*
+settings.json
