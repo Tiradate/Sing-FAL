@@ -1,0 +1,4 @@
+[startup] Runtime dependencies are already available.
+ * Serving Flask app 'app'
+[background] Latest Values polling thread started.
+ * Debug mode: off

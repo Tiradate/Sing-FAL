@@ -261,6 +261,66 @@ from services.db import SENSOR_DB, connect, init_all, seed_demo_data
 app = Flask(__name__)
 app.secret_key = os.environ.get("ICON_SECRET_KEY", "replace-with-secure-secret")
 
+DEFAULT_SENSOR_ICON_PATH = settings_service.DEFAULT_SETTINGS.get("sensor_icon", "")
+
+
+def _normalize_asset_path(value):
+    candidate = str(value or "").strip()
+    if not candidate:
+        return ""
+    return candidate.replace("\\", "/")
+
+
+def build_asset_url(*candidates):
+    seen = set()
+    ordered_candidates = list(candidates)
+    if DEFAULT_SENSOR_ICON_PATH:
+        ordered_candidates.append(DEFAULT_SENSOR_ICON_PATH)
+
+    for raw_candidate in ordered_candidates:
+        candidate = _normalize_asset_path(raw_candidate)
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+
+        if candidate.startswith("data:"):
+            return candidate
+
+        parsed = urlparse(candidate)
+        if parsed.scheme in {"http", "https"} or candidate.startswith("//"):
+            return candidate
+
+        normalized = candidate.lstrip("/")
+        static_filename = None
+        if normalized.startswith("static/"):
+            static_filename = normalized[len("static/") :]
+        else:
+            candidate_in_static = os.path.join(BASE_DIR, "static", normalized.replace("/", os.sep))
+            if os.path.isfile(candidate_in_static):
+                static_filename = normalized
+
+        if static_filename:
+            static_path = os.path.join(BASE_DIR, "static", static_filename.replace("/", os.sep))
+            if os.path.isfile(static_path):
+                return url_for(
+                    "static",
+                    filename=static_filename,
+                    v=int(os.path.getmtime(static_path)),
+                )
+            continue
+
+        return f"/{normalized}"
+
+    return ""
+
+
+def build_sensor_icon_url(icon_path=None, fallback_icon=None):
+    return build_asset_url(icon_path, fallback_icon)
+
+
+app.jinja_env.globals["asset_url"] = build_asset_url
+app.jinja_env.globals["sensor_icon_url"] = build_sensor_icon_url
+
 _BACKGROUND_SOURCE_POLLING_LOCK = threading.Lock()
 _BACKGROUND_SOURCE_POLLING_STATE_LOCK = threading.Lock()
 _BACKGROUND_SOURCE_POLLING_THREAD = None
@@ -5040,7 +5100,14 @@ def settings():
         settings_service.save_settings(settings)
         return redirect(url_for("settings", tab=settings_section))
 
-    device_payloads = [dict(device) for device in devices]
+    device_payloads = []
+    for device in devices:
+        payload = dict(device)
+        payload["sensor_icon_url"] = build_sensor_icon_url(
+            payload.get("sensor_icon"),
+            settings.get("sensor_icon"),
+        )
+        device_payloads.append(payload)
 
     try:
         login_history_start_date = _normalize_history_date_text(
@@ -5163,6 +5230,10 @@ def create_device():
         sensor_type=sensor_type or "DZ",
         sensor_name=sensor_name,
         sensor_icon=settings.get("sensor_icon"),
+    )
+    device["sensor_icon_url"] = build_sensor_icon_url(
+        device.get("sensor_icon"),
+        settings.get("sensor_icon"),
     )
     return jsonify(device)
 

@@ -3923,6 +3923,7 @@
     floorLogos: {{ settings.floor_plan_logos | default({}) | tojson }},
     devices: {{ devices | default([]) | tojson }},
     sensorIcon: {{ settings.sensor_icon | tojson }},
+    sensorIconUrl: {{ sensor_icon_url(settings.sensor_icon) | tojson }},
     sensorIconSize: {{ settings.sensor_icon_size | tojson }},
     logoIconDefault: {{ settings.floor_logo_icon | tojson }},
     logoIconSelected: {{ settings.floor_logo_icon | tojson }},
@@ -3954,6 +3955,21 @@
     updateLogoRoute: {{ url_for('update_floor_logo_position', logo_id='__logo__') | tojson }},
     updateLogoLabelRoute: {{ url_for('update_floor_logo_label', logo_id='__logo__') | tojson }},
     deleteLogoRoute: {{ url_for('delete_floor_logo', logo_id='__logo__') | tojson }},
+  };
+
+  const buildAssetUrl = (path) => {
+    const value = String(path || '').trim();
+    if (!value) {
+      return '';
+    }
+    if (/^(https?:)?\/\//.test(value) || value.startsWith('data:')) {
+      return value;
+    }
+    const normalized = value.replace(/\\/g, '/').replace(/^\/+/, '');
+    if (normalized.startsWith('static/')) {
+      return `/${normalized}?v=${Date.now()}`;
+    }
+    return `/${normalized}`;
   };
 
   bindSettingsTabs();
@@ -4088,6 +4104,7 @@
         [floorLogoSelect, projectLogoSelect],
         (path) => {
           editorData.sensorIcon = path || '';
+          editorData.sensorIconUrl = buildAssetUrl(editorData.sensorIcon);
           if (editorSelect) {
             renderEditor(editorSelect.value);
           }
@@ -4113,6 +4130,7 @@
       deleteSettingsFile([sensorIconSelect, floorLogoSelect, projectLogoSelect], (deletedPath) => {
         if (editorData.sensorIcon === deletedPath) {
           editorData.sensorIcon = '';
+          editorData.sensorIconUrl = '';
           if (editorSelect) {
             renderEditor(editorSelect.value);
           }
@@ -4130,6 +4148,7 @@
   if (sensorIconSelect) {
     sensorIconSelect.addEventListener('change', (event) => {
       editorData.sensorIcon = event.target.value || '';
+      editorData.sensorIconUrl = buildAssetUrl(editorData.sensorIcon);
     });
   }
 
@@ -4992,14 +5011,14 @@
     editorData.devices
       .filter((device) => device.floor_id === floorId)
       .forEach((device) => {
-        const iconPath = device.sensor_icon || editorData.sensorIcon;
+        const iconUrl = device.sensor_icon_url || buildAssetUrl(device.sensor_icon) || editorData.sensorIconUrl;
         const icon = document.createElement('div');
         icon.className = 'sensor-icon map-editor-icon map-editor-sensor';
         icon.dataset.device = device.device_id;
         icon.style.left = `${device.location_x}%`;
         icon.style.top = `${device.location_y}%`;
         icon.title = device.label || device.device_id;
-        icon.innerHTML = `<img src="/${iconPath}" alt="sensor" style="width: ${editorData.sensorIconSize}px; height: ${editorData.sensorIconSize}px;">`;
+        icon.innerHTML = `<img src="${iconUrl}" alt="sensor" style="width: ${editorData.sensorIconSize}px; height: ${editorData.sensorIconSize}px;">`;
         stage.appendChild(icon);
       });
 
@@ -5439,6 +5458,7 @@
       }
       const device = await response.json();
       device.sensor_icon = device.sensor_icon || editorData.sensorIcon;
+      device.sensor_icon_url = device.sensor_icon_url || editorData.sensorIconUrl;
       editorData.devices.push(device);
       renderEditor(floorId);
     });
