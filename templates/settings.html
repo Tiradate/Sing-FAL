@@ -52,6 +52,9 @@
         <button class="btn btn-outline-dark" type="button" data-settings-tab="design">
           <i class="bi bi-palette me-1"></i>{{ 'ดีไซน์' if current_lang == 'th' else 'Design' }}
         </button>
+        <button class="btn btn-outline-dark" type="button" data-settings-tab="account">
+          <i class="bi bi-bank2 me-1"></i>{{ 'บัญชี' if current_lang == 'th' else 'Account' }}
+        </button>
         <button class="btn btn-outline-dark" type="button" data-settings-tab="user">
           <i class="bi bi-people me-1"></i>{{ 'จัดการผู้ใช้' if current_lang == 'th' else 'User Manage' }}
         </button>
@@ -677,6 +680,10 @@
                       <label class="form-check-label">{{ 'ภาพรวมรายสัปดาห์' if current_lang == 'th' else 'Weekly Overview' }}</label>
                     </div>
                     <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="dashboard_card_psychrometric_chart_{{ system.key }}" {% if dashboard_cards.psychrometric_chart is not defined or dashboard_cards.psychrometric_chart %}checked{% endif %}>
+                      <label class="form-check-label">{{ 'à¹„à¸‹à¹‚à¸„à¸£à¹€à¸¡à¸•à¸£à¸´à¸à¸Šà¸²à¸£à¹Œà¸•' if current_lang == 'th' else 'Psychrometric Chart' }}</label>
+                    </div>
+                    <div class="form-check">
                       <input class="form-check-input" type="checkbox" name="dashboard_card_sensor_average_{{ system.key }}" {% if dashboard_cards.sensor_average is not defined or dashboard_cards.sensor_average %}checked{% endif %}>
                       <label class="form-check-label">{{ 'ค่าเฉลี่ยเซนเซอร์' if current_lang == 'th' else 'Sensor Averages' }}</label>
                     </div>
@@ -1072,7 +1079,7 @@
 
       <div class="d-none" data-system-section="fire">
         <div id="fireSeveritySection">
-          <h6>Fire Systems Severity Mapping</h6>
+          <h6>Fire Severity Mapping</h6>
           {% set fire_tag_visibility = settings.tag_visibility.get('fire', {}) if settings.tag_visibility is defined else {} %}
           <div class="row g-2 align-items-end mb-2 text-muted small fw-semibold">
             <div class="col-12 col-md-3">Severity</div>
@@ -1285,6 +1292,255 @@
             <div class="alert alert-light border mb-0" id="sourceMetricFieldsEmptyState">{{ 'ยังไม่พบฟิลด์จากแหล่งข้อมูลขาเข้า กด <code>ใช้แหล่งข้อมูล</code> หลังโหลดแหล่งข้อมูลที่แมปแล้วเพื่อสร้างรายการฟิลด์' if current_lang == 'th' else 'No incoming source fields discovered yet. Click <code>Use Source</code> after loading a mapped source to build the field catalog.' }}</div>
             {% endif %}
           </div>
+        </div>
+      </div>
+      </div>
+
+      <div data-settings-tab-panel="account"{% if (active_settings_tab or 'project') != 'account' %} class="d-none"{% endif %}>
+      {% set accounting = settings.accounting if settings.accounting is defined else {} %}
+      {% set accounting_modules = accounting.modules if accounting.modules is defined else {} %}
+      {% set account_chart = accounting_modules.chart_of_accounts if accounting_modules.chart_of_accounts is defined else {} %}
+      {% set account_transactions = accounting_modules.transactions if accounting_modules.transactions is defined else {} %}
+      {% set account_ar_ap = accounting_modules.receivables_payables if accounting_modules.receivables_payables is defined else {} %}
+      {% set account_taxes = accounting_modules.taxes if accounting_modules.taxes is defined else {} %}
+      {% set account_reports = accounting_modules.financial_reports if accounting_modules.financial_reports is defined else {} %}
+      {% set account_period = accounting_modules.period_closing if accounting_modules.period_closing is defined else {} %}
+      {% set account_integrations = accounting_modules.integrations if accounting_modules.integrations is defined else {} %}
+      <div class="row g-4">
+        <div class="col-12">
+          <div class="card border-0 shadow-sm accounting-overview-card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+                <div>
+                  <h6 class="mb-1">{{ 'ศูนย์จัดการระบบบัญชี' if current_lang == 'th' else 'Accounting Workspace' }}</h6>
+                  <p class="text-muted mb-0">{{ 'ตั้งค่าโครงสร้างบัญชี นโยบายเริ่มต้น และโมดูลบัญชีที่ต้องการเปิดใช้ในฝั่งผู้ดูแลระบบ' if current_lang == 'th' else 'Configure your accounting structure, default policies, and the admin modules that should be active.' }}</p>
+                </div>
+                <div class="form-check form-switch mb-0">
+                  <input class="form-check-input" type="checkbox" id="accountingEnabled" name="accounting_enabled" {% if accounting.enabled %}checked{% endif %}>
+                  <label class="form-check-label fw-semibold" for="accountingEnabled">{{ 'เปิดใช้งานระบบบัญชี' if current_lang == 'th' else 'Enable Accounting' }}</label>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-12 col-md-6 col-xl-3">
+                  <label class="form-label">{{ 'ประเภทธุรกิจ' if current_lang == 'th' else 'Business Type' }}</label>
+                  <input class="form-control" type="text" name="accounting_business_type" value="{{ accounting.business_type or 'General Business' }}" placeholder="{{ 'เช่น ค้าปลีก / บริการ / อสังหา' if current_lang == 'th' else 'e.g. Retail / Service / Property' }}">
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                  <label class="form-label">{{ 'สกุลเงินหลัก' if current_lang == 'th' else 'Base Currency' }}</label>
+                  <input class="form-control text-uppercase" type="text" name="accounting_base_currency" maxlength="8" value="{{ accounting.base_currency or 'THB' }}" placeholder="THB">
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                  <label class="form-label">{{ 'เกณฑ์การรับรู้' if current_lang == 'th' else 'Reporting Basis' }}</label>
+                  <select class="form-select" name="accounting_reporting_basis">
+                    <option value="accrual" {% if (accounting.reporting_basis or 'accrual') == 'accrual' %}selected{% endif %}>{{ 'เกณฑ์คงค้าง' if current_lang == 'th' else 'Accrual Basis' }}</option>
+                    <option value="cash" {% if accounting.reporting_basis == 'cash' %}selected{% endif %}>{{ 'เกณฑ์เงินสด' if current_lang == 'th' else 'Cash Basis' }}</option>
+                  </select>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                  <label class="form-label">{{ 'เดือนเริ่มปีบัญชี' if current_lang == 'th' else 'Fiscal Year Start Month' }}</label>
+                  <select class="form-select" name="accounting_fiscal_year_start_month">
+                    {% for month in range(1, 13) %}
+                    <option value="{{ month }}" {% if (accounting.fiscal_year_start_month or 1) == month %}selected{% endif %}>{{ month }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                  <label class="form-label">{{ 'เครดิตเทอมเริ่มต้น (วัน)' if current_lang == 'th' else 'Default Credit Term (days)' }}</label>
+                  <input class="form-control" type="number" min="0" name="accounting_default_credit_term_days" value="{{ accounting.default_credit_term_days or 30 }}">
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                  <label class="form-label">{{ 'อัตรา VAT / ภาษี (%)' if current_lang == 'th' else 'VAT / Tax Rate (%)' }}</label>
+                  <input class="form-control" type="number" min="0" max="100" step="0.01" name="accounting_tax_rate" value="{{ accounting.tax_rate if accounting.tax_rate is defined else 7.0 }}">
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                  <label class="form-label">{{ 'โครงสร้างภาษี' if current_lang == 'th' else 'Tax Structure' }}</label>
+                  <select class="form-select" name="accounting_tax_mode">
+                    <option value="vat" {% if (accounting.tax_mode or 'vat') == 'vat' %}selected{% endif %}>{{ 'VAT มาตรฐาน' if current_lang == 'th' else 'Standard VAT' }}</option>
+                    <option value="inclusive" {% if accounting.tax_mode == 'inclusive' %}selected{% endif %}>{{ 'ภาษีรวมในราคา' if current_lang == 'th' else 'Tax Inclusive' }}</option>
+                    <option value="exclusive" {% if accounting.tax_mode == 'exclusive' %}selected{% endif %}>{{ 'ภาษีแยกจากราคา' if current_lang == 'th' else 'Tax Exclusive' }}</option>
+                    <option value="multi_rate" {% if accounting.tax_mode == 'multi_rate' %}selected{% endif %}>{{ 'หลายโครงสร้างภาษี' if current_lang == 'th' else 'Multiple Structures' }}</option>
+                  </select>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                  <label class="form-label">{{ 'ล็อกรายการก่อนวันที่' if current_lang == 'th' else 'Lock Transactions Before' }}</label>
+                  <input class="form-control" type="date" name="accounting_lock_date" value="{{ accounting.lock_date or '' }}">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="accounting-module-grid">
+            <div class="card accounting-module-card h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div class="d-flex gap-3">
+                    <div class="accounting-module-icon"><i class="bi bi-diagram-3"></i></div>
+                    <div>
+                      <h6 class="mb-1">{{ 'ผังบัญชี' if current_lang == 'th' else 'Chart of Accounts' }}</h6>
+                      <p class="small text-muted mb-0">{{ 'กำหนดโครงสร้างบัญชี เช่น สินทรัพย์ หนี้สิน รายได้ ค่าใช้จ่าย และปรับตามประเภทธุรกิจ' if current_lang == 'th' else 'Define the account structure and adapt it to each business profile.' }}</p>
+                    </div>
+                  </div>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="account_module_chart_of_accounts_enabled" {% if account_chart.enabled %}checked{% endif %}>
+                  </div>
+                </div>
+                <div class="accounting-check-list">
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_chart_assets" {% if account_chart.assets %}checked{% endif %}><span class="form-check-label">{{ 'สินทรัพย์' if current_lang == 'th' else 'Assets' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_chart_liabilities" {% if account_chart.liabilities %}checked{% endif %}><span class="form-check-label">{{ 'หนี้สิน' if current_lang == 'th' else 'Liabilities' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_chart_income" {% if account_chart.income %}checked{% endif %}><span class="form-check-label">{{ 'รายได้' if current_lang == 'th' else 'Income' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_chart_expenses" {% if account_chart.expenses %}checked{% endif %}><span class="form-check-label">{{ 'ค่าใช้จ่าย' if current_lang == 'th' else 'Expenses' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_chart_customize" {% if account_chart.customize_by_business_type %}checked{% endif %}><span class="form-check-label">{{ 'ปรับแต่งตามประเภทธุรกิจได้' if current_lang == 'th' else 'Customizable by business type' }}</span></label>
+                </div>
+              </div>
+            </div>
+
+            <div class="card accounting-module-card h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div class="d-flex gap-3">
+                    <div class="accounting-module-icon"><i class="bi bi-receipt-cutoff"></i></div>
+                    <div>
+                      <h6 class="mb-1">{{ 'บันทึกรายการบัญชี' if current_lang == 'th' else 'Transactions' }}</h6>
+                      <p class="small text-muted mb-0">{{ 'จัดการเอกสารหลักที่ทำให้เกิดรายรับ รายจ่าย รับเงิน จ่ายเงิน และรายการปรับปรุง' if current_lang == 'th' else 'Manage the core documents that create income, expenses, receipts, and adjustments.' }}</p>
+                    </div>
+                  </div>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="account_module_transactions_enabled" {% if account_transactions.enabled %}checked{% endif %}>
+                  </div>
+                </div>
+                <div class="accounting-check-list">
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_transactions_sales_invoice" {% if account_transactions.sales_invoice %}checked{% endif %}><span class="form-check-label">Sales Invoice</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_transactions_purchase_invoice" {% if account_transactions.purchase_invoice %}checked{% endif %}><span class="form-check-label">Purchase Invoice</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_transactions_payment_entry" {% if account_transactions.payment_entry %}checked{% endif %}><span class="form-check-label">Payment Entry</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_transactions_journal_entry" {% if account_transactions.journal_entry %}checked{% endif %}><span class="form-check-label">Journal Entry</span></label>
+                </div>
+              </div>
+            </div>
+
+            <div class="card accounting-module-card h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div class="d-flex gap-3">
+                    <div class="accounting-module-icon"><i class="bi bi-people"></i></div>
+                    <div>
+                      <h6 class="mb-1">{{ 'ลูกหนี้ - เจ้าหนี้' if current_lang == 'th' else 'AR / AP' }}</h6>
+                      <p class="small text-muted mb-0">{{ 'ติดตามลูกหนี้ เจ้าหนี้ เครดิตเทอม และการแจ้งเตือนการชำระเงิน' if current_lang == 'th' else 'Track customer receivables, supplier payables, credit terms, and payment reminders.' }}</p>
+                    </div>
+                  </div>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="account_module_receivables_payables_enabled" {% if account_ar_ap.enabled %}checked{% endif %}>
+                  </div>
+                </div>
+                <div class="accounting-check-list">
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_receivables_enabled" {% if account_ar_ap.accounts_receivable %}checked{% endif %}><span class="form-check-label">{{ 'บัญชีลูกหนี้' if current_lang == 'th' else 'Accounts Receivable' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_payables_enabled" {% if account_ar_ap.accounts_payable %}checked{% endif %}><span class="form-check-label">{{ 'บัญชีเจ้าหนี้' if current_lang == 'th' else 'Accounts Payable' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_credit_terms_enabled" {% if account_ar_ap.credit_terms %}checked{% endif %}><span class="form-check-label">{{ 'เครดิตเทอม' if current_lang == 'th' else 'Credit terms' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_payment_reminders_enabled" {% if account_ar_ap.payment_reminders %}checked{% endif %}><span class="form-check-label">{{ 'แจ้งเตือนการชำระเงิน' if current_lang == 'th' else 'Payment reminders' }}</span></label>
+                </div>
+              </div>
+            </div>
+
+            <div class="card accounting-module-card h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div class="d-flex gap-3">
+                    <div class="accounting-module-icon"><i class="bi bi-percent"></i></div>
+                    <div>
+                      <h6 class="mb-1">{{ 'ภาษี' if current_lang == 'th' else 'Taxes' }}</h6>
+                      <p class="small text-muted mb-0">{{ 'รองรับ VAT และภาษีขาย/ซื้อ พร้อมนำไปใช้กับเอกสารอัตโนมัติ' if current_lang == 'th' else 'Support VAT and sales/purchase tax structures that can flow into documents automatically.' }}</p>
+                    </div>
+                  </div>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="account_module_taxes_enabled" {% if account_taxes.enabled %}checked{% endif %}>
+                  </div>
+                </div>
+                <div class="accounting-check-list">
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_taxes_vat" {% if account_taxes.vat %}checked{% endif %}><span class="form-check-label">VAT</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_taxes_sales_tax" {% if account_taxes.sales_tax %}checked{% endif %}><span class="form-check-label">{{ 'ภาษีขาย' if current_lang == 'th' else 'Sales tax' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_taxes_purchase_tax" {% if account_taxes.purchase_tax %}checked{% endif %}><span class="form-check-label">{{ 'ภาษีซื้อ' if current_lang == 'th' else 'Purchase tax' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_taxes_multi_structure" {% if account_taxes.multi_structure %}checked{% endif %}><span class="form-check-label">{{ 'หลายโครงสร้างภาษี' if current_lang == 'th' else 'Multiple tax structures' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_taxes_auto_apply" {% if account_taxes.auto_apply %}checked{% endif %}><span class="form-check-label">{{ 'ใช้กับเอกสารขาย/ซื้ออัตโนมัติ' if current_lang == 'th' else 'Apply on sales / purchase documents automatically' }}</span></label>
+                </div>
+              </div>
+            </div>
+
+            <div class="card accounting-module-card h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div class="d-flex gap-3">
+                    <div class="accounting-module-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                    <div>
+                      <h6 class="mb-1">{{ 'รายงานทางการเงิน' if current_lang == 'th' else 'Financial Reports' }}</h6>
+                      <p class="small text-muted mb-0">{{ 'ควบคุมรายงานหลักที่ฝ่ายบัญชีต้องใช้ติดตามผลแบบเรียลไทม์' if current_lang == 'th' else 'Control the key reports that accounting teams expect to review in real time.' }}</p>
+                    </div>
+                  </div>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="account_module_financial_reports_enabled" {% if account_reports.enabled %}checked{% endif %}>
+                  </div>
+                </div>
+                <div class="accounting-check-list">
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_profit_and_loss" {% if account_reports.profit_and_loss %}checked{% endif %}><span class="form-check-label">Profit and Loss</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_balance_sheet" {% if account_reports.balance_sheet %}checked{% endif %}><span class="form-check-label">Balance Sheet</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_cash_flow" {% if account_reports.cash_flow %}checked{% endif %}><span class="form-check-label">Cash Flow</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_general_ledger" {% if account_reports.general_ledger %}checked{% endif %}><span class="form-check-label">General Ledger</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_trial_balance" {% if account_reports.trial_balance %}checked{% endif %}><span class="form-check-label">Trial Balance</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_real_time" {% if account_reports.real_time %}checked{% endif %}><span class="form-check-label">{{ 'ดูข้อมูลแบบ real-time' if current_lang == 'th' else 'Real-time dashboards' }}</span></label>
+                </div>
+              </div>
+            </div>
+
+            <div class="card accounting-module-card h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div class="d-flex gap-3">
+                    <div class="accounting-module-icon"><i class="bi bi-calendar-check"></i></div>
+                    <div>
+                      <h6 class="mb-1">{{ 'การปิดงวดบัญชี' if current_lang == 'th' else 'Period Closing' }}</h6>
+                      <p class="small text-muted mb-0">{{ 'รองรับการปิดรายเดือน รายปี และล็อกข้อมูลย้อนหลังหลังอนุมัติ' if current_lang == 'th' else 'Support monthly and yearly close while locking historical entries after approval.' }}</p>
+                    </div>
+                  </div>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="account_module_period_closing_enabled" {% if account_period.enabled %}checked{% endif %}>
+                  </div>
+                </div>
+                <div class="accounting-check-list">
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_period_monthly_close" {% if account_period.monthly_close %}checked{% endif %}><span class="form-check-label">{{ 'ปิดบัญชีรายเดือน' if current_lang == 'th' else 'Monthly closing' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_period_yearly_close" {% if account_period.yearly_close %}checked{% endif %}><span class="form-check-label">{{ 'ปิดบัญชีรายปี' if current_lang == 'th' else 'Yearly closing' }}</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_period_lock_backdated" {% if account_period.lock_backdated_entries %}checked{% endif %}><span class="form-check-label">{{ 'ล็อกข้อมูลย้อนหลัง' if current_lang == 'th' else 'Lock backdated changes' }}</span></label>
+                </div>
+              </div>
+            </div>
+
+            <div class="card accounting-module-card h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div class="d-flex gap-3">
+                    <div class="accounting-module-icon"><i class="bi bi-link-45deg"></i></div>
+                    <div>
+                      <h6 class="mb-1">{{ 'เชื่อมต่อโมดูลอื่น' if current_lang == 'th' else 'Integrations' }}</h6>
+                      <p class="small text-muted mb-0">{{ 'เชื่อมบัญชีกับโมดูลปฏิบัติการเพื่อบันทึกรายการอัตโนมัติจากธุรกรรมอื่น' if current_lang == 'th' else 'Link accounting to the operational modules so postings can happen automatically.' }}</p>
+                    </div>
+                  </div>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="account_module_integrations_enabled" {% if account_integrations.enabled %}checked{% endif %}>
+                  </div>
+                </div>
+                <div class="accounting-check-list">
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_integrations_sales" {% if account_integrations.sales %}checked{% endif %}><span class="form-check-label">Sales</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_integrations_purchase" {% if account_integrations.purchase %}checked{% endif %}><span class="form-check-label">Purchase</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_integrations_stock" {% if account_integrations.stock %}checked{% endif %}><span class="form-check-label">Stock</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_integrations_payroll" {% if account_integrations.payroll %}checked{% endif %}><span class="form-check-label">Payroll</span></label>
+                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_integrations_auto_posting" {% if account_integrations.auto_posting %}checked{% endif %}><span class="form-check-label">{{ 'บันทึกบัญชีอัตโนมัติ' if current_lang == 'th' else 'Automatic accounting entries' }}</span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 d-flex justify-content-end">
+          <button class="btn btn-primary" type="submit" data-save-settings-section="account">{{ 'บันทึกการตั้งค่าบัญชี' if current_lang == 'th' else 'Save Accounting' }}</button>
         </div>
       </div>
       </div>
@@ -1566,6 +1822,15 @@
       input.value = Math.max(1, safeValue + 1);
     });
   });
+
+  document
+    .querySelectorAll('[name^="dashboard_card_psychrometric_chart_"]')
+    .forEach((input) => {
+      const label = input.closest('.form-check')?.querySelector('.form-check-label');
+      if (label) {
+        label.textContent = 'Psychrometric Chart';
+      }
+    });
 
   const bindColorToggle = (checkboxId, inputId) => {
     const checkbox = document.getElementById(checkboxId);
@@ -3581,6 +3846,12 @@
     }
   };
 
+  const iaqSeveritySectionWrapper = document.getElementById('iaqSeveritySection')?.closest('[data-system-section]');
+  const fireSeveritySectionWrapper = document.getElementById('fireSeveritySection')?.closest('[data-system-section]');
+  if (iaqSeveritySectionWrapper && fireSeveritySectionWrapper) {
+    iaqSeveritySectionWrapper.insertAdjacentElement('afterend', fireSeveritySectionWrapper);
+  }
+
   const systemPageSelect = document.getElementById('systemPageSelect');
   const systemSections = document.querySelectorAll('[data-system-section]');
 
@@ -3809,6 +4080,10 @@
         select.innerHTML = getLegendOptions(currentValue);
         if (currentValue && !labels.includes(currentValue)) {
           select.value = '';
+        }
+        const criticalInput = select.closest('.severity-row, .fire-severity-row')?.querySelector('input[name="critical_levels"]');
+        if (criticalInput) {
+          criticalInput.value = select.value;
         }
       });
     };

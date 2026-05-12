@@ -74,6 +74,7 @@
   {% endif %}
   {% set show_daily_graph = dashboard_cards.daily_graph is not defined or dashboard_cards.daily_graph %}
   {% set show_weekly_overview = dashboard_cards.weekly_overview is not defined or dashboard_cards.weekly_overview %}
+  {% set show_psychrometric_chart = dashboard_cards.psychrometric_chart is not defined or dashboard_cards.psychrometric_chart %}
   {% set show_sensor_average = dashboard_cards.sensor_average is not defined or dashboard_cards.sensor_average %}
   {% set show_alerts_notifications = dashboard_cards.alerts_notifications is not defined or dashboard_cards.alerts_notifications %}
   {% set graph_col_class = 'col-12 col-lg-3' if show_map else 'col-12 col-lg-6' %}
@@ -289,7 +290,7 @@
   {% endfor %}
   {% endif %}
 
-  {% if show_daily_graph or show_weekly_overview %}
+  {% if show_daily_graph or show_weekly_overview or show_psychrometric_chart %}
   <div class="{{ graph_col_class }}">
     {% if show_daily_graph %}
     <div class="card shadow-sm mb-3">
@@ -409,7 +410,7 @@
     </div>
     {% endif %}
 
-    {% if psychro_points is defined %}
+    {% if show_psychrometric_chart and psychro_points is defined %}
     <div class="card shadow-sm">
       <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
         <div>

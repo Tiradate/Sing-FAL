@@ -1,5 +1,5 @@
 {
-  "project_name": "ICONSIAM",
+  "project_name": "LIQUOR DISTILLERY ORGANIZATION",
   "location_label": "Bangkok, Thailand",
   "floor_auto_rotate_seconds": 12,
   "show_icons": {
@@ -28,10 +28,10 @@
     }
   },
   "system_navigation": {
-    "iaq": true,
+    "iaq": false,
     "energy": false,
     "waste": false,
-    "fire": false
+    "fire": true
   },
   "fire_severity_mapping": [
     {
@@ -93,132 +93,21 @@
     "Unhealthy"
   ],
   "floor_plans": {
-    "GF": "static/uploads/B01.png",
-    "MF": "static/uploads/B01.png",
-    "1F": "static/uploads/B01.png",
-    "2F": "static/uploads/B01.png",
-    "3F": "static/uploads/A01.png",
-    "4F": "static/uploads/A01.png",
-    "5F": "static/uploads/A01.png",
-    "6F": "static/uploads/A01.png",
-    "7F": "static/uploads/A01.png",
-    "8F": "static/uploads/A01.png"
+    "Fire Pump": "static/uploads/Sing_Map_H.png",
+    "Fire Alarm": "static/uploads/Sing_Map_H.png",
+    "MIX": "static/uploads/image_5.png",
+    "2": "static/uploads/Attach_TOR_1_1_page-0016.png",
+    "3": "static/uploads/Attach_TOR_1_1_page-0012.png"
   },
-  "sensor_icon": "static/uploads/sensor_icon.svg",
-  "sensor_icon_size": 18,
-  "floor_logo_icon": "static/uploads/logo_true_hall.png",
+  "sensor_icon": "static/uploads/fire-alarm_9752968.png",
+  "sensor_icon_size": 25,
+  "floor_logo_icon": "static/uploads/Sing_Map_H.png",
   "logo_icon_size": 18,
-  "project_logo": "static/uploads/ICON_SIAM_logo.png",
-  "floor_plan_logos": {
-    "GF": [
-      {
-        "logo_id": "04ea2c5a73c649949ccc801ae057dae3",
-        "floor_id": "GF",
-        "location_x": 42.1988,
-        "location_y": 18.1686,
-        "logo_icon": "static/uploads/logo_7.png"
-      },
-      {
-        "logo_id": "34f139c408014bb2a733a443b0bcc92c",
-        "floor_id": "GF",
-        "location_x": 54.4697,
-        "location_y": 22.804,
-        "logo_icon": "static/uploads/logo_SIAM_Takashimaya.png"
-      },
-      {
-        "logo_id": "b59f8a7e0d9e42f69b49dabbd17f708f",
-        "floor_id": "GF",
-        "location_x": 38.6452,
-        "location_y": 39.7676,
-        "logo_icon": "static/uploads/logo_SOOK_SIAM.png"
-      }
-    ],
-    "MF": [
-      {
-        "logo_id": "b8fa3c983c1e41b1b499a4b528205fe3",
-        "floor_id": "MF",
-        "location_x": 39.9223,
-        "location_y": 77.5411,
-        "logo_icon": "static/uploads/logo_ICONLUXE.png"
-      },
-      {
-        "logo_id": "2981a4d84c4f49c793acb65dc53491f7",
-        "floor_id": "MF",
-        "location_x": 53.859,
-        "location_y": 21.5219,
-        "logo_icon": "static/uploads/logo_SIAM_Takashimaya.png"
-      }
-    ],
-    "1F": [
-      {
-        "logo_id": "8ee9f4985cba4905b2aef394790be461",
-        "floor_id": "1F",
-        "location_x": 52.6374,
-        "location_y": 20.3631,
-        "logo_icon": "static/uploads/logo_SIAM_Takashimaya.png"
-      }
-    ],
-    "2F": [
-      {
-        "logo_id": "2b8ef1aba5494bf699a0d12cf2e2f07e",
-        "floor_id": "2F",
-        "location_x": 52.804,
-        "location_y": 19.6727,
-        "logo_icon": "static/uploads/logo_SIAM_Takashimaya.png"
-      },
-      {
-        "logo_id": "103d503eb2524ee28f7b5d5a76b1dbc3",
-        "floor_id": "2F",
-        "location_x": 33.3148,
-        "location_y": 22.1383,
-        "logo_icon": "static/uploads/logo_UNICLO.png"
-      },
-      {
-        "logo_id": "795beb0e87d54a24a14a7d4da481e321",
-        "floor_id": "2F",
-        "location_x": 39.256,
-        "location_y": 74.607,
-        "logo_icon": "static/uploads/logo_apple.png"
-      }
-    ],
-    "3F": [
-      {
-        "logo_id": "d14e436fb9fe4184897aac1561afbba2",
-        "floor_id": "3F",
-        "location_x": 40.1444,
-        "location_y": 27.5381,
-        "logo_icon": "static/uploads/logo_loft.png"
-      },
-      {
-        "logo_id": "121c9710548941ffba37f73f4852ab6f",
-        "floor_id": "3F",
-        "location_x": 35.0361,
-        "location_y": 74.4838,
-        "logo_icon": "static/uploads/logo_true.png"
-      }
-    ],
-    "4F": [
-      {
-        "logo_id": "13496c95541a45c1a1dfa9c8c6f3ff49",
-        "floor_id": "4F",
-        "location_x": 42.3653,
-        "location_y": 59.1968,
-        "logo_icon": "static/uploads/logo_iconcraft.png"
-      }
-    ],
-    "7F": [
-      {
-        "logo_id": "3c97f5d40ca9469196fcbdaacf4159a7",
-        "floor_id": "7F",
-        "location_x": 40.1999,
-        "location_y": 43.3181,
-        "logo_icon": "static/uploads/logo_true_hall.png"
-      }
-    ]
-  },
+  "project_logo": "static/uploads/LDO_Trademark.png",
+  "floor_plan_logos": {},
   "card_header_color": "#ededed",
-  "card_body_color": "#ffffff",
-  "page_background_color": "#e0eef5",
+  "card_body_color": "#ced6d5",
+  "page_background_color": "#72959e",
   "modules": {
     "top_definition": {
       "iaq": {
@@ -302,25 +191,25 @@
       "fire": {
         "enabled": true,
         "title": "Top Definition",
-        "header": "Average Indoor/Outdoor Fire Status",
+        "header": "67 \u0e2b\u0e21\u0e39\u0e48 4 \u0e15\u0e33\u0e1a\u0e25\u0e1b\u0e32\u0e01\u0e19\u0e49\u0e33 \u0e2d\u0e33\u0e40\u0e20\u0e2d\u0e1a\u0e32\u0e07\u0e04\u0e25\u0e49\u0e32 \u0e08\u0e31\u0e07\u0e2b\u0e27\u0e31\u0e14\u0e09\u0e30\u0e40\u0e0a\u0e34\u0e07\u0e40\u0e17\u0e23\u0e32 24110",
         "columns": {
           "indoor": "Indoor",
           "outdoor": "Outdoor",
-          "indoor_enabled": true,
-          "outdoor_enabled": true
+          "indoor_enabled": false,
+          "outdoor_enabled": false
         },
         "mode": "average",
         "legend": [
           {
-            "label": "Good",
+            "label": "Normal",
             "color": "#28a745"
           },
           {
-            "label": "Moderate",
+            "label": "Alarm",
             "color": "#fd7e14"
           },
           {
-            "label": "Unhealthy",
+            "label": "Trouble",
             "color": "#dc3545"
           }
         ]
@@ -332,6 +221,7 @@
         "map_count": 1,
         "daily_graph": true,
         "weekly_overview": true,
+        "psychrometric_chart": true,
         "sensor_average": true,
         "alerts_notifications": true
       },
@@ -340,6 +230,7 @@
         "map_count": 1,
         "daily_graph": true,
         "weekly_overview": true,
+        "psychrometric_chart": true,
         "sensor_average": true,
         "alerts_notifications": true
       },
@@ -348,6 +239,7 @@
         "map_count": 1,
         "daily_graph": true,
         "weekly_overview": true,
+        "psychrometric_chart": true,
         "sensor_average": true,
         "alerts_notifications": true
       },
@@ -356,7 +248,8 @@
         "map_count": 1,
         "daily_graph": true,
         "weekly_overview": true,
-        "sensor_average": true,
+        "psychrometric_chart": false,
+        "sensor_average": false,
         "alerts_notifications": true
       }
     }
@@ -366,8 +259,8 @@
   "endpoint_sources": [
     {
       "name": "LIV-24 IAQ",
-      "format": "api",
-      "base_url": "http://100.70.55.161:8000",
+      "format": "mqtt",
+      "base_url": "",
       "token": "ext_bdb8b449f3daba1c_B1elkVKYyJoXwgycsSwZS58nAKIwZmvK",
       "api": {
         "template_id": "",
@@ -393,9 +286,9 @@
             "params": [],
             "body": "",
             "use_auth": true,
-            "max_round_times": 1,
-            "max_interval_minutes": 1,
-            "interval_unlimited": false,
+            "max_round_times": 0,
+            "max_interval_minutes": 0,
+            "interval_unlimited": true,
             "run_every_times": 0,
             "run_interval_minutes": 0
           },
@@ -409,16 +302,16 @@
               {
                 "key": "org_uuid",
                 "values": [
-                  "019ce2a0-3dd8-7c92-86a4-c3558f56d840"
+                  "{{organization_uuid}}"
                 ],
-                "value": "019ce2a0-3dd8-7c92-86a4-c3558f56d840"
+                "value": "{{organization_uuid}}"
               }
             ],
             "body": "",
             "use_auth": true,
-            "max_round_times": 1,
-            "max_interval_minutes": 1,
-            "interval_unlimited": false,
+            "max_round_times": 0,
+            "max_interval_minutes": 0,
+            "interval_unlimited": true,
             "run_every_times": 0,
             "run_interval_minutes": 0
           },
@@ -432,9 +325,9 @@
               {
                 "key": "device_uuid",
                 "values": [
-                  "{{device_uuids}}"
+                  "{{device_uuid}}"
                 ],
-                "value": "{{device_uuids}}"
+                "value": "{{device_uuid}}"
               }
             ],
             "body": "",
@@ -442,8 +335,8 @@
             "max_round_times": 0,
             "max_interval_minutes": 0,
             "interval_unlimited": true,
-            "run_every_times": 10,
-            "run_interval_minutes": 10
+            "run_every_times": 0,
+            "run_interval_minutes": 0
           },
           {
             "id": "history",
@@ -485,7 +378,7 @@
             "use_auth": true,
             "max_round_times": 0,
             "max_interval_minutes": 0,
-            "interval_unlimited": false,
+            "interval_unlimited": true,
             "run_every_times": 0,
             "run_interval_minutes": 0
           },
@@ -522,7 +415,7 @@
             "use_auth": true,
             "max_round_times": 0,
             "max_interval_minutes": 0,
-            "interval_unlimited": false,
+            "interval_unlimited": true,
             "run_every_times": 0,
             "run_interval_minutes": 0
           }
@@ -537,16 +430,14 @@
       }
     }
   ],
-  "floor_names": {},
-  "endpoint_token_store": {
-    "100.70.55.161:8000": {
-      "token": "ext_bdb8b449f3daba1c_B1elkVKYyJoXwgycsSwZS58nAKIwZmvK",
-      "updated_at": "2026-03-17T19:59:27.370548+00:00",
-      "source_names": [
-        "LIV-24 IAQ"
-      ]
-    }
+  "floor_names": {
+    "Fire Pump": "Over All FS / SS",
+    "Fire Alarm": "Over All DZ / HZ",
+    "MIX": "MIX 1",
+    "2": "floor 1",
+    "3": "floor 1"
   },
+  "endpoint_token_store": {},
   "endpoint_api_templates": [],
   "project_timezone": "Asia/Bangkok",
   "project_time_format": "24h",
@@ -752,6 +643,72 @@
       "alarms": false,
       "map": true,
       "settings": false
+    }
+  },
+  "accounting": {
+    "enabled": true,
+    "business_type": "General Business",
+    "base_currency": "THB",
+    "reporting_basis": "accrual",
+    "fiscal_year_start_month": 1,
+    "default_credit_term_days": 30,
+    "tax_rate": 7.0,
+    "tax_mode": "vat",
+    "lock_date": "",
+    "modules": {
+      "chart_of_accounts": {
+        "enabled": true,
+        "assets": true,
+        "liabilities": true,
+        "income": true,
+        "expenses": true,
+        "customize_by_business_type": true
+      },
+      "transactions": {
+        "enabled": true,
+        "sales_invoice": true,
+        "purchase_invoice": true,
+        "payment_entry": true,
+        "journal_entry": true
+      },
+      "receivables_payables": {
+        "enabled": true,
+        "accounts_receivable": true,
+        "accounts_payable": true,
+        "credit_terms": true,
+        "payment_reminders": true
+      },
+      "taxes": {
+        "enabled": true,
+        "vat": true,
+        "sales_tax": true,
+        "purchase_tax": true,
+        "multi_structure": true,
+        "auto_apply": true
+      },
+      "financial_reports": {
+        "enabled": true,
+        "profit_and_loss": true,
+        "balance_sheet": true,
+        "cash_flow": true,
+        "general_ledger": true,
+        "trial_balance": true,
+        "real_time": true
+      },
+      "period_closing": {
+        "enabled": true,
+        "monthly_close": true,
+        "yearly_close": true,
+        "lock_backdated_entries": true
+      },
+      "integrations": {
+        "enabled": true,
+        "sales": true,
+        "purchase": true,
+        "stock": true,
+        "payroll": true,
+        "auto_posting": true
+      }
     }
   }
 }

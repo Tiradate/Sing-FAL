@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
-  <rect width="800" height="500" fill="#f8f9fa"/>
-  <rect x="40" y="40" width="720" height="420" fill="#ffffff" stroke="#ced4da" stroke-width="4"/>
-  <text x="400" y="250" text-anchor="middle" font-family="Arial" font-size="32" fill="#6c757d">Floor F2</text>
-</svg>

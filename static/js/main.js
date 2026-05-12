@@ -642,8 +642,6 @@
     return nextBounds;
   };
 
-  const naturalBreakpoint = 612;
-
   const uncropMapStage = (stage) => {
     stage.classList.remove('is-auto-cropped');
     stage.style.height = '';
@@ -659,9 +657,6 @@
 
   const applyResponsiveMapCrop = (stage) => {
     if (!stage || stage.closest('.map-editor')) {
-      return;
-    }
-    if (stage.dataset.mapNatural === 'true' && window.innerWidth > naturalBreakpoint) {
       return;
     }
     const img = stage.querySelector('.map-image');
@@ -686,19 +681,8 @@
 
   const refreshResponsiveMapLayouts = () => {
     document.querySelectorAll('.map-stage').forEach((stage) => {
-      if (stage.dataset.mapNatural === 'true') {
-        if (window.innerWidth > naturalBreakpoint) {
-          if (stage.classList.contains('is-auto-cropped')) {
-            uncropMapStage(stage);
-          }
-          return;
-        }
-        if (!stage.classList.contains('is-auto-cropped')) {
-          applyResponsiveMapCrop(stage);
-          return;
-        }
-      }
       if (!stage.classList.contains('is-auto-cropped')) {
+        applyResponsiveMapCrop(stage);
         return;
       }
       const serializedBounds = stage.dataset.cropBounds;

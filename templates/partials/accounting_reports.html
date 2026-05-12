@@ -1,0 +1,208 @@
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <form class="row g-3 align-items-end" method="get" action="{{ url_for('accounting_workspace') }}">
+      <input type="hidden" name="tab" value="reports">
+      <div class="col-12 col-md-3">
+        <label class="form-label">Start Date</label>
+        <input class="form-control" type="date" name="report_start_date" value="{{ report_start_date }}">
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">End Date / Aging As Of</label>
+        <input class="form-control" type="date" name="report_end_date" value="{{ report_end_date }}">
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">General Ledger Account</label>
+        <select class="form-select" name="ledger_account_id">
+          <option value="">All accounts</option>
+          {% for account in active_accounts %}
+          <option value="{{ account.id }}" {% if ledger_account_id and ledger_account_id|int == account.id %}selected{% endif %}>{{ account.code }} - {{ account.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-grid">
+        <button class="btn btn-primary" type="submit">Refresh</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-xl-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="mb-3">Profit and Loss</h5>
+        <div class="row g-3 mb-3">
+          <div class="col-4"><div class="accounting-stat-tile"><span>Income</span><strong>{{ format_money(profit_and_loss.income_total) }}</strong></div></div>
+          <div class="col-4"><div class="accounting-stat-tile"><span>Expense</span><strong>{{ format_money(profit_and_loss.expense_total) }}</strong></div></div>
+          <div class="col-4"><div class="accounting-stat-tile"><span>Net</span><strong>{{ format_money(profit_and_loss.net_profit) }}</strong></div></div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead><tr><th>Code</th><th>Account</th><th class="text-end">Amount</th></tr></thead>
+            <tbody>
+              {% for row in profit_and_loss.income_rows %}
+              <tr><td>{{ row.code }}</td><td>{{ row.name }}</td><td class="text-end">{{ format_money(row.amount) }}</td></tr>
+              {% endfor %}
+              {% for row in profit_and_loss.expense_rows %}
+              <tr><td>{{ row.code }}</td><td>{{ row.name }}</td><td class="text-end text-danger">({{ format_money(row.amount) }})</td></tr>
+              {% endfor %}
+              {% if not profit_and_loss.income_rows and not profit_and_loss.expense_rows %}
+              <tr><td colspan="3" class="text-muted">No activity in this period.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="mb-3">Balance Sheet</h5>
+        <div class="row g-3 mb-3">
+          <div class="col-4"><div class="accounting-stat-tile"><span>Assets</span><strong>{{ format_money(balance_sheet.total_assets) }}</strong></div></div>
+          <div class="col-4"><div class="accounting-stat-tile"><span>Liabilities</span><strong>{{ format_money(balance_sheet.total_liabilities) }}</strong></div></div>
+          <div class="col-4"><div class="accounting-stat-tile"><span>Equity</span><strong>{{ format_money(balance_sheet.total_equity) }}</strong></div></div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead><tr><th>Section</th><th>Code</th><th>Account</th><th class="text-end">Amount</th></tr></thead>
+            <tbody>
+              {% for row in balance_sheet.asset_rows %}
+              <tr><td>Asset</td><td>{{ row.code }}</td><td>{{ row.name }}</td><td class="text-end">{{ format_money(row.amount) }}</td></tr>
+              {% endfor %}
+              {% for row in balance_sheet.liability_rows %}
+              <tr><td>Liability</td><td>{{ row.code }}</td><td>{{ row.name }}</td><td class="text-end">{{ format_money(row.amount) }}</td></tr>
+              {% endfor %}
+              {% for row in balance_sheet.equity_rows %}
+              <tr><td>Equity</td><td>{{ row.code }}</td><td>{{ row.name }}</td><td class="text-end">{{ format_money(row.amount) }}</td></tr>
+              {% endfor %}
+              {% if not balance_sheet.asset_rows and not balance_sheet.liability_rows and not balance_sheet.equity_rows %}
+              <tr><td colspan="4" class="text-muted">No balances available.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">AR / AP Aging as of {{ aging.as_of_date }}</h5>
+        <div class="row g-4">
+          <div class="col-12 col-xl-6">
+            <h6 class="mb-3">Receivables</h6>
+            <div class="row g-2 mb-3">
+              <div class="col-4"><div class="accounting-stat-tile"><span>Total Open</span><strong>{{ format_money(aging.receivables.total_open) }}</strong></div></div>
+              <div class="col-4"><div class="accounting-stat-tile"><span>1-30</span><strong>{{ format_money(aging.receivables.totals.days_1_30) }}</strong></div></div>
+              <div class="col-4"><div class="accounting-stat-tile"><span>90+</span><strong>{{ format_money(aging.receivables.totals.days_over_90) }}</strong></div></div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead><tr><th>Invoice</th><th>Customer</th><th>Due</th><th class="text-end">Open</th><th class="text-end">Days</th></tr></thead>
+                <tbody>
+                  {% for row in aging.receivables.rows %}
+                  <tr>
+                    <td>{{ row.invoice_number }}</td>
+                    <td>{{ row.counterparty_name }}</td>
+                    <td>{{ row.due_date }}</td>
+                    <td class="text-end">{{ format_money(row.outstanding_amount) }}</td>
+                    <td class="text-end">{{ row.days_past_due }}</td>
+                  </tr>
+                  {% else %}
+                  <tr><td colspan="5" class="text-muted">No open receivables.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="col-12 col-xl-6">
+            <h6 class="mb-3">Payables</h6>
+            <div class="row g-2 mb-3">
+              <div class="col-4"><div class="accounting-stat-tile"><span>Total Open</span><strong>{{ format_money(aging.payables.total_open) }}</strong></div></div>
+              <div class="col-4"><div class="accounting-stat-tile"><span>1-30</span><strong>{{ format_money(aging.payables.totals.days_1_30) }}</strong></div></div>
+              <div class="col-4"><div class="accounting-stat-tile"><span>90+</span><strong>{{ format_money(aging.payables.totals.days_over_90) }}</strong></div></div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead><tr><th>Invoice</th><th>Supplier</th><th>Due</th><th class="text-end">Open</th><th class="text-end">Days</th></tr></thead>
+                <tbody>
+                  {% for row in aging.payables.rows %}
+                  <tr>
+                    <td>{{ row.invoice_number }}</td>
+                    <td>{{ row.counterparty_name }}</td>
+                    <td>{{ row.due_date }}</td>
+                    <td class="text-end">{{ format_money(row.outstanding_amount) }}</td>
+                    <td class="text-end">{{ row.days_past_due }}</td>
+                  </tr>
+                  {% else %}
+                  <tr><td colspan="5" class="text-muted">No open payables.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">Trial Balance</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead><tr><th>Code</th><th>Account</th><th class="text-end">Debit</th><th class="text-end">Credit</th></tr></thead>
+            <tbody>
+              {% for row in trial_balance.rows %}
+              {% if row.ending_debit or row.ending_credit %}
+              <tr>
+                <td>{{ row.code }}</td>
+                <td>{{ row.name }}</td>
+                <td class="text-end">{{ format_money(row.ending_debit) }}</td>
+                <td class="text-end">{{ format_money(row.ending_credit) }}</td>
+              </tr>
+              {% endif %}
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr><th colspan="2" class="text-end">Total</th><th class="text-end">{{ format_money(trial_balance.total_debit) }}</th><th class="text-end">{{ format_money(trial_balance.total_credit) }}</th></tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="mb-3">General Ledger{% if general_ledger.selected_account %} - {{ general_ledger.selected_account.code }} {{ general_ledger.selected_account.name }}{% endif %}</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead><tr><th>Date</th><th>Entry</th><th>Account</th><th>Description</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th class="text-end">Running</th></tr></thead>
+            <tbody>
+              {% for row in general_ledger.rows %}
+              <tr>
+                <td>{{ row.entry_date }}</td>
+                <td>{{ row.entry_number }}</td>
+                <td>{{ row.account_code }} - {{ row.account_name }}</td>
+                <td>{{ row.line_description or row.memo or '-' }}</td>
+                <td class="text-end">{{ format_money(row.debit) }}</td>
+                <td class="text-end">{{ format_money(row.credit) }}</td>
+                <td class="text-end">{% if row.running_balance is not none %}{{ format_money(row.running_balance) }}{% else %}-{% endif %}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="7" class="text-muted">No ledger lines found.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
