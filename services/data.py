@@ -69,6 +69,30 @@ SOURCE_METRIC_UNITS = {
     "snr": "dB",
 }
 
+SOURCE_METRIC_LABEL_OVERRIDES = {
+    "record_type": "Record Type",
+    "record_ts": "Record Time",
+    "record_date": "Record Date",
+    "device_p": "Device P",
+    "device_c": "Device C",
+    "device_d": "Device D",
+    "device_key": "Device Key",
+    "headline_text": "Headline",
+    "detail_text": "Detail",
+    "raw_line_1": "Raw Line 1",
+    "raw_line_2": "Raw Line 2",
+    "raw_line_3": "Raw Line 3",
+    "command_text": "Command Text",
+    "command_source_p": "Command Source P",
+    "command_source_c": "Command Source C",
+    "command_source_d": "Command Source D",
+    "target_p": "Target P",
+    "target_c": "Target C",
+    "target_d": "Target D",
+    "event_text": "Event Text",
+    "event_description": "Event Description",
+}
+
 FIRE_DETECTOR_FIELDS = [
     ("smoke", "Smoke"),
     ("heat", "Heat"),
@@ -113,6 +137,8 @@ def _default_source_metric_label(metric):
         return ""
     if normalized_metric in METRIC_DISPLAY:
         return METRIC_DISPLAY[normalized_metric]
+    if normalized_metric in SOURCE_METRIC_LABEL_OVERRIDES:
+        return SOURCE_METRIC_LABEL_OVERRIDES[normalized_metric]
     return normalized_metric.replace("_", " ").strip().title()
 
 

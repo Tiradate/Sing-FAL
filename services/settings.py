@@ -166,6 +166,14 @@ DEFAULT_ENDPOINT_MQTT = {
     "topic": "",
 }
 
+DEFAULT_ENDPOINT_SERIAL = {
+    "port": "",
+    "baudrate": 9600,
+    "read_timeout_ms": 1000,
+    "preview_line_limit": 100,
+    "device_key_mode": "pcd_first",
+}
+
 DEFAULT_ENDPOINT_SOURCE = {
     "name": "LIV-24 IAQ",
     "format": "api",
@@ -173,6 +181,7 @@ DEFAULT_ENDPOINT_SOURCE = {
     "token": "",
     "api": DEFAULT_ENDPOINT_API,
     "mqtt": DEFAULT_ENDPOINT_MQTT,
+    "serial": DEFAULT_ENDPOINT_SERIAL,
 }
 
 DEFAULT_ROLE_PERMISSIONS = {
@@ -433,13 +442,41 @@ def normalize_endpoint_source_definition(source):
     if isinstance(mqtt_config, dict):
         normalized["mqtt"].update(mqtt_config)
 
+    serial_config = source.get("serial")
+    if isinstance(serial_config, dict):
+        normalized["serial"].update(serial_config)
+
     source_format = str(normalized.get("format") or "api").strip().lower()
-    normalized["format"] = source_format if source_format in ("api", "mqtt") else "api"
+    normalized["format"] = source_format if source_format in ("api", "mqtt", "serial") else "api"
 
     try:
         normalized["mqtt"]["port"] = int(normalized["mqtt"].get("port") or 1883)
     except (TypeError, ValueError):
         normalized["mqtt"]["port"] = 1883
+
+    try:
+        normalized["serial"]["baudrate"] = int(normalized["serial"].get("baudrate") or 9600)
+    except (TypeError, ValueError):
+        normalized["serial"]["baudrate"] = 9600
+
+    try:
+        normalized["serial"]["read_timeout_ms"] = int(
+            normalized["serial"].get("read_timeout_ms") or 1000
+        )
+    except (TypeError, ValueError):
+        normalized["serial"]["read_timeout_ms"] = 1000
+
+    try:
+        normalized["serial"]["preview_line_limit"] = int(
+            normalized["serial"].get("preview_line_limit") or 100
+        )
+    except (TypeError, ValueError):
+        normalized["serial"]["preview_line_limit"] = 100
+
+    normalized["serial"]["port"] = str(normalized["serial"].get("port") or "").strip()
+    normalized["serial"]["device_key_mode"] = (
+        str(normalized["serial"].get("device_key_mode") or "pcd_first").strip() or "pcd_first"
+    )
 
     return normalized
 

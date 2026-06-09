@@ -1,5 +1,5 @@
 {
-  "project_name": "LIQUOR DISTILLERY ORGANIZATION",
+  "project_name": "\u0e1a\u0e23\u0e34\u0e29\u0e31\u0e17 \u0e2a\u0e34\u0e07\u0e2b\u0e4c \u0e40\u0e1a\u0e40\u0e27\u0e2d\u0e40\u0e23\u0e0a \u0e08\u0e33\u0e01\u0e31\u0e14",
   "location_label": "Bangkok, Thailand",
   "floor_auto_rotate_seconds": 12,
   "show_icons": {
@@ -94,16 +94,13 @@
   ],
   "floor_plans": {
     "Fire Pump": "static/uploads/Sing_Map_H.png",
-    "Fire Alarm": "static/uploads/Sing_Map_H.png",
-    "MIX": "static/uploads/image_5.png",
-    "2": "static/uploads/Attach_TOR_1_1_page-0016.png",
-    "3": "static/uploads/Attach_TOR_1_1_page-0012.png"
+    "Fire Alarm": "static/uploads/Sing_Map_H.png"
   },
   "sensor_icon": "static/uploads/fire-alarm_9752968.png",
   "sensor_icon_size": 25,
   "floor_logo_icon": "static/uploads/Sing_Map_H.png",
   "logo_icon_size": 18,
-  "project_logo": "static/uploads/LDO_Trademark.png",
+  "project_logo": "static/uploads/Sing_logo.png",
   "floor_plan_logos": {},
   "card_header_color": "#ededed",
   "card_body_color": "#ced6d5",
@@ -191,7 +188,7 @@
       "fire": {
         "enabled": true,
         "title": "Top Definition",
-        "header": "67 \u0e2b\u0e21\u0e39\u0e48 4 \u0e15\u0e33\u0e1a\u0e25\u0e1b\u0e32\u0e01\u0e19\u0e49\u0e33 \u0e2d\u0e33\u0e40\u0e20\u0e2d\u0e1a\u0e32\u0e07\u0e04\u0e25\u0e49\u0e32 \u0e08\u0e31\u0e07\u0e2b\u0e27\u0e31\u0e14\u0e09\u0e30\u0e40\u0e0a\u0e34\u0e07\u0e40\u0e17\u0e23\u0e32 24110",
+        "header": "99 \u0e16\u0e19\u0e19 3422 \u0e2b\u0e21\u0e39\u0e48 10 \u0e15\u0e33\u0e1a\u0e25 \u0e1a\u0e31\u0e27\u0e1b\u0e32\u0e01\u0e17\u0e48\u0e32 \u0e2d\u0e33\u0e40\u0e20\u0e2d\u0e1a\u0e32\u0e07\u0e40\u0e25\u0e19 \u0e19\u0e04\u0e23\u0e1b\u0e10\u0e21 73130",
         "columns": {
           "indoor": "Indoor",
           "outdoor": "Outdoor",
@@ -427,15 +424,19 @@
         "username": "",
         "password": "",
         "topic": ""
+      },
+      "serial": {
+        "port": "",
+        "baudrate": 9600,
+        "read_timeout_ms": 1000,
+        "preview_line_limit": 100,
+        "device_key_mode": "pcd_first"
       }
     }
   ],
   "floor_names": {
     "Fire Pump": "Over All FS / SS",
-    "Fire Alarm": "Over All DZ / HZ",
-    "MIX": "MIX 1",
-    "2": "floor 1",
-    "3": "floor 1"
+    "Fire Alarm": "Over All DZ / HZ"
   },
   "endpoint_token_store": {},
   "endpoint_api_templates": [],

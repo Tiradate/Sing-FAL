@@ -249,6 +249,7 @@ from services import data as data_service
 from services import auth as auth_service
 from services import accounting as accounting_service
 from services import settings as settings_service
+from services import serial_source as serial_source_service
 from services.api_history import (
     delete_api_request_history,
     export_api_request_history,
@@ -326,6 +327,9 @@ _BACKGROUND_SOURCE_POLLING_LOCK = threading.Lock()
 _BACKGROUND_SOURCE_POLLING_STATE_LOCK = threading.Lock()
 _BACKGROUND_SOURCE_POLLING_THREAD = None
 _BACKGROUND_SOURCE_POLLING_STATE = {}
+_SERIAL_SOURCE_EXECUTION_STATE_LOCK = threading.Lock()
+_SERIAL_SOURCE_EXECUTION_STATE = {}
+_SERIAL_SOURCE_POLL_INTERVAL_SECONDS = 5
 _SOURCE_REQUEST_HISTORY_JOB_LOCK = threading.Lock()
 _SOURCE_REQUEST_HISTORY_JOBS = {}
 _SOURCE_REQUEST_HISTORY_JOB_RETENTION_SECONDS = 15 * 60
@@ -2173,6 +2177,8 @@ def _parse_endpoint_sources(form_data):
     mqtt_usernames = form_data.getlist("endpoint_mqtt_username")
     mqtt_passwords = form_data.getlist("endpoint_mqtt_password")
     mqtt_topics = form_data.getlist("endpoint_mqtt_topic")
+    serial_ports = form_data.getlist("endpoint_serial_port")
+    serial_baudrates = form_data.getlist("endpoint_serial_baudrate")
 
     max_len = max(
         len(names),
@@ -2198,13 +2204,15 @@ def _parse_endpoint_sources(form_data):
         len(mqtt_usernames),
         len(mqtt_passwords),
         len(mqtt_topics),
+        len(serial_ports),
+        len(serial_baudrates),
         1,
     )
     sources = []
     for index in range(max_len):
         name = (names[index] if index < len(names) else "").strip()
         source_format = (formats[index] if index < len(formats) else "api").strip().lower()
-        if source_format not in ("api", "mqtt"):
+        if source_format not in ("api", "mqtt", "serial"):
             source_format = "api"
         base_url = (base_urls[index] if index < len(base_urls) else "").strip().rstrip("/")
         token = (tokens[index] if index < len(tokens) else "").strip()
@@ -2245,12 +2253,20 @@ def _parse_endpoint_sources(form_data):
         mqtt_username = (mqtt_usernames[index] if index < len(mqtt_usernames) else "").strip()
         mqtt_password = (mqtt_passwords[index] if index < len(mqtt_passwords) else "").strip()
         mqtt_topic = (mqtt_topics[index] if index < len(mqtt_topics) else "").strip()
+        serial_port = (serial_ports[index] if index < len(serial_ports) else "").strip()
+        serial_baudrate_raw = (
+            serial_baudrates[index] if index < len(serial_baudrates) else "9600"
+        ).strip()
         if not name:
             continue
         try:
             mqtt_port = int(mqtt_port_raw or 1883)
         except ValueError:
             mqtt_port = 1883
+        try:
+            serial_baudrate = int(serial_baudrate_raw or 9600)
+        except ValueError:
+            serial_baudrate = 9600
         sources.append(
             {
                 "name": name,
@@ -2280,6 +2296,10 @@ def _parse_endpoint_sources(form_data):
                     "password": mqtt_password,
                     "topic": mqtt_topic,
                 },
+                "serial": {
+                    "port": serial_port,
+                    "baudrate": serial_baudrate,
+                },
             }
         )
 
@@ -2294,6 +2314,10 @@ def _resolve_endpoint_source(source):
 
 def _source_api_config(source):
     return _resolve_endpoint_source(source).get("api", {})
+
+
+def _source_serial_config(source):
+    return _resolve_endpoint_source(source).get("serial", {})
 
 
 def _render_template_placeholders(value, variables):
@@ -2705,6 +2729,7 @@ def _sync_latest_values_payload_to_sensor_data(settings, source, payload):
         ingest_result = data_service.ingest_source_latest_values_payload(
             normalized_payload,
             source_name=source.get("name"),
+            settings=settings,
         )
     except Exception:
         ingest_result = {"inserted": 0, "matched_devices": 0}
@@ -3070,6 +3095,43 @@ def _load_source_request_test_data(settings, source, request_definition):
 
 def _load_source_preview_data(settings, source, execution_state=None):
     normalized_source = _resolve_endpoint_source(source)
+    if normalized_source.get("format") == "serial":
+        serial_execution_state = _get_serial_source_execution_state(
+            normalized_source,
+            execution_state,
+        )
+        serial_preview = serial_source_service.build_preview_payload(
+            source_name=str(normalized_source.get("name") or "").strip() or "Serial Source",
+            serial_config=_source_serial_config(normalized_source),
+            execution_state=serial_execution_state,
+            timezone_name=get_project_timezone_name(settings),
+        )
+        serial_preview["execution_state"] = _save_serial_source_execution_state(
+            normalized_source,
+            serial_preview.get("execution_state"),
+        )
+        latest_values = serial_preview.get("latest_values", {"items": []})
+        settings_updated = False
+        ingest_result = {"inserted": 0, "matched_devices": 0}
+        if _has_latest_value_payload(latest_values):
+            settings_updated, ingest_result = _sync_latest_values_payload_to_sensor_data(
+                settings,
+                normalized_source,
+                latest_values,
+            )
+        normalized_source["_latest_values_ingest_result"] = ingest_result
+        normalized_source["_latest_values_settings_updated"] = bool(settings_updated)
+        serial_preview.update(
+            {
+                "source": normalized_source,
+                "organizations": [],
+                "organization_items": [],
+                "settings_updated": settings_updated,
+                "cache_key": _get_source_cache_key(normalized_source),
+            }
+        )
+        return serial_preview
+
     organizations_request = _source_api_request(normalized_source, "organizations")
     devices_request = _source_api_request(normalized_source, "devices")
     latest_values_request = _source_api_request(normalized_source, "latest_values")
@@ -3149,6 +3211,9 @@ def _load_source_preview_data(settings, source, execution_state=None):
 
 def _get_source_cache_key(source):
     normalized_source = _resolve_endpoint_source(source)
+    if normalized_source.get("format") == "serial":
+        serial_port = str(normalized_source.get("serial", {}).get("port") or "").strip().lower()
+        return f"serial:{serial_port}" if serial_port else ""
     api_config = normalized_source.get("api", {})
     candidates = [api_config.get("token_url"), normalized_source.get("base_url")]
     for candidate in candidates:
@@ -3163,6 +3228,8 @@ def _get_source_cache_key(source):
 
 
 def _apply_cached_source_token(settings, source):
+    if _resolve_endpoint_source(source).get("format") != "api":
+        return False
     cache_key = _get_source_cache_key(source)
     if not cache_key or str(source.get("token") or "").strip():
         return False
@@ -3182,6 +3249,8 @@ def _sync_endpoint_token_store(settings):
     updated = False
 
     for source in settings.get("endpoint_sources", []):
+        if _resolve_endpoint_source(source).get("format") != "api":
+            continue
         cache_key = _get_source_cache_key(source)
         if not cache_key:
             continue
@@ -3215,6 +3284,8 @@ def _sync_endpoint_token_store(settings):
 
 
 def _save_shared_source_token(settings, source, token):
+    if _resolve_endpoint_source(source).get("format") != "api":
+        return False
     cache_key = _get_source_cache_key(source)
     updated = False
     normalized_token = str(token or "").strip()
@@ -3280,8 +3351,47 @@ def _background_source_polling_signature(source):
     return json.dumps(normalized_source, sort_keys=True, ensure_ascii=True)
 
 
+def _get_serial_source_execution_state(source, fallback_state=None):
+    normalized_source = _resolve_endpoint_source(source)
+    source_key = _background_source_polling_state_key(normalized_source)
+    source_signature = _background_source_polling_signature(normalized_source)
+    normalized_fallback_state = serial_source_service.normalize_state(fallback_state)
+
+    with _SERIAL_SOURCE_EXECUTION_STATE_LOCK:
+        state_entry = _SERIAL_SOURCE_EXECUTION_STATE.get(source_key)
+        if not isinstance(state_entry, dict) or state_entry.get("signature") != source_signature:
+            state_entry = {
+                "signature": source_signature,
+                "execution_state": normalized_fallback_state,
+            }
+            _SERIAL_SOURCE_EXECUTION_STATE[source_key] = state_entry
+
+        execution_state = state_entry.get("execution_state") or {}
+
+    return serial_source_service.normalize_state(execution_state)
+
+
+def _save_serial_source_execution_state(source, execution_state):
+    normalized_source = _resolve_endpoint_source(source)
+    source_key = _background_source_polling_state_key(normalized_source)
+    source_signature = _background_source_polling_signature(normalized_source)
+    normalized_execution_state = serial_source_service.normalize_state(execution_state)
+
+    with _SERIAL_SOURCE_EXECUTION_STATE_LOCK:
+        _SERIAL_SOURCE_EXECUTION_STATE[source_key] = {
+            "signature": source_signature,
+            "execution_state": normalized_execution_state,
+        }
+
+    return normalized_execution_state
+
+
 def _latest_values_poll_interval_seconds(source):
-    latest_values_request = _source_api_request(source, "latest_values")
+    normalized_source = _resolve_endpoint_source(source)
+    if normalized_source.get("format") == "serial":
+        return _SERIAL_SOURCE_POLL_INTERVAL_SECONDS
+
+    latest_values_request = _source_api_request(normalized_source, "latest_values")
     if not latest_values_request:
         return 0
 
@@ -3312,6 +3422,15 @@ def _prune_background_source_polling_state(active_source_keys):
             _BACKGROUND_SOURCE_POLLING_STATE.pop(key, None)
 
 
+def _prune_serial_source_execution_state(active_source_keys):
+    with _SERIAL_SOURCE_EXECUTION_STATE_LOCK:
+        stale_keys = [
+            key for key in list(_SERIAL_SOURCE_EXECUTION_STATE.keys()) if key not in active_source_keys
+        ]
+        for key in stale_keys:
+            _SERIAL_SOURCE_EXECUTION_STATE.pop(key, None)
+
+
 def _run_background_source_polling_cycle():
     settings = settings_service.load_settings()
     settings_updated = _sync_endpoint_token_store(settings)
@@ -3321,7 +3440,7 @@ def _run_background_source_polling_cycle():
     for source in _normalize_endpoint_source_list(settings.get("endpoint_sources", [])):
         normalized_source = _resolve_endpoint_source(source)
         source_name = str(normalized_source.get("name") or "").strip()
-        if normalized_source.get("format") != "api" or not source_name:
+        if normalized_source.get("format") not in {"api", "serial"} or not source_name:
             continue
 
         interval_seconds = _latest_values_poll_interval_seconds(normalized_source)
@@ -3380,6 +3499,7 @@ def _run_background_source_polling_cycle():
                 )
 
     _prune_background_source_polling_state(active_source_keys)
+    _prune_serial_source_execution_state(active_source_keys)
     if settings_updated:
         settings_service.save_settings(settings)
 
@@ -4024,6 +4144,18 @@ def _sync_latest_history_to_sensor_db(settings):
             continue
 
 
+@app.get("/api/settings/source-serial-ports")
+def list_endpoint_source_serial_ports():
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        ports = serial_source_service.list_available_ports()
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"ports": ports})
+
+
 @app.route("/api/settings/source-devices", methods=["GET", "POST"])
 def get_endpoint_source_devices():
     return preview_endpoint_source_data()
@@ -4090,8 +4222,8 @@ def preview_endpoint_source_data():
         return jsonify({"error": str(exc)}), 404
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
-    if source.get("format") != "api":
-        return jsonify({"error": "Preview is only supported for API format sources"}), 400
+    if source.get("format") not in {"api", "serial"}:
+        return jsonify({"error": "Preview is only supported for API and serial format sources"}), 400
 
     try:
         preview_payload = _load_source_preview_data(
@@ -4118,6 +4250,7 @@ def preview_endpoint_source_data():
                 "format": preview_payload["source"].get("format"),
                 "base_url": preview_payload["source"].get("base_url"),
                 "token": preview_payload["source"].get("token"),
+                "serial": preview_payload["source"].get("serial", {}),
             },
             "cache_key": preview_payload.get("cache_key") or "",
             "organizations": preview_payload.get("organizations", []),
@@ -4129,6 +4262,9 @@ def preview_endpoint_source_data():
             "execution_state": preview_payload.get("execution_state", {}),
             "ingest_result": ingest_result,
             "source_metric_fields": data_service.get_source_metric_fields(settings),
+            "raw_lines": preview_payload.get("raw_lines", []),
+            "parsed_records": preview_payload.get("parsed_records", []),
+            "serial_debug": preview_payload.get("serial_debug", {}),
         }
     )
 

@@ -228,8 +228,8 @@
       <hr class="my-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-          <h6 class="mb-0">{{ 'การตั้งค่า API / MQTT' if current_lang == 'th' else 'API / MQTT Endpoint Settings' }}</h6>
-          <small class="text-muted">{{ 'ตั้งค่าแหล่งข้อมูล API/MQTT หนึ่งแหล่งขึ้นไป แหล่งข้อมูลเริ่มต้นคือ LIV-24 IAQ' if current_lang == 'th' else 'Configure one or more API/MQTT sources. Default source is LIV-24 IAQ.' }}</small>
+          <h6 class="mb-0">{{ 'การตั้งค่า API / MQTT / Serial' if current_lang == 'th' else 'API / MQTT / Serial Source Settings' }}</h6>
+          <small class="text-muted">{{ 'ตั้งค่าแหล่งข้อมูล API, MQTT หรือ Serial ได้หลายแหล่ง โดยแหล่งข้อมูลเริ่มต้นคือ LIV-24 IAQ' if current_lang == 'th' else 'Configure one or more API, MQTT, or serial sources. Default source is LIV-24 IAQ.' }}</small>
         </div>
         <button class="btn btn-outline-primary btn-sm" type="button" id="addEndpointSourceBtn">{{ '+ เพิ่มแหล่งข้อมูล' if current_lang == 'th' else '+ Add Source' }}</button>
       </div>
@@ -258,6 +258,10 @@
         </div>
       </div>
       <div id="previewLiv24DataSummary" class="alert alert-secondary mt-2 mb-0 small d-none" style="white-space: pre-line;"></div>
+      <div id="previewSerialRawWrap" class="mt-2 d-none">
+        <div class="small text-muted mb-1">{{ 'ข้อมูลดิบ Serial ล่าสุด 100 บรรทัด' if current_lang == 'th' else 'Latest 100 serial raw lines' }}</div>
+        <pre id="previewSerialRawOutput" class="p-3 bg-body-tertiary border rounded small mb-0" style="max-height: 220px; overflow: auto;"></pre>
+      </div>
       <pre id="previewLiv24DataOutput" class="mt-2 p-3 bg-light border rounded small" style="max-height: 320px; overflow: auto;">{{ 'คลิก "ใช้แหล่งข้อมูล" หรือ "ข้อมูลแหล่งข้อมูล" เพื่อโหลดตัวอย่าง' if current_lang == 'th' else 'Click "Use Source" or "Source Data" to load a source preview.' }}</pre>
       <div class="mt-4 d-flex justify-content-end">
         <button class="btn btn-primary" type="submit" data-save-settings-section="source">{{ 'บันทึกแหล่งข้อมูล' if current_lang == 'th' else 'Save Source' }}</button>
@@ -286,6 +290,7 @@
                 <select class="form-select" name="endpoint_format" data-endpoint-format-select>
                   <option value="api" selected>API</option>
                   <option value="mqtt">MQTT</option>
+                  <option value="serial">Serial</option>
                 </select>
               </div>
               <div class="col-12 col-md-6" data-endpoint-api-fields>
@@ -412,6 +417,27 @@
               <div class="col-12" data-endpoint-mqtt-fields>
                 <label class="form-label">MQTT Topic</label>
                 <input class="form-control" type="text" name="endpoint_mqtt_topic">
+              </div>
+              <div class="col-12 col-md-5" data-endpoint-serial-fields>
+                <label class="form-label">{{ 'Serial Port' if current_lang == 'th' else 'Serial Port' }}</label>
+                <input class="form-control" type="text" name="endpoint_serial_port" placeholder="/dev/ttyACM0 or COM3" data-endpoint-serial-port-input>
+                <small class="text-muted">{{ 'พิมพ์พอร์ตเองได้ เช่น /dev/ttyACM0, /dev/ttyUSB0 หรือ COM3' if current_lang == 'th' else 'Enter a port manually, for example /dev/ttyACM0, /dev/ttyUSB0, or COM3.' }}</small>
+              </div>
+              <div class="col-12 col-md-4" data-endpoint-serial-fields>
+                <label class="form-label">{{ 'Detected Ports' if current_lang == 'th' else 'Detected Ports' }}</label>
+                <select class="form-select" data-endpoint-serial-port-select>
+                  <option value="">{{ 'ยังไม่ได้โหลดรายการพอร์ต' if current_lang == 'th' else 'No ports loaded yet' }}</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-3" data-endpoint-serial-fields>
+                <label class="form-label">{{ 'Baudrate' if current_lang == 'th' else 'Baudrate' }}</label>
+                <input class="form-control" type="number" min="1" name="endpoint_serial_baudrate" value="9600">
+              </div>
+              <div class="col-12" data-endpoint-serial-fields>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-detect-serial-ports>{{ 'ตรวจพอร์ต Serial' if current_lang == 'th' else 'Detect Serial Ports' }}</button>
+                  <small class="text-muted" data-serial-port-status>{{ 'กดเพื่อตรวจสอบพอร์ตที่มีในเครื่อง' if current_lang == 'th' else 'Click to detect available serial ports on this machine.' }}</small>
+                </div>
               </div>
             </div>
           </div>
@@ -1915,6 +1941,8 @@
   const addEndpointSourceBtn = document.getElementById('addEndpointSourceBtn');
   const previewLiv24DataBtn = document.getElementById('previewLiv24DataBtn');
   const previewLiv24DataSummary = document.getElementById('previewLiv24DataSummary');
+  const previewSerialRawWrap = document.getElementById('previewSerialRawWrap');
+  const previewSerialRawOutput = document.getElementById('previewSerialRawOutput');
   const previewLiv24DataOutput = document.getElementById('previewLiv24DataOutput');
   const downloadSourceDataBtn = document.getElementById('downloadSourceDataBtn');
   const sourceDataExportStartDate = document.getElementById('sourceDataExportStartDate');
@@ -1926,6 +1954,7 @@
     format: 'api',
     api: { auth_type: 'none', requests: [] },
     mqtt: { port: 1883 },
+    serial: { port: '', baudrate: 9600, read_timeout_ms: 1000, preview_line_limit: 100, device_key_mode: 'pcd_first' },
   };
   let defaultEndpointApiRequests = Array.isArray(defaultEndpointSource.api?.requests)
     ? defaultEndpointSource.api.requests
@@ -2251,7 +2280,7 @@
     const normalized = deepClone(defaultEndpointSource);
     const incoming = source && typeof source === 'object' ? source : {};
     normalized.name = (incoming.name || normalized.name || '').trim();
-    normalized.format = incoming.format === 'mqtt' ? 'mqtt' : 'api';
+    normalized.format = ['api', 'mqtt', 'serial'].includes(incoming.format) ? incoming.format : 'api';
     normalized.base_url = (incoming.base_url || normalized.base_url || '').trim();
     normalized.token = (incoming.token || normalized.token || '').trim();
     normalized.api = {
@@ -2261,6 +2290,10 @@
     normalized.mqtt = {
       ...(normalized.mqtt || {}),
       ...(incoming.mqtt || {}),
+    };
+    normalized.serial = {
+      ...(normalized.serial || {}),
+      ...(incoming.serial || {}),
     };
     normalized.api.template_id = (normalized.api.template_id || '').trim();
     normalized.api.request_headers = String(normalized.api.request_headers || '{}');
@@ -2299,6 +2332,11 @@
     normalized.mqtt.username = (normalized.mqtt.username || '').trim();
     normalized.mqtt.password = String(normalized.mqtt.password || '');
     normalized.mqtt.topic = (normalized.mqtt.topic || '').trim();
+    normalized.serial.port = (normalized.serial.port || '').trim();
+    normalized.serial.baudrate = Number.parseInt(normalized.serial.baudrate || 9600, 10) || 9600;
+    normalized.serial.read_timeout_ms = Number.parseInt(normalized.serial.read_timeout_ms || 1000, 10) || 1000;
+    normalized.serial.preview_line_limit = Number.parseInt(normalized.serial.preview_line_limit || 100, 10) || 100;
+    normalized.serial.device_key_mode = (normalized.serial.device_key_mode || 'pcd_first').trim() || 'pcd_first';
     return normalized;
   };
 
@@ -2319,6 +2357,11 @@
   };
 
   const getEndpointSourceCacheKey = (row) => {
+    const formatValue = getEndpointRowField(row, 'endpoint_format')?.value || 'api';
+    if (formatValue === 'serial') {
+      const serialPortValue = getEndpointRowField(row, 'endpoint_serial_port')?.value || '';
+      return `serial:${serialPortValue.trim().toLowerCase()}`;
+    }
     const tokenUrlValue = getEndpointRowField(row, 'endpoint_api_token_url')?.value;
     const baseUrlValue = getEndpointRowField(row, 'endpoint_base_url')?.value;
     return normalizeEndpointCacheKey(tokenUrlValue) || normalizeEndpointCacheKey(baseUrlValue);
@@ -2444,6 +2487,10 @@
       username: (getEndpointRowField(row, 'endpoint_mqtt_username')?.value || '').trim(),
       password: getEndpointRowField(row, 'endpoint_mqtt_password')?.value || '',
       topic: (getEndpointRowField(row, 'endpoint_mqtt_topic')?.value || '').trim(),
+    },
+    serial: {
+      port: (getEndpointRowField(row, 'endpoint_serial_port')?.value || '').trim(),
+      baudrate: Number.parseInt(getEndpointRowField(row, 'endpoint_serial_baudrate')?.value || '9600', 10) || 9600,
     },
   });
 
@@ -2886,9 +2933,12 @@
     row.querySelectorAll('[data-endpoint-mqtt-fields]').forEach((field) => {
       field.classList.toggle('d-none', selectedFormat !== 'mqtt');
     });
+    row.querySelectorAll('[data-endpoint-serial-fields]').forEach((field) => {
+      field.classList.toggle('d-none', selectedFormat !== 'serial');
+    });
     const useSourceBtn = row.querySelector('[data-use-source]');
     if (useSourceBtn) {
-      useSourceBtn.disabled = selectedFormat !== 'api';
+      useSourceBtn.disabled = selectedFormat === 'mqtt';
     }
     updateEndpointAuthVisibility(row);
   };
@@ -2968,6 +3018,8 @@
     applyTextValue(row, 'endpoint_mqtt_username', normalizedSource.mqtt?.username || '');
     applyTextValue(row, 'endpoint_mqtt_password', normalizedSource.mqtt?.password || '');
     applyTextValue(row, 'endpoint_mqtt_topic', normalizedSource.mqtt?.topic || '');
+    applyTextValue(row, 'endpoint_serial_port', normalizedSource.serial?.port || '');
+    applyTextValue(row, 'endpoint_serial_baudrate', normalizedSource.serial?.baudrate || 9600);
     renderEndpointRequestRows(row, normalizedSource.api?.requests || []);
     updateEndpointSourceVisibility(row);
   };
@@ -2990,6 +3042,15 @@
       throw new Error(payload.error || {{ ('โหลดข้อมูลแหล่งข้อมูลไม่สำเร็จ' if current_lang == 'th' else 'Failed to load source data') | tojson }});
     }
     return payload;
+  };
+
+  const requestSerialPorts = async () => {
+    const response = await fetch(editorData.sourceSerialPortsRoute);
+    const payload = await response.json();
+    if (!response.ok || payload.error) {
+      throw new Error(payload.error || {{ ('ไม่สามารถตรวจพอร์ต Serial ได้' if current_lang == 'th' else 'Failed to detect serial ports') | tojson }});
+    }
+    return Array.isArray(payload.ports) ? payload.ports : [];
   };
 
   const endpointSourceAutoRefreshState = new WeakMap();
@@ -3156,6 +3217,24 @@
     ) || 0;
   };
 
+  const getSourceAutoRefreshMs = (source) => {
+    if ((source?.format || 'api') === 'serial') {
+      return 5000;
+    }
+    const intervalMinutes = getLatestValuesAutoRefreshMinutes(source);
+    return intervalMinutes > 0 ? intervalMinutes * 60 * 1000 : 0;
+  };
+
+  const formatSourceAutoRefreshLabel = (intervalMs) => {
+    if (!intervalMs) {
+      return '';
+    }
+    if (intervalMs < 60000) {
+      return `${Math.round(intervalMs / 1000)} sec`;
+    }
+    return `${Math.round(intervalMs / 60000)} min`;
+  };
+
   const hideSourcePreviewSummary = () => {
     if (!previewLiv24DataSummary) {
       return;
@@ -3164,6 +3243,7 @@
     previewLiv24DataSummary.classList.add('d-none');
     previewLiv24DataSummary.classList.remove('alert-danger');
     previewLiv24DataSummary.classList.add('alert-secondary');
+    updateSerialRawPreview(null);
   };
 
   const setSourcePreviewSummaryError = (message) => {
@@ -3177,6 +3257,21 @@
     previewLiv24DataSummary.textContent = message;
     previewLiv24DataSummary.classList.remove('d-none', 'alert-secondary');
     previewLiv24DataSummary.classList.add('alert-danger');
+  };
+
+  const updateSerialRawPreview = (payload) => {
+    if (!previewSerialRawWrap || !previewSerialRawOutput) {
+      return;
+    }
+    const isSerialPayload = (payload?.source?.format || '') === 'serial';
+    const rawLines = Array.isArray(payload?.raw_lines) ? payload.raw_lines : [];
+    if (!isSerialPayload) {
+      previewSerialRawWrap.classList.add('d-none');
+      previewSerialRawOutput.textContent = '';
+      return;
+    }
+    previewSerialRawWrap.classList.remove('d-none');
+    previewSerialRawOutput.textContent = rawLines.length ? rawLines.join('\n') : '';
   };
 
   const updateSourcePreviewSummary = (payload) => {
@@ -3194,12 +3289,35 @@
         ? payload.latest_values.length
         : 0;
     const sourceName = String(payload?.source?.name || '').trim() || '-';
-    previewLiv24DataSummary.textContent = [
-      {{ ('แหล่งข้อมูล' if current_lang == 'th' else 'Source') | tojson }} + `: ${sourceName}`,
-      {{ ('Latest Values items' if current_lang == 'th' else 'Latest Values items') | tojson }} + `: ${latestValueItems}`,
-      {{ ('Matched devices' if current_lang == 'th' else 'Matched devices') | tojson }} + `: ${matchedDevices}`,
-      {{ ('Inserted rows' if current_lang == 'th' else 'Inserted rows') | tojson }} + `: ${insertedRows}`,
-    ].join(' | ');
+    if ((payload?.source?.format || '') === 'serial') {
+      const serialDebug = payload?.serial_debug && typeof payload.serial_debug === 'object'
+        ? payload.serial_debug
+        : {};
+      const parsedRecordCount = Array.isArray(payload?.parsed_records) ? payload.parsed_records.length : 0;
+      const rawLineCount = Array.isArray(payload?.raw_lines) ? payload.raw_lines.length : 0;
+      const logicalDevices = Array.isArray(payload?.ready_device_items) ? payload.ready_device_items.length : 0;
+      const recordCounts = serialDebug.record_counts_by_type && typeof serialDebug.record_counts_by_type === 'object'
+        ? Object.entries(serialDebug.record_counts_by_type)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(', ')
+        : '';
+      previewLiv24DataSummary.textContent = [
+        {{ ('แหล่งข้อมูล' if current_lang == 'th' else 'Source') | tojson }} + `: ${sourceName}`,
+        {{ ('Raw lines' if current_lang == 'th' else 'Raw lines') | tojson }} + `: ${rawLineCount}`,
+        {{ ('Parsed records' if current_lang == 'th' else 'Parsed records') | tojson }} + `: ${parsedRecordCount}`,
+        {{ ('Logical devices' if current_lang == 'th' else 'Logical devices') | tojson }} + `: ${logicalDevices}`,
+        {{ ('Matched devices' if current_lang == 'th' else 'Matched devices') | tojson }} + `: ${matchedDevices}`,
+        {{ ('Inserted rows' if current_lang == 'th' else 'Inserted rows') | tojson }} + `: ${insertedRows}`,
+        recordCounts ? ({{ ('Record types' if current_lang == 'th' else 'Record types') | tojson }} + `: ${recordCounts}`) : '',
+      ].filter(Boolean).join(' | ');
+    } else {
+      previewLiv24DataSummary.textContent = [
+        {{ ('แหล่งข้อมูล' if current_lang == 'th' else 'Source') | tojson }} + `: ${sourceName}`,
+        {{ ('Latest Values items' if current_lang == 'th' else 'Latest Values items') | tojson }} + `: ${latestValueItems}`,
+        {{ ('Matched devices' if current_lang == 'th' else 'Matched devices') | tojson }} + `: ${matchedDevices}`,
+        {{ ('Inserted rows' if current_lang == 'th' else 'Inserted rows') | tojson }} + `: ${insertedRows}`,
+      ].join(' | ');
+    }
     previewLiv24DataSummary.classList.remove('d-none', 'alert-danger');
     previewLiv24DataSummary.classList.add('alert-secondary');
   };
@@ -3224,6 +3342,7 @@
     if (settings.updatePreviewOutput && previewLiv24DataOutput) {
       previewLiv24DataOutput.dataset.sourceName = sourceName;
       previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
+      updateSerialRawPreview(payload);
       updateSourcePreviewSummary(payload);
     }
   };
@@ -3241,13 +3360,13 @@
       }
 
       const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
-      const intervalMinutes = getLatestValuesAutoRefreshMinutes(draftSource);
-      if (!intervalMinutes) {
+      const intervalMs = getSourceAutoRefreshMs(draftSource);
+      if (!intervalMs) {
         stopEndpointSourceAutoRefresh(row);
         return;
       }
 
-      refreshState.intervalMinutes = intervalMinutes;
+      refreshState.intervalMs = intervalMs;
 
       try {
         const payload = await requestSourcePreview(draftSource, {
@@ -3260,12 +3379,12 @@
         await refreshVisibleSourceRequestHistoryPanels(row);
         setEndpointSourceAutoRefreshStatus(
           row,
-          `Latest Values auto refresh every ${intervalMinutes} min while this page is open.`
+          `Source auto refresh every ${formatSourceAutoRefreshLabel(intervalMs)} while this page is open.`
         );
       } catch (error) {
         setEndpointSourceAutoRefreshStatus(
           row,
-          `Latest Values auto refresh failed: ${getRequestErrorMessage(error)}`,
+          `Source auto refresh failed: ${getRequestErrorMessage(error)}`,
           true
         );
       } finally {
@@ -3275,21 +3394,21 @@
           return;
         }
         const nextSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
-        const nextIntervalMinutes = getLatestValuesAutoRefreshMinutes(nextSource);
-        if (!nextIntervalMinutes) {
+        const nextIntervalMs = getSourceAutoRefreshMs(nextSource);
+        if (!nextIntervalMs) {
           stopEndpointSourceAutoRefresh(row);
           return;
         }
-        nextState.intervalMinutes = nextIntervalMinutes;
-        nextState.nextRunAt = Date.now() + (nextIntervalMinutes * 60 * 1000);
-        nextState.timerId = window.setTimeout(refreshSourcePreview, nextIntervalMinutes * 60 * 1000);
+        nextState.intervalMs = nextIntervalMs;
+        nextState.nextRunAt = Date.now() + nextIntervalMs;
+        nextState.timerId = window.setTimeout(refreshSourcePreview, nextIntervalMs);
         rememberEndpointSourceAutoRefreshState(row, nextState);
       }
     };
 
     const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
-    const intervalMinutes = getLatestValuesAutoRefreshMinutes(draftSource);
-    if (!intervalMinutes) {
+    const intervalMs = getSourceAutoRefreshMs(draftSource);
+    if (!intervalMs) {
       stopEndpointSourceAutoRefresh(row);
       return;
     }
@@ -3297,9 +3416,9 @@
     stopEndpointSourceAutoRefresh(row, '', { clearStoredState: false });
     const initialNextRunAt = Number.isFinite(settings.nextRunAt) && settings.nextRunAt > Date.now()
       ? settings.nextRunAt
-      : Date.now() + (intervalMinutes * 60 * 1000);
+      : Date.now() + intervalMs;
     const refreshState = {
-      intervalMinutes,
+      intervalMs,
       executionState: initialExecutionState || {},
       nextRunAt: initialNextRunAt,
       timerId: window.setTimeout(
@@ -3311,7 +3430,7 @@
     rememberEndpointSourceAutoRefreshState(row, refreshState);
     setEndpointSourceAutoRefreshStatus(
       row,
-      `Latest Values auto refresh every ${intervalMinutes} min while this page is open.`
+      `Source auto refresh every ${formatSourceAutoRefreshLabel(intervalMs)} while this page is open.`
     );
   };
 
@@ -3598,12 +3717,14 @@
     const addRequestBtn = row.querySelector('[data-add-api-request]');
     const useSourceBtn = row.querySelector('[data-use-source]');
     const removeBtn = row.querySelector('[data-remove-endpoint-source]');
+    const serialPortInput = getEndpointRowField(row, 'endpoint_serial_port');
+    const serialPortSelect = row.querySelector('[data-endpoint-serial-port-select]');
+    const serialPortStatus = row.querySelector('[data-serial-port-status]');
+    const detectSerialPortsBtn = row.querySelector('[data-detect-serial-ports]');
 
     if (formatSelect) {
       formatSelect.addEventListener('change', () => {
-        if ((formatSelect.value || 'api') !== 'api') {
-          stopEndpointSourceAutoRefresh(row);
-        }
+        stopEndpointSourceAutoRefresh(row);
         updateEndpointSourceVisibility(row);
       });
     }
@@ -3634,6 +3755,57 @@
         stopEndpointSourceAutoRefresh(row, {{ ('แหล่งข้อมูลถูกเปลี่ยน กรุณากด ใช้แหล่งข้อมูล เพื่อเริ่มรีเฟรชอัตโนมัติอีกครั้ง' if current_lang == 'th' else 'Source changed. Click Use Source to restart auto refresh.') | tojson }});
       }
     });
+    if (serialPortSelect && serialPortInput) {
+      serialPortSelect.addEventListener('change', () => {
+        if (serialPortSelect.value) {
+          serialPortInput.value = serialPortSelect.value;
+          if (serialPortStatus) {
+            serialPortStatus.textContent = serialPortSelect.options[serialPortSelect.selectedIndex]?.textContent || serialPortSelect.value;
+          }
+        }
+      });
+    }
+    if (detectSerialPortsBtn) {
+      detectSerialPortsBtn.addEventListener('click', async () => {
+        detectSerialPortsBtn.disabled = true;
+        if (serialPortStatus) {
+          serialPortStatus.textContent = {{ ('กำลังตรวจสอบพอร์ต Serial...' if current_lang == 'th' else 'Detecting serial ports...') | tojson }};
+        }
+        try {
+          const ports = await requestSerialPorts();
+          if (serialPortSelect) {
+            const currentPort = (serialPortInput?.value || '').trim();
+            serialPortSelect.innerHTML = '';
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = ports.length
+              ? {{ ('เลือกพอร์ตที่ตรวจพบ' if current_lang == 'th' else 'Select a detected port') | tojson }}
+              : {{ ('ไม่พบพอร์ต Serial' if current_lang == 'th' else 'No serial ports detected') | tojson }};
+            serialPortSelect.appendChild(placeholderOption);
+            ports.forEach((port) => {
+              const option = document.createElement('option');
+              option.value = port.path || '';
+              option.textContent = port.label || port.path || '';
+              serialPortSelect.appendChild(option);
+            });
+            if (currentPort && Array.from(serialPortSelect.options).some((option) => option.value === currentPort)) {
+              serialPortSelect.value = currentPort;
+            }
+          }
+          if (serialPortStatus) {
+            serialPortStatus.textContent = ports.length
+              ? `${ports.length} ` + {{ ('พอร์ตที่ตรวจพบ' if current_lang == 'th' else 'port(s) detected') | tojson }}
+              : {{ ('ไม่พบพอร์ต Serial ในเครื่องนี้' if current_lang == 'th' else 'No serial ports detected on this machine.') | tojson }};
+          }
+        } catch (error) {
+          if (serialPortStatus) {
+            serialPortStatus.textContent = {{ ('ตรวจพอร์ตไม่สำเร็จ:' if current_lang == 'th' else 'Serial port detection failed:') | tojson }} + ` ${getRequestErrorMessage(error)}`;
+          }
+        } finally {
+          detectSerialPortsBtn.disabled = false;
+        }
+      });
+    }
     if (addRequestBtn) {
       addRequestBtn.addEventListener('click', () => {
         const requestList = row.querySelector('[data-endpoint-api-request-list]');
@@ -3653,8 +3825,8 @@
           alert({{ ('กรุณากรอกชื่อแหล่งข้อมูลก่อนใช้งานแหล่งข้อมูลนี้' if current_lang == 'th' else 'Please enter source name before using this source.') | tojson }});
           return;
         }
-        if (draftSource.format !== 'api') {
-          alert({{ ('การดูตัวอย่าง ใช้แหล่งข้อมูล ใช้ได้เฉพาะแหล่งข้อมูลแบบ API เท่านั้น' if current_lang == 'th' else 'Use Source preview is available for API sources only.') | tojson }});
+        if (draftSource.format === 'mqtt') {
+          alert({{ ('การดูตัวอย่าง ใช้แหล่งข้อมูล ยังไม่รองรับ MQTT' if current_lang == 'th' else 'Use Source preview is not available for MQTT sources yet.') | tojson }});
           return;
         }
         useSourceBtn.disabled = true;
@@ -3718,7 +3890,7 @@
         return;
       }
       const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
-      if (draftSource.format !== 'api' || !getLatestValuesAutoRefreshMinutes(draftSource)) {
+      if (!getSourceAutoRefreshMs(draftSource)) {
         clearStoredEndpointSourceAutoRefreshState(row);
         return;
       }
@@ -3798,10 +3970,12 @@
               });
           previewLiv24DataOutput.dataset.sourceName = payload.source?.name || selectedSourceName || '';
           previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
+          updateSerialRawPreview(payload);
           updateSourcePreviewSummary(payload);
         } catch (error) {
           const errorMessage = `{{ 'โหลดข้อมูลแหล่งข้อมูลไม่สำเร็จ:' if current_lang == 'th' else 'Failed to load source data:' }} ${getRequestErrorMessage(error)}`;
           previewLiv24DataOutput.textContent = errorMessage;
+          updateSerialRawPreview(null);
           setSourcePreviewSummaryError(errorMessage);
         }
       });
@@ -3815,6 +3989,11 @@
         const selectedSourceName = (bulkSourceSelect?.value || '').trim();
         if (!selectedSourceName) {
           alert('Please select source before downloading CSV.');
+          return;
+        }
+        const selectedSource = collectAllEndpointSources().find((source) => source.name === selectedSourceName);
+        if (selectedSource && selectedSource.format !== 'api') {
+          alert({{ ('การดาวน์โหลด Source Data CSV รองรับเฉพาะแหล่งข้อมูลแบบ API เท่านั้น' if current_lang == 'th' else 'Source Data CSV download is available for API sources only.') | tojson }});
           return;
         }
         try {
@@ -4211,6 +4390,7 @@
     updateDeviceSourceMappingRoute: {{ url_for('update_device_source_mapping', device_id='__device__') | tojson }},
     sourceTokenRoute: {{ url_for('get_endpoint_source_token') | tojson }},
     sourceDevicesRoute: {{ url_for('get_endpoint_source_devices') | tojson }},
+    sourceSerialPortsRoute: {{ url_for('list_endpoint_source_serial_ports') | tojson }},
     sourcePreviewRoute: {{ url_for('preview_endpoint_source_data') | tojson }},
     sourceRequestTestRoute: {{ url_for('test_endpoint_source_request') | tojson }},
     sourceDeviceCacheRoute: {{ url_for('get_endpoint_source_device_cache') | tojson }},
