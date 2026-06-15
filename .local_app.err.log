@@ -10,3 +10,27 @@ Press CTRL+C to quit
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 942-067-619
+127.0.0.1 - - [15/Jun/2026 17:28:33] "POST /settings/import HTTP/1.1" 302 -
+127.0.0.1 - - [15/Jun/2026 17:28:33] "GET /settings?tab=import_export HTTP/1.1" 200 -
+127.0.0.1 - - [15/Jun/2026 17:28:33] "GET /static/uploads/Sing_logo.png HTTP/1.1" 304 -
+127.0.0.1 - - [15/Jun/2026 17:28:33] "GET /static/css/style.css HTTP/1.1" 200 -
+127.0.0.1 - - [15/Jun/2026 17:28:33] "GET /static/js/main.js HTTP/1.1" 304 -
+127.0.0.1 - - [15/Jun/2026 17:28:34] "GET /static/uploads/fire-alarm_9752968.png?v=1774865862 HTTP/1.1" 304 -
+127.0.0.1 - - [15/Jun/2026 17:28:34] "GET /static/uploads/Sing_Map_H.png HTTP/1.1" 304 -
+127.0.0.1 - - [15/Jun/2026 17:28:34] "GET /favicon.ico HTTP/1.1" 404 -
+ * Detected change in 'C:\\Users\\Administrator\\Documents\\GitHub\\Sing\\services\\serial_source.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 942-067-619
+ * Detected change in 'C:\\Users\\Administrator\\Documents\\GitHub\\Sing\\app.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 942-067-619
+ * Detected change in 'C:\\Users\\Administrator\\Documents\\GitHub\\Sing\\app.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 942-067-619
+ * Detected change in 'C:\\Users\\Administrator\\Documents\\GitHub\\Sing\\test_serial_source.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 942-067-619

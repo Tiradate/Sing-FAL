@@ -1,4 +1,7 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from services import serial_source
 
@@ -72,6 +75,47 @@ P:05 C:03 D:0195
         )
         self.assertEqual(3, len(device_items))
         self.assertEqual(3, len(ready_device_items))
+
+    def test_replay_start_stop_resume_controls_live_source_pause(self):
+        with TemporaryDirectory() as tmp_dir:
+            replay_path = Path(tmp_dir) / "serial.log"
+            replay_path.write_text(
+                "-OPERATOR COMMAND-  21:53:36  08/06/2026 P:07 C:00 D:02 AUX PORT 2\n"
+                "DISABLE DEVICE\n"
+                "P:05 C:03 D:0195\n\n",
+                encoding="utf-8",
+            )
+
+            state = serial_source.apply_replay_action(
+                {},
+                {
+                    "replay_file_path": str(replay_path),
+                    "replay_interval_seconds": 60,
+                },
+                "start",
+            )
+            self.assertTrue(state["live_source_paused"])
+            self.assertTrue(state["replay"]["active"])
+
+            state = serial_source.apply_replay_action(state, {}, "stop")
+            self.assertTrue(state["live_source_paused"])
+            self.assertFalse(state["replay"]["active"])
+
+            state = serial_source.apply_replay_action(state, {}, "resume_source")
+            self.assertFalse(state["live_source_paused"])
+            self.assertFalse(state["replay"]["active"])
+
+    def test_paused_live_source_skips_real_serial_reads(self):
+        with patch.object(serial_source, "read_serial_lines", return_value=["SHOULD NOT READ"]) as mocked_read:
+            state, raw_lines = serial_source._read_source_lines(
+                {"live_source_paused": True},
+                {"port": "COM3"},
+                read_from_source=True,
+            )
+
+        mocked_read.assert_not_called()
+        self.assertTrue(state["live_source_paused"])
+        self.assertEqual([], raw_lines)
 
 
 if __name__ == "__main__":

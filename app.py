@@ -3377,6 +3377,24 @@ def _background_source_polling_signature(source):
     return json.dumps(normalized_source, sort_keys=True, ensure_ascii=True)
 
 
+def _merge_serial_source_execution_state(base_state=None, preserved_state=None):
+    merged_state = serial_source_service.normalize_state(base_state)
+    preserved = serial_source_service.normalize_state(preserved_state)
+    merged_state["live_source_paused"] = bool(
+        merged_state.get("live_source_paused") or preserved.get("live_source_paused")
+    )
+    preserved_replay = serial_source_service.get_replay_status(preserved)
+    if (
+        preserved_replay.get("active")
+        or preserved_replay.get("file_path")
+        or preserved_replay.get("stopped_at")
+        or preserved_replay.get("completed_at")
+        or preserved_replay.get("last_error")
+    ):
+        merged_state["replay"] = preserved_replay
+    return serial_source_service.normalize_state(merged_state)
+
+
 def _get_serial_source_execution_state(source, fallback_state=None):
     normalized_source = _resolve_endpoint_source(source)
     source_key = _background_source_polling_state_key(normalized_source)
@@ -3386,9 +3404,17 @@ def _get_serial_source_execution_state(source, fallback_state=None):
     with _SERIAL_SOURCE_EXECUTION_STATE_LOCK:
         state_entry = _SERIAL_SOURCE_EXECUTION_STATE.get(source_key)
         if not isinstance(state_entry, dict) or state_entry.get("signature") != source_signature:
+            preserved_state = (
+                state_entry.get("execution_state")
+                if isinstance(state_entry, dict)
+                else {}
+            )
             state_entry = {
                 "signature": source_signature,
-                "execution_state": normalized_fallback_state,
+                "execution_state": _merge_serial_source_execution_state(
+                    normalized_fallback_state,
+                    preserved_state,
+                ),
             }
             _SERIAL_SOURCE_EXECUTION_STATE[source_key] = state_entry
 
@@ -3428,6 +3454,8 @@ def _latest_values_poll_interval_seconds(source):
                 )
             except (TypeError, ValueError):
                 return _SERIAL_SOURCE_POLL_INTERVAL_SECONDS
+        if serial_source_service.is_live_source_paused(serial_execution_state):
+            return 0
         serial_port = str(
             normalized_source.get("serial", {}).get("port") or ""
         ).strip()
@@ -3487,12 +3515,12 @@ def _run_background_source_polling_cycle():
         if normalized_source.get("format") not in {"api", "serial"} or not source_name:
             continue
 
+        source_key = _background_source_polling_state_key(normalized_source)
+        active_source_keys.add(source_key)
         interval_seconds = _latest_values_poll_interval_seconds(normalized_source)
         if interval_seconds <= 0:
             continue
 
-        source_key = _background_source_polling_state_key(normalized_source)
-        active_source_keys.add(source_key)
         source_signature = _background_source_polling_signature(normalized_source)
         with _BACKGROUND_SOURCE_POLLING_STATE_LOCK:
             state_entry = _BACKGROUND_SOURCE_POLLING_STATE.get(source_key)

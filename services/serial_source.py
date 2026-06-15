@@ -177,12 +177,17 @@ def normalize_state(execution_state):
         "record_counts_by_type": normalized_counts,
         "last_error": str(state.get("last_error") or "").strip(),
         "last_read_at": str(state.get("last_read_at") or "").strip(),
+        "live_source_paused": bool(state.get("live_source_paused")),
         "replay": _normalize_replay_state(state.get("replay")),
     }
 
 
 def get_replay_status(execution_state):
     return normalize_state(execution_state).get("replay", {})
+
+
+def is_live_source_paused(execution_state):
+    return bool(normalize_state(execution_state).get("live_source_paused"))
 
 
 def apply_replay_action(execution_state, serial_config, action):
@@ -213,6 +218,7 @@ def apply_replay_action(execution_state, serial_config, action):
         batches = _load_replay_batches(file_path)
         if not batches:
             raise ValueError("Serial replay file did not contain any record batches")
+        state["live_source_paused"] = True
         replay.update(
             {
                 "active": True,
@@ -232,6 +238,19 @@ def apply_replay_action(execution_state, serial_config, action):
         return state
 
     if action_name == "stop":
+        state["live_source_paused"] = True
+        replay.update(
+            {
+                "active": False,
+                "next_run_at": 0.0,
+                "stopped_at": now_iso,
+                "last_error": "",
+            }
+        )
+        return state
+
+    if action_name == "resume_source":
+        state["live_source_paused"] = False
         replay.update(
             {
                 "active": False,
@@ -305,6 +324,8 @@ def _read_source_lines(execution_state, serial_config, read_from_source=True):
     replay_state = state.get("replay", {})
     if replay_state.get("active"):
         return _read_replay_lines(state, serial_config)
+    if state.get("live_source_paused"):
+        return state, []
 
     raw_lines = read_serial_lines(serial_config)
     return state, raw_lines
