@@ -396,6 +396,7 @@ def upsert_device_layouts(layouts):
             if not device_id:
                 continue
             floor_id = (layout.get("floor_id") or "").strip()
+            label = (layout.get("label") or "").strip() or None
             location_x = layout.get("location_x")
             location_y = layout.get("location_y")
             source_name = (layout.get("source_name") or "").strip() or None
@@ -427,6 +428,7 @@ def upsert_device_layouts(layouts):
                 ON CONFLICT(device_id)
                 DO UPDATE SET
                     floor_id = excluded.floor_id,
+                    label = COALESCE(excluded.label, devices.label),
                     location_x = excluded.location_x,
                     location_y = excluded.location_y,
                     source_name = COALESCE(excluded.source_name, devices.source_name),
@@ -444,7 +446,7 @@ def upsert_device_layouts(layouts):
                     "Milesight AM30x",
                     floor_id,
                     "Z1",
-                    None,
+                    label,
                     None,
                     location_x,
                     location_y,

@@ -1472,6 +1472,7 @@ def export_settings_csv():
         sensor_position = {
             "device_id": device["device_id"],
             "floor_id": floor_id,
+            "label": device.get("label"),
             "location_x": device["location_x"],
             "location_y": device["location_y"],
             "source_name": device.get("source_name"),
@@ -1482,6 +1483,7 @@ def export_settings_csv():
         floor_plan_sensors.setdefault(floor_id, []).append(
             {
                 "device_id": sensor_position["device_id"],
+                "label": sensor_position["label"],
                 "location_x": sensor_position["location_x"],
                 "location_y": sensor_position["location_y"],
                 "source_name": sensor_position["source_name"],
@@ -1930,6 +1932,7 @@ def import_settings_csv():
                         {
                             "device_id": device_id,
                             "floor_id": floor_id,
+                            "label": (sensor.get("label") or "").strip() or None,
                             "location_x": max(0, min(100, location_x)),
                             "location_y": max(0, min(100, location_y)),
                             "source_name": (sensor.get("source_name") or "").strip() or None,
@@ -5111,51 +5114,67 @@ def settings():
 
         if settings_section == "design":
             source_metric_fields = []
-            source_metric_keys = request.form.getlist("source_metric_field_key")
-            for raw_key in source_metric_keys:
-                metric_key = data_service._normalize_source_metric_field_key(raw_key)
-                if not metric_key:
-                    continue
-                source_metric_fields.append(
-                    {
-                        "key": metric_key,
-                        "source_field": (
-                            request.form.get(f"source_metric_source_field__{metric_key}")
-                            or raw_key
-                            or metric_key
-                        ).strip(),
-                        "label": (
-                            request.form.get(f"source_metric_label__{metric_key}")
-                            or data_service._default_source_metric_label(raw_key)
-                        ).strip(),
-                        "channel": (
-                            request.form.get(f"source_metric_channel__{metric_key}") or ""
-                        ).strip(),
-                        "unit": (
-                            request.form.get(f"source_metric_unit__{metric_key}")
-                            or data_service.SOURCE_METRIC_UNITS.get(metric_key, "")
-                        ).strip(),
-                        "show_in_bulk_type": bool(
-                            request.form.get(f"source_metric_show_in_bulk_type__{metric_key}")
-                        ),
-                        "show_in_tooltip": bool(
-                            request.form.get(f"source_metric_show_in_tooltip__{metric_key}")
-                        ),
-                        "save_to_db": bool(
-                            request.form.get(f"source_metric_save_to_db__{metric_key}")
-                        ),
-                        "enable_severity": bool(
-                            request.form.get(f"source_metric_enable_severity__{metric_key}")
-                        ),
-                        "sources": [
-                            item.strip()
-                            for item in (
-                                request.form.get(f"source_metric_sources__{metric_key}") or ""
-                            ).split(",")
-                            if item.strip()
-                        ],
-                    }
-                )
+            source_metric_fields_json = (
+                request.form.get("source_metric_fields_json") or ""
+            ).strip()
+            used_source_metric_fields_json = False
+            if source_metric_fields_json:
+                try:
+                    parsed_source_metric_fields = json.loads(source_metric_fields_json)
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    parsed_source_metric_fields = None
+                if isinstance(parsed_source_metric_fields, list):
+                    source_metric_fields = data_service.get_source_metric_fields(
+                        {"source_metric_fields": parsed_source_metric_fields}
+                    )
+                    used_source_metric_fields_json = True
+
+            if not used_source_metric_fields_json:
+                source_metric_keys = request.form.getlist("source_metric_field_key")
+                for raw_key in source_metric_keys:
+                    metric_key = data_service._normalize_source_metric_field_key(raw_key)
+                    if not metric_key:
+                        continue
+                    source_metric_fields.append(
+                        {
+                            "key": metric_key,
+                            "source_field": (
+                                request.form.get(f"source_metric_source_field__{metric_key}")
+                                or raw_key
+                                or metric_key
+                            ).strip(),
+                            "label": (
+                                request.form.get(f"source_metric_label__{metric_key}")
+                                or data_service._default_source_metric_label(raw_key)
+                            ).strip(),
+                            "channel": (
+                                request.form.get(f"source_metric_channel__{metric_key}") or ""
+                            ).strip(),
+                            "unit": (
+                                request.form.get(f"source_metric_unit__{metric_key}")
+                                or data_service.SOURCE_METRIC_UNITS.get(metric_key, "")
+                            ).strip(),
+                            "show_in_bulk_type": bool(
+                                request.form.get(f"source_metric_show_in_bulk_type__{metric_key}")
+                            ),
+                            "show_in_tooltip": bool(
+                                request.form.get(f"source_metric_show_in_tooltip__{metric_key}")
+                            ),
+                            "save_to_db": bool(
+                                request.form.get(f"source_metric_save_to_db__{metric_key}")
+                            ),
+                            "enable_severity": bool(
+                                request.form.get(f"source_metric_enable_severity__{metric_key}")
+                            ),
+                            "sources": [
+                                item.strip()
+                                for item in (
+                                    request.form.get(f"source_metric_sources__{metric_key}") or ""
+                                ).split(",")
+                                if item.strip()
+                            ],
+                        }
+                    )
             settings["source_metric_fields"] = sorted(
                 source_metric_fields,
                 key=lambda item: (item.get("label") or item.get("key") or "").lower(),

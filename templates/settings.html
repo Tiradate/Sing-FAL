@@ -239,6 +239,7 @@
         {% set api_templates = settings.endpoint_api_templates if settings.endpoint_api_templates is defined else [] %}
       </div>
       <input type="hidden" name="endpoint_sources_json" id="endpointSourcesJson">
+      <input type="hidden" name="source_metric_fields_json" id="sourceMetricFieldsJson">
 
       <div class="mt-3 d-flex gap-2 align-items-center">
         <button class="btn btn-outline-secondary btn-sm" type="button" id="previewLiv24DataBtn">{{ 'ข้อมูลแหล่งข้อมูล' if current_lang == 'th' else 'Source Data' }}</button>
@@ -1950,6 +1951,7 @@
   const endpointApiRequestParamRowTemplate = document.getElementById('endpointApiRequestParamRowTemplate');
   const endpointApiRequestValueRowTemplate = document.getElementById('endpointApiRequestValueRowTemplate');
   const endpointSourcesJson = document.getElementById('endpointSourcesJson');
+  const sourceMetricFieldsJson = document.getElementById('sourceMetricFieldsJson');
   const addEndpointSourceBtn = document.getElementById('addEndpointSourceBtn');
   const previewLiv24DataBtn = document.getElementById('previewLiv24DataBtn');
   const previewLiv24DataSummary = document.getElementById('previewLiv24DataSummary');
@@ -3186,6 +3188,13 @@
     }
   };
 
+  const getActiveUseSourceName = () => {
+    const activeRow = Array.from(
+      endpointSourceList?.querySelectorAll('[data-endpoint-source-row]') || []
+    ).find((row) => row.dataset.useSourceActivated === 'true');
+    return activeRow ? getEndpointSourceAutoRefreshStorageName(activeRow) : '';
+  };
+
   const syncStoredUseSourceButtonState = (row) => {
     const sourceName = getEndpointSourceAutoRefreshStorageName(row);
     const activatedStates = loadStoredEndpointSourceUseSourceActivatedStates();
@@ -3197,16 +3206,21 @@
     if (!sourceName) {
       return;
     }
-    const activatedStates = loadStoredEndpointSourceUseSourceActivatedStates();
-    activatedStates[sourceName] = {
-      activated: true,
-      updatedAt: new Date().toISOString(),
+    const activatedStates = {
+      [sourceName]: {
+        activated: true,
+        updatedAt: new Date().toISOString(),
+      },
     };
     saveStoredEndpointSourceUseSourceActivatedStates(activatedStates);
+    Array.from(endpointSourceList?.querySelectorAll('[data-endpoint-source-row]') || []).forEach((candidateRow) => {
+      setUseSourceButtonActivated(candidateRow, candidateRow === row);
+    });
     if (row) {
       row.dataset.useSourceActivatedName = sourceName;
     }
     setUseSourceButtonActivated(row, true);
+    renderSourceMetricFields(sourceMetricFieldCatalog);
   };
 
   const setEndpointSourceAutoRefreshStatus = (row, message = '', isError = false) => {
@@ -3915,6 +3929,8 @@
         updateEndpointSourceTitles();
         refreshBulkSourceNameOptions();
         syncStoredUseSourceButtonState(row);
+        syncSourceMetricFieldCatalogFromDom();
+        renderSourceMetricFields(sourceMetricFieldCatalog);
       });
     }
     row.addEventListener('input', (event) => {
@@ -4085,6 +4101,8 @@
         updateEndpointSourceTitles();
         updateEndpointRemoveButtons();
         refreshBulkSourceNameOptions();
+        syncSourceMetricFieldCatalogFromDom();
+        renderSourceMetricFields(sourceMetricFieldCatalog);
       });
     }
     updateEndpointSourceVisibility(row);
@@ -4256,6 +4274,10 @@
       settingsForm.dataset.endpointBound = 'true';
       settingsForm.addEventListener('submit', () => {
         endpointSourcesJson.value = JSON.stringify(collectAllEndpointSources());
+        syncSourceMetricFieldCatalogFromDom();
+        if (sourceMetricFieldsJson) {
+          sourceMetricFieldsJson.value = JSON.stringify(sourceMetricFieldCatalog);
+        }
       });
     }
   };
@@ -5051,6 +5073,16 @@
         return leftLabel.localeCompare(rightLabel);
       });
 
+  const getVisibleSourceMetricFields = (fields) => {
+    const activeSourceName = (getActiveUseSourceName() || '').trim();
+    if (!activeSourceName) {
+      return [];
+    }
+    return sortSourceMetricFields(fields).filter((field) =>
+      Array.isArray(field.sources) && field.sources.includes(activeSourceName)
+    );
+  };
+
   const collectSourceMetricFieldsFromDom = () => {
     if (!sourceMetricFieldsTableBody) {
       return [];
@@ -5073,6 +5105,16 @@
           .filter(Boolean),
       });
     });
+  };
+
+  const syncSourceMetricFieldCatalogFromDom = () => {
+    const currentFields = collectSourceMetricFieldsFromDom();
+    if (!currentFields.length) {
+      return sourceMetricFieldCatalog;
+    }
+    sourceMetricFieldCatalog = mergeSourceMetricFields(sourceMetricFieldCatalog, currentFields);
+    editorData.sourceMetricFields = sourceMetricFieldCatalog;
+    return sourceMetricFieldCatalog;
   };
 
   const mergeSourceMetricFields = (currentFields, incomingFields) => {
@@ -5153,10 +5195,11 @@
     sourceMetricFieldCatalog = normalizedFields;
     editorData.sourceMetricFields = normalizedFields;
     renderBulkSensorTypeOptions(normalizedFields);
+    const visibleFields = getVisibleSourceMetricFields(normalizedFields);
     if (!sourceMetricFieldsTableWrap || !sourceMetricFieldsTableBody || !sourceMetricFieldsEmptyState) {
       return;
     }
-    if (!normalizedFields.length) {
+    if (!visibleFields.length) {
       sourceMetricFieldsTableWrap.classList.add('d-none');
       sourceMetricFieldsEmptyState.classList.remove('d-none');
       sourceMetricFieldsTableBody.innerHTML = '';
@@ -5164,7 +5207,7 @@
     }
     sourceMetricFieldsTableWrap.classList.remove('d-none');
     sourceMetricFieldsEmptyState.classList.add('d-none');
-    sourceMetricFieldsTableBody.innerHTML = normalizedFields.map((field) => `
+    sourceMetricFieldsTableBody.innerHTML = visibleFields.map((field) => `
       <tr data-source-metric-key="${escapeHtml(field.key)}">
         <td>
           <div class="fw-semibold">${escapeHtml(field.source_field || field.key)}</div>
@@ -5202,9 +5245,8 @@
     if (!Array.isArray(fields)) {
       return;
     }
-    const currentFields = collectSourceMetricFieldsFromDom();
     renderSourceMetricFields(
-      mergeSourceMetricFields(currentFields.length ? currentFields : sourceMetricFieldCatalog, fields)
+      mergeSourceMetricFields(syncSourceMetricFieldCatalogFromDom(), fields)
     );
   };
 
@@ -5316,10 +5358,12 @@
   renderSourceMetricFields(sourceMetricFieldCatalog);
   if (sourceMetricFieldsTableBody) {
     sourceMetricFieldsTableBody.addEventListener('input', () => {
-      renderBulkSensorTypeOptions(collectSourceMetricFieldsFromDom());
+      syncSourceMetricFieldCatalogFromDom();
+      renderBulkSensorTypeOptions(sourceMetricFieldCatalog);
     });
     sourceMetricFieldsTableBody.addEventListener('change', () => {
-      renderBulkSensorTypeOptions(collectSourceMetricFieldsFromDom());
+      syncSourceMetricFieldCatalogFromDom();
+      renderBulkSensorTypeOptions(sourceMetricFieldCatalog);
     });
   }
 

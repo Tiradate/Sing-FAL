@@ -430,7 +430,9 @@
         "baudrate": 9600,
         "read_timeout_ms": 1000,
         "preview_line_limit": 100,
-        "device_key_mode": "pcd_first"
+        "device_key_mode": "pcd_first",
+        "replay_file_path": "",
+        "replay_interval_seconds": 60
       }
     }
   ],
