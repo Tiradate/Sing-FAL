@@ -1458,6 +1458,73 @@ def export_sensor_csv():
     return send_file(csv_path, as_attachment=True, download_name="sensor_readings.csv")
 
 
+def _build_sensor_position_exports(devices):
+    sensor_positions = []
+    for device in devices:
+        sensor_positions.append(
+            {
+                "device_id": device["device_id"],
+                "floor_id": device["floor_id"] or "",
+                "label": device.get("label"),
+                "location_x": device["location_x"],
+                "location_y": device["location_y"],
+                "source_name": device.get("source_name"),
+                "source_device_name": device.get("source_device_name"),
+                "source_device_uuid": device.get("source_device_uuid"),
+            }
+        )
+    return sensor_positions
+
+
+def _build_settings_export_payload(settings, devices):
+    export_settings = dict(settings)
+    # `sensor_positions` is the canonical sensor layout export. Keeping a single
+    # layout row avoids CSV edits being overwritten by duplicate legacy data.
+    export_settings.pop("floor_plan_sensors", None)
+    export_settings["sensor_positions"] = _build_sensor_position_exports(devices)
+    return export_settings
+
+
+def _parse_sensor_layouts(layout_payload, floor_id_hint=None):
+    layouts = []
+    if not isinstance(layout_payload, list):
+        return layouts
+    for sensor in layout_payload:
+        if not isinstance(sensor, dict):
+            continue
+        device_id = (sensor.get("device_id") or "").strip()
+        if not device_id:
+            continue
+        floor_id = normalize_floor_id(sensor.get("floor_id") or floor_id_hint)
+        try:
+            location_x = float(sensor.get("location_x"))
+            location_y = float(sensor.get("location_y"))
+        except (TypeError, ValueError):
+            continue
+        layouts.append(
+            {
+                "device_id": device_id,
+                "floor_id": floor_id,
+                "label": (sensor.get("label") or "").strip() or None,
+                "location_x": max(0, min(100, location_x)),
+                "location_y": max(0, min(100, location_y)),
+                "source_name": (sensor.get("source_name") or "").strip() or None,
+                "source_device_name": (sensor.get("source_device_name") or "").strip()
+                or None,
+                "source_device_uuid": (sensor.get("source_device_uuid") or "").strip()
+                or None,
+            }
+        )
+    return layouts
+
+
+def _resolve_imported_sensor_layouts(layout_sections):
+    sensor_positions = layout_sections.get("sensor_positions") or []
+    if sensor_positions:
+        return sensor_positions
+    return layout_sections.get("floor_plan_sensors") or []
+
+
 @app.route("/settings/export.csv")
 def export_settings_csv():
     if not session.get("is_admin"):
@@ -1465,35 +1532,7 @@ def export_settings_csv():
 
     settings = settings_service.load_settings()
     devices = data_service.get_devices()
-    floor_plan_sensors = {}
-    sensor_positions = []
-    for device in devices:
-        floor_id = device["floor_id"] or ""
-        sensor_position = {
-            "device_id": device["device_id"],
-            "floor_id": floor_id,
-            "label": device.get("label"),
-            "location_x": device["location_x"],
-            "location_y": device["location_y"],
-            "source_name": device.get("source_name"),
-            "source_device_name": device.get("source_device_name"),
-            "source_device_uuid": device.get("source_device_uuid"),
-        }
-        sensor_positions.append(sensor_position)
-        floor_plan_sensors.setdefault(floor_id, []).append(
-            {
-                "device_id": sensor_position["device_id"],
-                "label": sensor_position["label"],
-                "location_x": sensor_position["location_x"],
-                "location_y": sensor_position["location_y"],
-                "source_name": sensor_position["source_name"],
-                "source_device_name": sensor_position["source_device_name"],
-                "source_device_uuid": sensor_position["source_device_uuid"],
-            }
-        )
-    export_settings = dict(settings)
-    export_settings["floor_plan_sensors"] = floor_plan_sensors
-    export_settings["sensor_positions"] = sensor_positions
+    export_settings = _build_settings_export_payload(settings, devices)
     csv_path = os.path.join(BASE_DIR, "settings_export.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
@@ -1912,41 +1951,7 @@ def import_settings_csv():
         settings = settings_service.load_settings()
         file_content = settings_file.stream.read().decode("utf-8-sig")
         reader = csv.DictReader(io.StringIO(file_content))
-
-        def parse_sensor_layouts(layout_payload, floor_id_hint=None):
-            layouts = []
-            if isinstance(layout_payload, list):
-                for sensor in layout_payload:
-                    if not isinstance(sensor, dict):
-                        continue
-                    device_id = (sensor.get("device_id") or "").strip()
-                    if not device_id:
-                        continue
-                    floor_id = normalize_floor_id(sensor.get("floor_id") or floor_id_hint)
-                    try:
-                        location_x = float(sensor.get("location_x"))
-                        location_y = float(sensor.get("location_y"))
-                    except (TypeError, ValueError):
-                        continue
-                    layouts.append(
-                        {
-                            "device_id": device_id,
-                            "floor_id": floor_id,
-                            "label": (sensor.get("label") or "").strip() or None,
-                            "location_x": max(0, min(100, location_x)),
-                            "location_y": max(0, min(100, location_y)),
-                            "source_name": (sensor.get("source_name") or "").strip() or None,
-                            "source_device_name": (
-                                sensor.get("source_device_name") or ""
-                            ).strip()
-                            or None,
-                            "source_device_uuid": (
-                                sensor.get("source_device_uuid") or ""
-                            ).strip()
-                            or None,
-                        }
-                    )
-            return layouts
+        imported_layout_sections = {}
 
         for row in reader:
             key = (row.get("key") or "").strip()
@@ -1959,17 +1964,22 @@ def import_settings_csv():
                 except (json.JSONDecodeError, TypeError):
                     continue
                 if key == "sensor_positions" and isinstance(layout_payload, list):
-                    data_service.upsert_device_layouts(parse_sensor_layouts(layout_payload))
+                    imported_layout_sections["sensor_positions"] = _parse_sensor_layouts(
+                        layout_payload
+                    )
                 elif isinstance(layout_payload, dict):
                     layouts = []
                     for floor_id, sensors in layout_payload.items():
-                        layouts.extend(parse_sensor_layouts(sensors, floor_id_hint=floor_id))
-                    data_service.upsert_device_layouts(layouts)
+                        layouts.extend(_parse_sensor_layouts(sensors, floor_id_hint=floor_id))
+                    imported_layout_sections["floor_plan_sensors"] = layouts
                 continue
             try:
                 settings[key] = json.loads(value)
             except (json.JSONDecodeError, TypeError):
                 settings[key] = value
+        imported_layouts = _resolve_imported_sensor_layouts(imported_layout_sections)
+        if imported_layouts:
+            data_service.upsert_device_layouts(imported_layouts)
         settings_service.save_settings(settings)
 
     if has_collection:
