@@ -439,6 +439,18 @@
                   <small class="text-muted" data-serial-port-status>{{ 'กดเพื่อตรวจสอบพอร์ตที่มีในเครื่อง' if current_lang == 'th' else 'Click to detect available serial ports on this machine.' }}</small>
                 </div>
               </div>
+              <div class="col-12" data-endpoint-serial-fields>
+                <label class="form-label">{{ 'ไฟล์ทดสอบ Serial' if current_lang == 'th' else 'Serial Test File' }}</label>
+                <input class="form-control" type="text" name="endpoint_serial_replay_file_path" placeholder="C:\Users\Administrator\Downloads\serial.log">
+                <small class="text-muted">{{ 'ใช้ไฟล์ log เพื่อปล่อยข้อมูลเข้าแบบทีละ 1 ชุดทุก 1 นาที โดยไม่ยิงทั้งหมดพร้อมกัน' if current_lang == 'th' else 'Replay one record batch from a serial log file every 1 minute instead of loading the whole file at once.' }}</small>
+              </div>
+              <div class="col-12" data-endpoint-serial-fields>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <button class="btn btn-outline-primary btn-sm" type="button" data-start-serial-file-replay>{{ 'ทดสอบจากไฟล์ Serial' if current_lang == 'th' else 'Test Serial File' }}</button>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-stop-serial-file-replay>{{ 'หยุดทดสอบ' if current_lang == 'th' else 'Stop Test' }}</button>
+                  <small class="text-muted" data-serial-file-replay-status>{{ 'พร้อมทดสอบจากไฟล์ โดยจะปล่อยข้อมูลทีละ 1 ชุดทุก 1 นาที' if current_lang == 'th' else 'Ready to replay one serial record batch every 1 minute.' }}</small>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1954,7 +1966,15 @@
     format: 'api',
     api: { auth_type: 'none', requests: [] },
     mqtt: { port: 1883 },
-    serial: { port: '', baudrate: 9600, read_timeout_ms: 1000, preview_line_limit: 100, device_key_mode: 'pcd_first' },
+    serial: {
+      port: '',
+      baudrate: 9600,
+      read_timeout_ms: 1000,
+      preview_line_limit: 100,
+      device_key_mode: 'pcd_first',
+      replay_file_path: '',
+      replay_interval_seconds: 60,
+    },
   };
   let defaultEndpointApiRequests = Array.isArray(defaultEndpointSource.api?.requests)
     ? defaultEndpointSource.api.requests
@@ -2337,6 +2357,11 @@
     normalized.serial.read_timeout_ms = Number.parseInt(normalized.serial.read_timeout_ms || 1000, 10) || 1000;
     normalized.serial.preview_line_limit = Number.parseInt(normalized.serial.preview_line_limit || 100, 10) || 100;
     normalized.serial.device_key_mode = (normalized.serial.device_key_mode || 'pcd_first').trim() || 'pcd_first';
+    normalized.serial.replay_file_path = (normalized.serial.replay_file_path || '').trim();
+    normalized.serial.replay_interval_seconds = Number.parseInt(
+      normalized.serial.replay_interval_seconds || 60,
+      10
+    ) || 60;
     return normalized;
   };
 
@@ -2491,6 +2516,8 @@
     serial: {
       port: (getEndpointRowField(row, 'endpoint_serial_port')?.value || '').trim(),
       baudrate: Number.parseInt(getEndpointRowField(row, 'endpoint_serial_baudrate')?.value || '9600', 10) || 9600,
+      replay_file_path: (getEndpointRowField(row, 'endpoint_serial_replay_file_path')?.value || '').trim(),
+      replay_interval_seconds: 60,
     },
   });
 
@@ -2941,6 +2968,7 @@
       useSourceBtn.disabled = selectedFormat === 'mqtt';
     }
     updateEndpointAuthVisibility(row);
+    updateSerialFileReplayControls(row);
   };
 
   const buildTemplateRequests = (template) => {
@@ -3020,6 +3048,7 @@
     applyTextValue(row, 'endpoint_mqtt_topic', normalizedSource.mqtt?.topic || '');
     applyTextValue(row, 'endpoint_serial_port', normalizedSource.serial?.port || '');
     applyTextValue(row, 'endpoint_serial_baudrate', normalizedSource.serial?.baudrate || 9600);
+    applyTextValue(row, 'endpoint_serial_replay_file_path', normalizedSource.serial?.replay_file_path || '');
     renderEndpointRequestRows(row, normalizedSource.api?.requests || []);
     updateEndpointSourceVisibility(row);
   };
@@ -3035,6 +3064,8 @@
         source,
         sources: collectAllEndpointSources(),
         execution_state: options.executionState || {},
+        serial_replay_action: options.serialReplayAction || '',
+        read_from_source: options.readFromSource !== undefined ? Boolean(options.readFromSource) : true,
       }),
     });
     const payload = await response.json();
@@ -3133,6 +3164,7 @@
     storedStates[sourceName] = {
       source: draftSource,
       executionState: refreshState?.executionState || {},
+      mode: refreshState?.mode || 'source',
       nextRunAt: Number.isFinite(refreshState?.nextRunAt) ? refreshState.nextRunAt : 0,
       updatedAt: new Date().toISOString(),
     };
@@ -3201,6 +3233,99 @@
       clearStoredEndpointSourceAutoRefreshState(row);
     }
     setEndpointSourceAutoRefreshStatus(row, message);
+    updateSerialFileReplayControls(row);
+  };
+
+  const getSerialReplayState = (candidate) => {
+    if (candidate?.serial_debug?.replay && typeof candidate.serial_debug.replay === 'object') {
+      return candidate.serial_debug.replay;
+    }
+    if (candidate?.execution_state?.replay && typeof candidate.execution_state.replay === 'object') {
+      return candidate.execution_state.replay;
+    }
+    if (candidate?.replay && typeof candidate.replay === 'object') {
+      return candidate.replay;
+    }
+    return {};
+  };
+
+  const formatReplayBatchProgress = (replayState) => {
+    const currentBatch = Number.parseInt(
+      replayState?.last_batch_index ?? replayState?.next_batch_index ?? 0,
+      10
+    ) || 0;
+    const totalBatches = Number.parseInt(replayState?.total_batches ?? 0, 10) || 0;
+    return totalBatches ? `${Math.min(currentBatch, totalBatches)}/${totalBatches}` : '0/0';
+  };
+
+  const formatReplayNextRun = (replayState) => {
+    const nextRunAtSeconds = Number.parseFloat(replayState?.next_run_at ?? 0) || 0;
+    if (!nextRunAtSeconds) {
+      return '';
+    }
+    return formatProjectDateTime(new Date(nextRunAtSeconds * 1000).toISOString());
+  };
+
+  const buildSerialReplayStatusMessage = (replayState, hasFilePath) => {
+    const progressText = formatReplayBatchProgress(replayState);
+    if (replayState?.last_error) {
+      return `Serial file replay failed: ${replayState.last_error}`;
+    }
+    if (replayState?.active) {
+      const nextRunText = formatReplayNextRun(replayState);
+      return [
+        `Serial file replay is running (${progressText})`,
+        nextRunText ? `next batch ${nextRunText}` : '',
+      ].filter(Boolean).join(' | ');
+    }
+    if (replayState?.completed_at) {
+      return `Serial file replay completed (${progressText}).`;
+    }
+    if (replayState?.stopped_at) {
+      return `Serial file replay stopped (${progressText}).`;
+    }
+    if (hasFilePath) {
+      return 'Ready to replay one serial record batch every 1 minute.';
+    }
+    return 'Choose a serial log file to enable file replay.';
+  };
+
+  const updateSerialFileReplayControls = (row, payload = null) => {
+    if (!row) {
+      return;
+    }
+    const startBtn = row.querySelector('[data-start-serial-file-replay]');
+    const stopBtn = row.querySelector('[data-stop-serial-file-replay]');
+    const statusEl = row.querySelector('[data-serial-file-replay-status]');
+    const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
+    const hasFilePath = Boolean((draftSource.serial?.replay_file_path || '').trim());
+    const refreshState = endpointSourceAutoRefreshState.get(row);
+    let storedReplayState = {};
+    try {
+      storedReplayState = row.dataset.serialReplayState
+        ? JSON.parse(row.dataset.serialReplayState)
+        : {};
+    } catch (error) {
+      storedReplayState = {};
+    }
+    const replayState = getSerialReplayState(
+      payload || refreshState?.executionState || storedReplayState
+    );
+
+    if (statusEl) {
+      statusEl.textContent = buildSerialReplayStatusMessage(replayState, hasFilePath);
+      statusEl.classList.toggle('text-danger', Boolean(replayState?.last_error));
+      statusEl.classList.toggle('text-muted', !replayState?.last_error);
+    }
+    if (startBtn) {
+      startBtn.disabled = !hasFilePath || Boolean(replayState?.active);
+      startBtn.classList.toggle('btn-success', Boolean(replayState?.active));
+      startBtn.classList.toggle('btn-outline-primary', !replayState?.active);
+    }
+    if (stopBtn) {
+      stopBtn.disabled = !Boolean(replayState?.active);
+    }
+    row.dataset.serialReplayState = JSON.stringify(replayState || {});
   };
 
   const getLatestValuesAutoRefreshMinutes = (source) => {
@@ -3217,9 +3342,17 @@
     ) || 0;
   };
 
-  const getSourceAutoRefreshMs = (source) => {
+  const getSourceAutoRefreshMs = (source, executionState = {}) => {
     if ((source?.format || 'api') === 'serial') {
-      return 5000;
+      const replayState = getSerialReplayState(executionState);
+      if (replayState?.active) {
+        const intervalSeconds = Number.parseInt(
+          replayState.interval_seconds ?? source?.serial?.replay_interval_seconds ?? 60,
+          10
+        ) || 60;
+        return Math.max(1000, intervalSeconds * 1000);
+      }
+      return (source?.serial?.port || '').trim() ? 5000 : 0;
     }
     const intervalMinutes = getLatestValuesAutoRefreshMinutes(source);
     return intervalMinutes > 0 ? intervalMinutes * 60 * 1000 : 0;
@@ -3339,6 +3472,7 @@
     if (typeof refreshBulkSourceDeviceOptions === 'function') {
       refreshBulkSourceDeviceOptions();
     }
+    updateSerialFileReplayControls(row, payload);
     if (settings.updatePreviewOutput && previewLiv24DataOutput) {
       previewLiv24DataOutput.dataset.sourceName = sourceName;
       previewLiv24DataOutput.textContent = JSON.stringify(payload, null, 2);
@@ -3350,6 +3484,7 @@
   const startEndpointSourceAutoRefresh = (row, initialExecutionState = {}, options = {}) => {
     const settings = {
       nextRunAt: 0,
+      mode: 'source',
       ...options,
     };
     const refreshSourcePreview = async () => {
@@ -3360,13 +3495,17 @@
       }
 
       const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
-      const intervalMs = getSourceAutoRefreshMs(draftSource);
+      const intervalMs = getSourceAutoRefreshMs(
+        draftSource,
+        refreshState.executionState || {}
+      );
       if (!intervalMs) {
         stopEndpointSourceAutoRefresh(row);
         return;
       }
 
       refreshState.intervalMs = intervalMs;
+      let shouldScheduleNext = true;
 
       try {
         const payload = await requestSourcePreview(draftSource, {
@@ -3377,24 +3516,46 @@
           updatePreviewOutput: previewLiv24DataOutput?.dataset.sourceName === (payload.source?.name || draftSource.name),
         });
         await refreshVisibleSourceRequestHistoryPanels(row);
+        const replayState = getSerialReplayState(payload);
+        const hasReplayFilePath = Boolean((draftSource.serial?.replay_file_path || '').trim());
+        if (refreshState.mode === 'serial_replay' && !replayState?.active) {
+          shouldScheduleNext = false;
+          stopEndpointSourceAutoRefresh(
+            row,
+            buildSerialReplayStatusMessage(replayState, hasReplayFilePath)
+          );
+          return;
+        }
         setEndpointSourceAutoRefreshStatus(
           row,
-          `Source auto refresh every ${formatSourceAutoRefreshLabel(intervalMs)} while this page is open.`
+          refreshState.mode === 'serial_replay'
+            ? buildSerialReplayStatusMessage(replayState, hasReplayFilePath)
+            : `Source auto refresh every ${formatSourceAutoRefreshLabel(intervalMs)} while this page is open.`
         );
       } catch (error) {
-        setEndpointSourceAutoRefreshStatus(
-          row,
-          `Source auto refresh failed: ${getRequestErrorMessage(error)}`,
-          true
-        );
+        const errorMessage = refreshState.mode === 'serial_replay'
+          ? `Serial file replay failed: ${getRequestErrorMessage(error)}`
+          : `Source auto refresh failed: ${getRequestErrorMessage(error)}`;
+        if (refreshState.mode === 'serial_replay') {
+          shouldScheduleNext = false;
+          stopEndpointSourceAutoRefresh(row, errorMessage);
+          return;
+        }
+        setEndpointSourceAutoRefreshStatus(row, errorMessage, true);
       } finally {
+        if (!shouldScheduleNext) {
+          return;
+        }
         const nextState = endpointSourceAutoRefreshState.get(row);
         if (!nextState || !document.body.contains(row)) {
           stopEndpointSourceAutoRefresh(row);
           return;
         }
         const nextSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
-        const nextIntervalMs = getSourceAutoRefreshMs(nextSource);
+        const nextIntervalMs = getSourceAutoRefreshMs(
+          nextSource,
+          nextState.executionState || {}
+        );
         if (!nextIntervalMs) {
           stopEndpointSourceAutoRefresh(row);
           return;
@@ -3407,7 +3568,10 @@
     };
 
     const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
-    const intervalMs = getSourceAutoRefreshMs(draftSource);
+    const intervalMs = getSourceAutoRefreshMs(
+      draftSource,
+      initialExecutionState || {}
+    );
     if (!intervalMs) {
       stopEndpointSourceAutoRefresh(row);
       return;
@@ -3418,6 +3582,7 @@
       ? settings.nextRunAt
       : Date.now() + intervalMs;
     const refreshState = {
+      mode: settings.mode || 'source',
       intervalMs,
       executionState: initialExecutionState || {},
       nextRunAt: initialNextRunAt,
@@ -3428,10 +3593,15 @@
     };
     endpointSourceAutoRefreshState.set(row, refreshState);
     rememberEndpointSourceAutoRefreshState(row, refreshState);
+    const initialReplayState = getSerialReplayState(initialExecutionState);
+    const hasReplayFilePath = Boolean((draftSource.serial?.replay_file_path || '').trim());
     setEndpointSourceAutoRefreshStatus(
       row,
-      `Source auto refresh every ${formatSourceAutoRefreshLabel(intervalMs)} while this page is open.`
+      refreshState.mode === 'serial_replay'
+        ? buildSerialReplayStatusMessage(initialReplayState, hasReplayFilePath)
+        : `Source auto refresh every ${formatSourceAutoRefreshLabel(intervalMs)} while this page is open.`
     );
+    updateSerialFileReplayControls(row, initialExecutionState || {});
   };
 
   const requestApiRequestTest = async (source, requestDefinition) => {
@@ -3721,6 +3891,8 @@
     const serialPortSelect = row.querySelector('[data-endpoint-serial-port-select]');
     const serialPortStatus = row.querySelector('[data-serial-port-status]');
     const detectSerialPortsBtn = row.querySelector('[data-detect-serial-ports]');
+    const startSerialFileReplayBtn = row.querySelector('[data-start-serial-file-replay]');
+    const stopSerialFileReplayBtn = row.querySelector('[data-stop-serial-file-replay]');
 
     if (formatSelect) {
       formatSelect.addEventListener('change', () => {
@@ -3806,6 +3978,64 @@
         }
       });
     }
+    if (startSerialFileReplayBtn) {
+      startSerialFileReplayBtn.addEventListener('click', async () => {
+        const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
+        if (!draftSource.name) {
+          alert({{ ('à¸à¸£à¸¸à¸“à¸²à¸à¸£à¸­à¸à¸Šà¸·à¹ˆà¸­à¹à¸«à¸¥à¹ˆà¸‡à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸à¹ˆà¸­à¸™à¹€à¸£à¸´à¹ˆà¸¡à¸—à¸”à¸ªà¸­à¸šà¸ˆà¸²à¸à¹„à¸Ÿà¸¥à¹Œ' if current_lang == 'th' else 'Please enter source name before starting the serial file replay.') | tojson }});
+          return;
+        }
+        if (draftSource.format !== 'serial') {
+          alert({{ ('à¸à¸²à¸£à¸—à¸”à¸ªà¸­à¸šà¸ˆà¸²à¸à¹„à¸Ÿà¸¥à¹Œà¹ƒà¸Šà¹‰à¹„à¸”à¹‰à¹€à¸‰à¸žà¸²à¸°à¸à¸±à¸š Serial source' if current_lang == 'th' else 'Serial file replay is only available for serial sources.') | tojson }});
+          return;
+        }
+        if (!String(draftSource.serial?.replay_file_path || '').trim()) {
+          alert({{ ('à¸à¸£à¸¸à¸“à¸²à¸£à¸°à¸šà¸¸à¹„à¸Ÿà¸¥à¹Œ Serial log à¸à¹ˆà¸­à¸™à¹€à¸£à¸´à¹ˆà¸¡à¸—à¸”à¸ªà¸­à¸š' if current_lang == 'th' else 'Please choose a serial log file before starting the replay.') | tojson }});
+          return;
+        }
+        startSerialFileReplayBtn.disabled = true;
+        stopEndpointSourceAutoRefresh(row);
+        try {
+          const payload = await requestSourcePreview(draftSource, {
+            serialReplayAction: 'start',
+          });
+          applySourcePreviewPayload(row, draftSource, payload);
+          await refreshVisibleSourceRequestHistoryPanels(row);
+          rememberUseSourceButtonActivated(row);
+          startEndpointSourceAutoRefresh(row, payload.execution_state || {}, {
+            mode: 'serial_replay',
+          });
+        } catch (error) {
+          alert(`Serial file replay failed: ${getRequestErrorMessage(error)}`);
+        } finally {
+          updateSerialFileReplayControls(row);
+        }
+      });
+    }
+    if (stopSerialFileReplayBtn) {
+      stopSerialFileReplayBtn.addEventListener('click', async () => {
+        const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
+        stopSerialFileReplayBtn.disabled = true;
+        try {
+          const payload = await requestSourcePreview(draftSource, {
+            serialReplayAction: 'stop',
+            readFromSource: false,
+          });
+          applySourcePreviewPayload(row, draftSource, payload);
+          stopEndpointSourceAutoRefresh(
+            row,
+            buildSerialReplayStatusMessage(
+              getSerialReplayState(payload),
+              Boolean((draftSource.serial?.replay_file_path || '').trim())
+            )
+          );
+        } catch (error) {
+          alert(`Serial file replay stop failed: ${getRequestErrorMessage(error)}`);
+        } finally {
+          updateSerialFileReplayControls(row);
+        }
+      });
+    }
     if (addRequestBtn) {
       addRequestBtn.addEventListener('click', () => {
         const requestList = row.querySelector('[data-endpoint-api-request-list]');
@@ -3887,17 +4117,22 @@
       syncStoredUseSourceButtonState(row);
       const storedState = storedStates[sourceName];
       if (!storedState || typeof storedState !== 'object') {
+        updateSerialFileReplayControls(row);
         return;
       }
       const draftSource = normalizeEndpointSourceData(collectEndpointSourceRow(row));
-      if (!getSourceAutoRefreshMs(draftSource)) {
+      if (!getSourceAutoRefreshMs(draftSource, storedState.executionState || {})) {
         clearStoredEndpointSourceAutoRefreshState(row);
+        updateSerialFileReplayControls(row, storedState.executionState || {});
         return;
       }
       startEndpointSourceAutoRefresh(
         row,
         storedState.executionState || {},
-        { nextRunAt: Number.parseInt(storedState.nextRunAt || 0, 10) || 0 }
+        {
+          nextRunAt: Number.parseInt(storedState.nextRunAt || 0, 10) || 0,
+          mode: storedState.mode || 'source',
+        }
       );
     });
   };

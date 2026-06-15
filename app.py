@@ -3093,18 +3093,31 @@ def _load_source_request_test_data(settings, source, request_definition):
     }
 
 
-def _load_source_preview_data(settings, source, execution_state=None):
+def _load_source_preview_data(
+    settings,
+    source,
+    execution_state=None,
+    serial_replay_action="",
+    read_from_source=True,
+):
     normalized_source = _resolve_endpoint_source(source)
     if normalized_source.get("format") == "serial":
         serial_execution_state = _get_serial_source_execution_state(
             normalized_source,
             execution_state,
         )
+        if serial_replay_action:
+            serial_execution_state = serial_source_service.apply_replay_action(
+                serial_execution_state,
+                _source_serial_config(normalized_source),
+                serial_replay_action,
+            )
         serial_preview = serial_source_service.build_preview_payload(
             source_name=str(normalized_source.get("name") or "").strip() or "Serial Source",
             serial_config=_source_serial_config(normalized_source),
             execution_state=serial_execution_state,
             timezone_name=get_project_timezone_name(settings),
+            read_from_source=read_from_source,
         )
         serial_preview["execution_state"] = _save_serial_source_execution_state(
             normalized_source,
@@ -3113,7 +3126,7 @@ def _load_source_preview_data(settings, source, execution_state=None):
         latest_values = serial_preview.get("latest_values", {"items": []})
         settings_updated = False
         ingest_result = {"inserted": 0, "matched_devices": 0}
-        if _has_latest_value_payload(latest_values):
+        if serial_preview.get("should_ingest") and _has_latest_value_payload(latest_values):
             settings_updated, ingest_result = _sync_latest_values_payload_to_sensor_data(
                 settings,
                 normalized_source,
@@ -3389,6 +3402,24 @@ def _save_serial_source_execution_state(source, execution_state):
 def _latest_values_poll_interval_seconds(source):
     normalized_source = _resolve_endpoint_source(source)
     if normalized_source.get("format") == "serial":
+        serial_execution_state = _get_serial_source_execution_state(normalized_source)
+        replay_state = serial_source_service.get_replay_status(serial_execution_state)
+        if replay_state.get("active"):
+            try:
+                return max(
+                    1,
+                    int(
+                        replay_state.get("interval_seconds")
+                        or _SERIAL_SOURCE_POLL_INTERVAL_SECONDS
+                    ),
+                )
+            except (TypeError, ValueError):
+                return _SERIAL_SOURCE_POLL_INTERVAL_SECONDS
+        serial_port = str(
+            normalized_source.get("serial", {}).get("port") or ""
+        ).strip()
+        if not serial_port:
+            return 0
         return _SERIAL_SOURCE_POLL_INTERVAL_SECONDS
 
     latest_values_request = _source_api_request(normalized_source, "latest_values")
@@ -4208,6 +4239,10 @@ def preview_endpoint_source_data():
 
     settings = settings_service.load_settings()
     payload = request.get_json(silent=True) or {} if request.method == "POST" else {}
+    read_from_source = payload.get("read_from_source")
+    if read_from_source is None:
+        read_from_source = True
+    serial_replay_action = str(payload.get("serial_replay_action") or "").strip().lower()
     if isinstance(payload.get("sources"), list):
         settings["endpoint_sources"] = _normalize_endpoint_source_list(payload.get("sources"))
     settings_updated = _sync_endpoint_token_store(settings)
@@ -4230,6 +4265,8 @@ def preview_endpoint_source_data():
             settings,
             source,
             payload.get("execution_state"),
+            serial_replay_action=serial_replay_action,
+            read_from_source=read_from_source,
         )
     except Exception as exc:
         return jsonify({"error": str(exc)}), 400

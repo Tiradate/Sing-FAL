@@ -172,6 +172,8 @@ DEFAULT_ENDPOINT_SERIAL = {
     "read_timeout_ms": 1000,
     "preview_line_limit": 100,
     "device_key_mode": "pcd_first",
+    "replay_file_path": "",
+    "replay_interval_seconds": 60,
 }
 
 DEFAULT_ENDPOINT_SOURCE = {
@@ -473,9 +475,23 @@ def normalize_endpoint_source_definition(source):
     except (TypeError, ValueError):
         normalized["serial"]["preview_line_limit"] = 100
 
+    try:
+        normalized["serial"]["replay_interval_seconds"] = int(
+            normalized["serial"].get("replay_interval_seconds") or 60
+        )
+    except (TypeError, ValueError):
+        normalized["serial"]["replay_interval_seconds"] = 60
+
     normalized["serial"]["port"] = str(normalized["serial"].get("port") or "").strip()
     normalized["serial"]["device_key_mode"] = (
         str(normalized["serial"].get("device_key_mode") or "pcd_first").strip() or "pcd_first"
+    )
+    normalized["serial"]["replay_file_path"] = str(
+        normalized["serial"].get("replay_file_path") or ""
+    ).strip()
+    normalized["serial"]["replay_interval_seconds"] = max(
+        1,
+        int(normalized["serial"].get("replay_interval_seconds") or 60),
     )
 
     return normalized

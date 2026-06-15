@@ -1,4 +1,5 @@
 import copy
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -17,6 +18,7 @@ DEFAULT_READ_TIMEOUT_MS = 1000
 DEFAULT_PREVIEW_LINE_LIMIT = 100
 DEFAULT_PARSED_RECORD_LIMIT = 50
 DEFAULT_POLL_INTERVAL_SECONDS = 5
+DEFAULT_REPLAY_INTERVAL_SECONDS = 60
 
 SERIAL_FIELD_LABELS = {
     "record_type": "Record Type",
@@ -92,6 +94,47 @@ def list_available_ports():
     return sorted(ports, key=lambda item: item["path"].lower())
 
 
+def _normalize_replay_state(replay_state):
+    replay = replay_state if isinstance(replay_state, dict) else {}
+    try:
+        interval_seconds = int(
+            replay.get("interval_seconds") or DEFAULT_REPLAY_INTERVAL_SECONDS
+        )
+    except (TypeError, ValueError):
+        interval_seconds = DEFAULT_REPLAY_INTERVAL_SECONDS
+    try:
+        next_batch_index = int(replay.get("next_batch_index") or 0)
+    except (TypeError, ValueError):
+        next_batch_index = 0
+    try:
+        total_batches = int(replay.get("total_batches") or 0)
+    except (TypeError, ValueError):
+        total_batches = 0
+    try:
+        next_run_at = float(replay.get("next_run_at") or 0.0)
+    except (TypeError, ValueError):
+        next_run_at = 0.0
+    try:
+        last_batch_index = int(replay.get("last_batch_index") or 0)
+    except (TypeError, ValueError):
+        last_batch_index = 0
+
+    return {
+        "active": bool(replay.get("active")),
+        "file_path": str(replay.get("file_path") or "").strip(),
+        "interval_seconds": max(1, interval_seconds),
+        "next_batch_index": max(0, next_batch_index),
+        "total_batches": max(0, total_batches),
+        "next_run_at": max(0.0, next_run_at),
+        "started_at": str(replay.get("started_at") or "").strip(),
+        "last_batch_at": str(replay.get("last_batch_at") or "").strip(),
+        "last_batch_index": max(0, last_batch_index),
+        "completed_at": str(replay.get("completed_at") or "").strip(),
+        "stopped_at": str(replay.get("stopped_at") or "").strip(),
+        "last_error": str(replay.get("last_error") or "").strip(),
+    }
+
+
 def normalize_state(execution_state):
     state = execution_state if isinstance(execution_state, dict) else {}
     latest_values = state.get("latest_values")
@@ -126,19 +169,103 @@ def normalize_state(execution_state):
     return {
         "raw_lines": [str(item) for item in raw_lines][-DEFAULT_PREVIEW_LINE_LIMIT:],
         "partial_record": [str(item) for item in partial_record if str(item).strip()],
-        "parsed_records": [item for item in parsed_records if isinstance(item, dict)][-DEFAULT_PARSED_RECORD_LIMIT:],
+        "parsed_records": [
+            item for item in parsed_records if isinstance(item, dict)
+        ][-DEFAULT_PARSED_RECORD_LIMIT:],
         "latest_values": latest_values,
         "device_items": [item for item in device_items if isinstance(item, dict)],
         "record_counts_by_type": normalized_counts,
         "last_error": str(state.get("last_error") or "").strip(),
         "last_read_at": str(state.get("last_read_at") or "").strip(),
+        "replay": _normalize_replay_state(state.get("replay")),
     }
 
 
-def build_preview_payload(source_name, serial_config, execution_state=None, timezone_name="Asia/Bangkok"):
+def get_replay_status(execution_state):
+    return normalize_state(execution_state).get("replay", {})
+
+
+def apply_replay_action(execution_state, serial_config, action):
     state = normalize_state(execution_state)
-    raw_lines = read_serial_lines(serial_config)
-    next_state = apply_stream_lines(state, raw_lines, source_name=source_name, timezone_name=timezone_name)
+    action_name = str(action or "").strip().lower()
+    if not action_name:
+        return state
+
+    normalized_config = normalize_serial_config(serial_config)
+    replay = state["replay"]
+    file_path = (
+        str(normalized_config.get("replay_file_path") or replay.get("file_path") or "")
+        .strip()
+    )
+    interval_seconds = max(
+        1,
+        int(
+            replay.get("interval_seconds")
+            or normalized_config.get("replay_interval_seconds")
+            or DEFAULT_REPLAY_INTERVAL_SECONDS
+        ),
+    )
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    if action_name == "start":
+        if not file_path:
+            raise ValueError("Serial replay file path is required")
+        batches = _load_replay_batches(file_path)
+        if not batches:
+            raise ValueError("Serial replay file did not contain any record batches")
+        replay.update(
+            {
+                "active": True,
+                "file_path": file_path,
+                "interval_seconds": interval_seconds,
+                "next_batch_index": 0,
+                "total_batches": len(batches),
+                "next_run_at": 0.0,
+                "started_at": now_iso,
+                "last_batch_at": "",
+                "last_batch_index": 0,
+                "completed_at": "",
+                "stopped_at": "",
+                "last_error": "",
+            }
+        )
+        return state
+
+    if action_name == "stop":
+        replay.update(
+            {
+                "active": False,
+                "next_run_at": 0.0,
+                "stopped_at": now_iso,
+                "last_error": "",
+            }
+        )
+        return state
+
+    raise ValueError(f"Unsupported serial replay action: {action_name}")
+
+
+def build_preview_payload(
+    source_name,
+    serial_config,
+    execution_state=None,
+    timezone_name="Asia/Bangkok",
+    read_from_source=True,
+):
+    state = normalize_state(execution_state)
+    starting_record_total = _get_record_total(state)
+    next_input_state, raw_lines = _read_source_lines(
+        state,
+        serial_config,
+        read_from_source=read_from_source,
+    )
+    next_state = apply_stream_lines(
+        next_input_state,
+        raw_lines,
+        source_name=source_name,
+        timezone_name=timezone_name,
+    )
+    new_record_count = max(0, _get_record_total(next_state) - starting_record_total)
     return {
         "raw_lines": next_state["raw_lines"],
         "parsed_records": next_state["parsed_records"],
@@ -150,19 +277,158 @@ def build_preview_payload(source_name, serial_config, execution_state=None, time
         ),
         "latest_values": next_state["latest_values"],
         "execution_state": next_state,
+        "should_ingest": new_record_count > 0,
+        "new_record_count": new_record_count,
         "serial_debug": {
             "partial_record": next_state["partial_record"],
             "record_counts_by_type": next_state["record_counts_by_type"],
             "last_error": next_state["last_error"],
             "last_read_at": next_state["last_read_at"],
+            "replay": next_state["replay"],
+            "new_record_count": new_record_count,
         },
     }
+
+
+def _get_record_total(state):
+    return sum(
+        max(0, int(value or 0))
+        for value in normalize_state(state).get("record_counts_by_type", {}).values()
+    )
+
+
+def _read_source_lines(execution_state, serial_config, read_from_source=True):
+    state = normalize_state(execution_state)
+    if not read_from_source:
+        return state, []
+
+    replay_state = state.get("replay", {})
+    if replay_state.get("active"):
+        return _read_replay_lines(state, serial_config)
+
+    raw_lines = read_serial_lines(serial_config)
+    return state, raw_lines
+
+
+def _read_replay_lines(execution_state, serial_config):
+    state = normalize_state(execution_state)
+    normalized_config = normalize_serial_config(serial_config)
+    replay = state["replay"]
+    file_path = (
+        str(replay.get("file_path") or normalized_config.get("replay_file_path") or "").strip()
+    )
+    if not file_path:
+        replay.update(
+            {
+                "active": False,
+                "next_run_at": 0.0,
+                "last_error": "Serial replay file path is required",
+            }
+        )
+        state["last_error"] = replay["last_error"]
+        return state, []
+
+    try:
+        batches = _load_replay_batches(file_path)
+    except Exception as exc:
+        replay.update(
+            {
+                "active": False,
+                "next_run_at": 0.0,
+                "last_error": str(exc),
+            }
+        )
+        state["last_error"] = replay["last_error"]
+        return state, []
+
+    replay["file_path"] = file_path
+    replay["interval_seconds"] = max(
+        1,
+        int(
+            replay.get("interval_seconds")
+            or normalized_config.get("replay_interval_seconds")
+            or DEFAULT_REPLAY_INTERVAL_SECONDS
+        ),
+    )
+    replay["total_batches"] = len(batches)
+    state["last_error"] = ""
+
+    if not batches:
+        replay.update(
+            {
+                "active": False,
+                "next_run_at": 0.0,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "last_error": "",
+            }
+        )
+        return state, []
+
+    next_batch_index = min(replay.get("next_batch_index", 0), len(batches))
+    if next_batch_index >= len(batches):
+        if not replay.get("completed_at"):
+            replay["completed_at"] = datetime.now(timezone.utc).isoformat()
+        replay["active"] = False
+        replay["next_run_at"] = 0.0
+        return state, []
+
+    now = time.time()
+    next_run_at = float(replay.get("next_run_at") or 0.0)
+    if next_run_at > now:
+        return state, []
+
+    batch_lines = list(batches[next_batch_index])
+    emitted_at = datetime.now(timezone.utc).isoformat()
+    replay["last_batch_at"] = emitted_at
+    replay["last_batch_index"] = next_batch_index + 1
+    replay["next_batch_index"] = next_batch_index + 1
+    replay["stopped_at"] = ""
+    replay["last_error"] = ""
+
+    if replay["next_batch_index"] >= len(batches):
+        replay["active"] = False
+        replay["next_run_at"] = 0.0
+        replay["completed_at"] = emitted_at
+    else:
+        replay["active"] = True
+        replay["completed_at"] = ""
+        replay["next_run_at"] = now + replay["interval_seconds"]
+
+    return state, [*batch_lines, ""]
+
+
+def _load_replay_batches(file_path):
+    normalized_path = str(file_path or "").strip()
+    if not normalized_path:
+        raise ValueError("Serial replay file path is required")
+    if not os.path.isfile(normalized_path):
+        raise ValueError(f"Serial replay file was not found: {normalized_path}")
+
+    with open(normalized_path, "r", encoding="utf-8", errors="replace") as replay_file:
+        raw_text = replay_file.read()
+
+    lines = raw_text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    batches = []
+    current_batch = []
+    for raw_line in lines:
+        line = str(raw_line or "")
+        if not line.strip():
+            if current_batch:
+                batches.append(current_batch)
+                current_batch = []
+            continue
+        current_batch.append(line)
+
+    if current_batch:
+        batches.append(current_batch)
+
+    return batches
 
 
 def apply_stream_lines(execution_state, raw_lines, source_name="", timezone_name="Asia/Bangkok"):
     state = normalize_state(execution_state)
     next_state = copy.deepcopy(state)
-    next_state["last_error"] = ""
+    next_state["last_error"] = str(state.get("last_error") or "").strip()
     next_state["last_read_at"] = datetime.now(timezone.utc).isoformat()
     for raw_line in raw_lines:
         line = str(raw_line).replace("\r", "")
@@ -240,12 +506,20 @@ def normalize_serial_config(config):
         preview_line_limit = int(raw_config.get("preview_line_limit") or DEFAULT_PREVIEW_LINE_LIMIT)
     except (TypeError, ValueError):
         preview_line_limit = DEFAULT_PREVIEW_LINE_LIMIT
+    try:
+        replay_interval_seconds = int(
+            raw_config.get("replay_interval_seconds") or DEFAULT_REPLAY_INTERVAL_SECONDS
+        )
+    except (TypeError, ValueError):
+        replay_interval_seconds = DEFAULT_REPLAY_INTERVAL_SECONDS
     return {
         "port": str(raw_config.get("port") or "").strip(),
         "baudrate": max(1, baudrate),
         "read_timeout_ms": max(100, read_timeout_ms),
         "preview_line_limit": max(10, min(500, preview_line_limit)),
         "device_key_mode": str(raw_config.get("device_key_mode") or "pcd_first").strip() or "pcd_first",
+        "replay_file_path": str(raw_config.get("replay_file_path") or "").strip(),
+        "replay_interval_seconds": max(1, replay_interval_seconds),
     }
 
 
