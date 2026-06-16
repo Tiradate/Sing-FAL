@@ -167,8 +167,10 @@ def ensure_runtime_environment():
 
         if os.path.abspath(sys.executable) != os.path.abspath(venv_python):
             print("[startup] Re-launching app using virtual environment interpreter...")
-            subprocess.check_call([venv_python, os.path.abspath(__file__), *sys.argv[1:]])
-            sys.exit(0)
+            completed_process = subprocess.run(
+                [venv_python, os.path.abspath(__file__), *sys.argv[1:]]
+            )
+            sys.exit(completed_process.returncode)
 
     if _requirements_satisfied(requirements_path):
         print("[startup] Runtime dependencies are already available.")
