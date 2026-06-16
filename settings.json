@@ -24,7 +24,8 @@
       "flow_switch": true,
       "supervisory_valve": true,
       "manual": true,
-      "gas": true
+      "gas": true,
+      "beam": true
     }
   },
   "system_navigation": {
@@ -255,8 +256,8 @@
   "admin_password": "admin123",
   "endpoint_sources": [
     {
-      "name": "LIV-24 IAQ",
-      "format": "mqtt",
+      "name": "SING FCP",
+      "format": "serial",
       "base_url": "",
       "token": "ext_bdb8b449f3daba1c_B1elkVKYyJoXwgycsSwZS58nAKIwZmvK",
       "api": {
@@ -431,7 +432,7 @@
         "read_timeout_ms": 1000,
         "preview_line_limit": 100,
         "device_key_mode": "pcd_first",
-        "replay_file_path": "",
+        "replay_file_path": "C:\\Users\\Administrator\\Downloads\\serial.log",
         "replay_interval_seconds": 60
       }
     }
@@ -446,8 +447,85 @@
   "project_time_format": "24h",
   "source_metric_fields": [
     {
+      "key": "-operator command-",
+      "source_field": "-OPERATOR COMMAND-",
+      "field_role": "serial_sensor_field",
+      "label": "-Operator Command-",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "acfail active",
+      "source_field": "ACFAIL ACTIVE",
+      "field_role": "serial_sensor_field",
+      "label": "Acfail Active",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "acfail restore",
+      "source_field": "ACFAIL RESTORE",
+      "field_role": "serial_sensor_field",
+      "label": "Acfail Restore",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "alarm active",
+      "source_field": "ALARM ACTIVE",
+      "field_role": "serial_sensor_field",
+      "label": "Alarm Active",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "alarm restored",
+      "source_field": "ALARM RESTORED",
+      "field_role": "serial_sensor_field",
+      "label": "Alarm Restored",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
       "key": "atmospheric_pressure",
       "source_field": "atmospheric_pressure",
+      "field_role": "",
       "label": "Atmospheric Pressure",
       "channel": "telemetry",
       "unit": "hPa",
@@ -462,6 +540,7 @@
     {
       "key": "battery",
       "source_field": "battery",
+      "field_role": "",
       "label": "Battery",
       "channel": "telemetry",
       "unit": "%",
@@ -474,8 +553,108 @@
       ]
     },
     {
+      "key": "command_source_c",
+      "source_field": "command_source_c",
+      "field_role": "serial_metadata",
+      "label": "Command Source C",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "command_source_d",
+      "source_field": "command_source_d",
+      "field_role": "serial_metadata",
+      "label": "Command Source D",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "command_source_p",
+      "source_field": "command_source_p",
+      "field_role": "serial_metadata",
+      "label": "Command Source P",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "command_text",
+      "source_field": "command_text",
+      "field_role": "serial_metadata",
+      "label": "Command Text",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "common trbl act",
+      "source_field": "COMMON TRBL ACT",
+      "field_role": "serial_sensor_field",
+      "label": "Common Trbl Act",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "common trbl rst",
+      "source_field": "COMMON TRBL RST",
+      "field_role": "serial_sensor_field",
+      "label": "Common Trbl Rst",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
       "key": "co2",
       "source_field": "co2",
+      "field_role": "",
       "label": "CO\u2082",
       "channel": "telemetry",
       "unit": "ppm",
@@ -488,8 +667,205 @@
       ]
     },
     {
+      "key": "detail_text",
+      "source_field": "detail_text",
+      "field_role": "serial_metadata",
+      "label": "Detail",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "device_c",
+      "source_field": "device_c",
+      "field_role": "serial_metadata",
+      "label": "Device C",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "device_d",
+      "source_field": "device_d",
+      "field_role": "serial_metadata",
+      "label": "Device D",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "device_key",
+      "source_field": "device_key",
+      "field_role": "serial_metadata",
+      "label": "Device Key",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "device_p",
+      "source_field": "device_p",
+      "field_role": "serial_metadata",
+      "label": "Device P",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "disabled active",
+      "source_field": "DISABLED ACTIVE",
+      "field_role": "serial_sensor_field",
+      "label": "Disabled Active",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "disabled restore",
+      "source_field": "DISABLED RESTORE",
+      "field_role": "serial_sensor_field",
+      "label": "Disabled Restore",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "event_description",
+      "source_field": "event_description",
+      "field_role": "serial_metadata",
+      "label": "Event Description",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "event_text",
+      "source_field": "event_text",
+      "field_role": "serial_metadata",
+      "label": "Event Text",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "gnd fault active",
+      "source_field": "GND FAULT ACTIVE",
+      "field_role": "serial_sensor_field",
+      "label": "Gnd Fault Active",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "gnd fault rst",
+      "source_field": "GND FAULT RST",
+      "field_role": "serial_sensor_field",
+      "label": "Gnd Fault Rst",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "headline_text",
+      "source_field": "headline_text",
+      "field_role": "serial_metadata",
+      "label": "Headline",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
       "key": "humidity",
       "source_field": "humidity",
+      "field_role": "",
       "label": "Humidity",
       "channel": "telemetry",
       "unit": "%RH",
@@ -504,6 +880,7 @@
     {
       "key": "illuminance",
       "source_field": "illuminance",
+      "field_role": "",
       "label": "Illuminance",
       "channel": "telemetry",
       "unit": "lux",
@@ -516,8 +893,69 @@
       ]
     },
     {
+      "key": "local trbl act",
+      "source_field": "LOCAL TRBL ACT",
+      "field_role": "serial_sensor_field",
+      "label": "Local Trbl Act",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "local trbl rst",
+      "source_field": "LOCAL TRBL RST",
+      "field_role": "serial_sensor_field",
+      "label": "Local Trbl Rst",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "monitor active",
+      "source_field": "MONITOR ACTIVE",
+      "field_role": "serial_sensor_field",
+      "label": "Monitor Active",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "monitor restored",
+      "source_field": "MONITOR RESTORED",
+      "field_role": "serial_sensor_field",
+      "label": "Monitor Restored",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
       "key": "pir",
       "source_field": "pir",
+      "field_role": "",
       "label": "Pir",
       "channel": "status",
       "unit": "",
@@ -532,6 +970,7 @@
     {
       "key": "pm10",
       "source_field": "pm10",
+      "field_role": "",
       "label": "PM10",
       "channel": "telemetry",
       "unit": "\u00b5g/m\u00b3",
@@ -546,6 +985,7 @@
     {
       "key": "pm25",
       "source_field": "pm2_5",
+      "field_role": "",
       "label": "PM2.5",
       "channel": "telemetry",
       "unit": "\u00b5g/m\u00b3",
@@ -558,8 +998,111 @@
       ]
     },
     {
+      "key": "raw_line_1",
+      "source_field": "raw_line_1",
+      "field_role": "serial_metadata",
+      "label": "Raw Line 1",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "raw_line_2",
+      "source_field": "raw_line_2",
+      "field_role": "serial_metadata",
+      "label": "Raw Line 2",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "raw_line_3",
+      "source_field": "raw_line_3",
+      "field_role": "serial_metadata",
+      "label": "Raw Line 3",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "record_date",
+      "source_field": "record_date",
+      "field_role": "serial_metadata",
+      "label": "Record Date",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "record_ts",
+      "source_field": "record_ts",
+      "field_role": "serial_metadata",
+      "label": "Record Time",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "record_type",
+      "source_field": "record_type",
+      "field_role": "serial_metadata",
+      "label": "Record Type",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
       "key": "rssi",
       "source_field": "rssi",
+      "field_role": "",
       "label": "Rssi",
       "channel": "telemetry",
       "unit": "dBm",
@@ -574,6 +1117,7 @@
     {
       "key": "snr",
       "source_field": "snr",
+      "field_role": "",
       "label": "Snr",
       "channel": "telemetry",
       "unit": "dB",
@@ -588,6 +1132,7 @@
     {
       "key": "_status",
       "source_field": "_status",
+      "field_role": "",
       "label": "Status",
       "channel": "status",
       "unit": "",
@@ -600,8 +1145,90 @@
       ]
     },
     {
+      "key": "supervisory act",
+      "source_field": "SUPERVISORY ACT",
+      "field_role": "serial_sensor_field",
+      "label": "Supervisory Act",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "supervisory rst",
+      "source_field": "SUPERVISORY RST",
+      "field_role": "serial_sensor_field",
+      "label": "Supervisory Rst",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": true,
+      "show_in_tooltip": false,
+      "save_to_db": true,
+      "enable_severity": false,
+      "sources": [
+        "SING FCP"
+      ]
+    },
+    {
+      "key": "target_c",
+      "source_field": "target_c",
+      "field_role": "serial_metadata",
+      "label": "Target C",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "target_d",
+      "source_field": "target_d",
+      "field_role": "serial_metadata",
+      "label": "Target D",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
+      "key": "target_p",
+      "source_field": "target_p",
+      "field_role": "serial_metadata",
+      "label": "Target P",
+      "channel": "",
+      "unit": "",
+      "show_in_bulk_type": false,
+      "show_in_tooltip": false,
+      "save_to_db": false,
+      "enable_severity": false,
+      "sources": [
+        "LIV-24 IAQ",
+        "SING FCP",
+        "Serial A"
+      ]
+    },
+    {
       "key": "temperature",
       "source_field": "temperature",
+      "field_role": "",
       "label": "Temperature",
       "channel": "telemetry",
       "unit": "\u00b0C",
@@ -616,6 +1243,7 @@
     {
       "key": "tvoc",
       "source_field": "tvoc",
+      "field_role": "",
       "label": "TVOC",
       "channel": "telemetry",
       "unit": "mg/m\u00b3",
@@ -648,70 +1276,5 @@
       "settings": false
     }
   },
-  "accounting": {
-    "enabled": true,
-    "business_type": "General Business",
-    "base_currency": "THB",
-    "reporting_basis": "accrual",
-    "fiscal_year_start_month": 1,
-    "default_credit_term_days": 30,
-    "tax_rate": 7.0,
-    "tax_mode": "vat",
-    "lock_date": "",
-    "modules": {
-      "chart_of_accounts": {
-        "enabled": true,
-        "assets": true,
-        "liabilities": true,
-        "income": true,
-        "expenses": true,
-        "customize_by_business_type": true
-      },
-      "transactions": {
-        "enabled": true,
-        "sales_invoice": true,
-        "purchase_invoice": true,
-        "payment_entry": true,
-        "journal_entry": true
-      },
-      "receivables_payables": {
-        "enabled": true,
-        "accounts_receivable": true,
-        "accounts_payable": true,
-        "credit_terms": true,
-        "payment_reminders": true
-      },
-      "taxes": {
-        "enabled": true,
-        "vat": true,
-        "sales_tax": true,
-        "purchase_tax": true,
-        "multi_structure": true,
-        "auto_apply": true
-      },
-      "financial_reports": {
-        "enabled": true,
-        "profit_and_loss": true,
-        "balance_sheet": true,
-        "cash_flow": true,
-        "general_ledger": true,
-        "trial_balance": true,
-        "real_time": true
-      },
-      "period_closing": {
-        "enabled": true,
-        "monthly_close": true,
-        "yearly_close": true,
-        "lock_backdated_entries": true
-      },
-      "integrations": {
-        "enabled": true,
-        "sales": true,
-        "purchase": true,
-        "stock": true,
-        "payroll": true,
-        "auto_posting": true
-      }
-    }
-  }
+  "enforce_sensor_label_type_position": false
 }

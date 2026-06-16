@@ -247,7 +247,6 @@ from werkzeug.utils import secure_filename
 
 from services import data as data_service
 from services import auth as auth_service
-from services import accounting as accounting_service
 from services import settings as settings_service
 from services import serial_source as serial_source_service
 from services.api_history import (
@@ -741,6 +740,18 @@ def get_device_sensor_type_keys(devices):
     return sorted(metric_keys)
 
 
+def apply_device_display_zones(devices, device_metrics):
+    for device in devices or []:
+        if not hasattr(device, "get"):
+            continue
+        device_id = record_value(device, "device_id")
+        latest_metrics = device_metrics.get(device_id, {}) if isinstance(device_metrics, dict) else {}
+        display_zone = data_service.resolve_device_display_zone(device, latest_metrics)
+        device["display_zone"] = display_zone
+        if display_zone and str(record_value(device, "zone") or "").strip().upper() == "ALL":
+            device["zone"] = display_zone
+
+
 def record_value(record, key, default=None):
     if hasattr(record, "get"):
         return record.get(key, default)
@@ -771,8 +782,7 @@ def get_request_location_text():
 
 
 ROLE_PAGE_KEYS = ("home", "alarms", "map", "settings")
-SETTINGS_TABS = ("project", "source", "design", "account", "user", "import_export")
-ACCOUNTING_TABS = ("overview", "chart", "invoices", "payments", "journals", "reports")
+SETTINGS_TABS = ("project", "source", "design", "user", "import_export")
 
 
 def get_role_page_access_map(settings=None):
@@ -828,103 +838,6 @@ def require_page_access(page_key):
             return func(*args, **kwargs)
         return wrapper
     return decorator
-
-
-def get_active_accounting_tab():
-    active_tab = str(request.args.get("tab") or "overview").strip().lower()
-    if active_tab not in ACCOUNTING_TABS:
-        active_tab = "overview"
-    return active_tab
-
-
-def _accounting_access_or_redirect():
-    settings = settings_service.load_settings()
-    accounting_settings = settings.get("accounting", {})
-    if not session.get("user_id") and not session.get("is_admin"):
-        return redirect(url_for("login")), settings
-    if not session.get("is_admin"):
-        flash("Admin access is required for accounting.", "danger")
-        return redirect(url_for(get_first_accessible_endpoint(settings))), settings
-    if not accounting_settings.get("enabled"):
-        flash("Enable the accounting workspace in Settings > Account first.", "warning")
-        return redirect(url_for("settings", tab="account")), settings
-    return None, settings
-
-
-def _safe_iso_date(value, default_value):
-    candidate = str(value or "").strip()
-    if not candidate:
-        return default_value
-    try:
-        return datetime.fromisoformat(candidate).date().isoformat()
-    except ValueError:
-        return default_value
-
-
-def _parse_invoice_item_rows(form_data):
-    descriptions = form_data.getlist("invoice_item_description")
-    account_ids = form_data.getlist("invoice_item_account_id")
-    qtys = form_data.getlist("invoice_item_qty")
-    unit_prices = form_data.getlist("invoice_item_unit_price")
-    max_len = max(len(descriptions), len(account_ids), len(qtys), len(unit_prices), 1)
-    items = []
-    for index in range(max_len):
-        items.append(
-            {
-                "description": descriptions[index] if index < len(descriptions) else "",
-                "account_id": account_ids[index] if index < len(account_ids) else "",
-                "qty": qtys[index] if index < len(qtys) else "",
-                "unit_price": unit_prices[index] if index < len(unit_prices) else "",
-            }
-        )
-    return items
-
-
-def _parse_journal_line_rows(form_data):
-    account_ids = form_data.getlist("journal_line_account_id")
-    descriptions = form_data.getlist("journal_line_description")
-    debits = form_data.getlist("journal_line_debit")
-    credits = form_data.getlist("journal_line_credit")
-    max_len = max(len(account_ids), len(descriptions), len(debits), len(credits), 1)
-    lines = []
-    for index in range(max_len):
-        lines.append(
-            {
-                "account_id": account_ids[index] if index < len(account_ids) else "",
-                "description": descriptions[index] if index < len(descriptions) else "",
-                "debit": debits[index] if index < len(debits) else "",
-                "credit": credits[index] if index < len(credits) else "",
-            }
-        )
-    return lines
-
-
-def _get_accounting_lock_date(settings):
-    accounting_settings = settings.get("accounting") if isinstance(settings, dict) else {}
-    raw_lock_date = str((accounting_settings or {}).get("lock_date") or "").strip()
-    if not raw_lock_date:
-        return ""
-    return _safe_iso_date(raw_lock_date, "")
-
-
-def _ensure_accounting_date_unlocked(settings, document_date, action_label):
-    lock_date = _get_accounting_lock_date(settings)
-    normalized_document_date = _safe_iso_date(document_date, "")
-    if lock_date and normalized_document_date and normalized_document_date <= lock_date:
-        raise ValueError(
-            f"{action_label} is locked for {normalized_document_date}. Periods on or before {lock_date} are closed."
-        )
-    return normalized_document_date
-
-
-def _query_int_arg(name):
-    candidate = str(request.args.get(name) or "").strip()
-    if not candidate:
-        return None
-    try:
-        return int(candidate)
-    except ValueError:
-        return None
 
 
 def device_value(device, key, default=None):
@@ -1003,6 +916,7 @@ ALARM_MESSAGE_TRANSLATIONS_TH = {
     "Manual": "ปุ่มกดแจ้งเหตุ",
     "Gas": "ก๊าซ",
 }
+ALARM_MESSAGE_TRANSLATIONS_TH["Beam"] = "Beam"
 
 
 def translate_alarm_message(message):
@@ -1173,6 +1087,7 @@ def index():
         floor_id=floor_id,
         metrics=monitor_metric_keys,
     )
+    apply_device_display_zones(devices, device_metrics)
     device_metric_severity = {
         device_id: {
             metric: data_service.get_metric_severity(settings, metric, reading.get("value"))
@@ -1380,6 +1295,7 @@ def map_full():
         floor_id=floor_id,
         metrics=monitor_metric_keys,
     )
+    apply_device_display_zones(devices, device_metrics)
     device_metric_severity = {
         device_id: {
             metric: data_service.get_metric_severity(settings, metric, reading.get("value"))
@@ -3139,12 +3055,29 @@ def _load_source_preview_data(
         latest_values = serial_preview.get("latest_values", {"items": []})
         settings_updated = False
         ingest_result = {"inserted": 0, "matched_devices": 0}
+        replay_file_path = str(_source_serial_config(normalized_source).get("replay_file_path") or "").strip()
+        if replay_file_path:
+            try:
+                discovery_payload = serial_source_service.build_field_discovery_payload_from_file(
+                    replay_file_path,
+                    source_name=str(normalized_source.get("name") or "").strip() or "Serial Source",
+                    timezone_name=get_project_timezone_name(settings),
+                )
+            except Exception:
+                discovery_payload = {"items": []}
+            if _has_latest_value_payload(discovery_payload):
+                settings_updated = data_service.sync_source_metric_fields(
+                    settings,
+                    normalized_source.get("name"),
+                    discovery_payload,
+                ) or settings_updated
         if serial_preview.get("should_ingest") and _has_latest_value_payload(latest_values):
-            settings_updated, ingest_result = _sync_latest_values_payload_to_sensor_data(
+            ingest_settings_updated, ingest_result = _sync_latest_values_payload_to_sensor_data(
                 settings,
                 normalized_source,
                 latest_values,
             )
+            settings_updated = settings_updated or ingest_settings_updated
         normalized_source["_latest_values_ingest_result"] = ingest_result
         normalized_source["_latest_values_settings_updated"] = bool(settings_updated)
         serial_preview.update(
@@ -4973,6 +4906,9 @@ def settings():
             _sync_endpoint_token_store(settings)
 
         if settings_section == "design":
+            settings["enforce_sensor_label_type_position"] = bool(
+                request.form.get("enforce_sensor_label_type_position")
+            )
             tag_visibility = settings.get("tag_visibility", {})
             tag_visibility["iaq"] = {
                 "temperature": bool(request.form.get("iaq_tag_temperature")),
@@ -4985,6 +4921,7 @@ def settings():
             tag_visibility["fire"] = {
                 "smoke": bool(request.form.get("fire_tag_smoke")),
                 "heat": bool(request.form.get("fire_tag_heat")),
+                "beam": bool(request.form.get("fire_tag_beam")),
                 "flow_switch": bool(request.form.get("fire_tag_flow_switch")),
                 "supervisory_valve": bool(request.form.get("fire_tag_supervisory_valve")),
                 "manual": bool(request.form.get("fire_tag_manual")),
@@ -5094,6 +5031,7 @@ def settings():
             fire_severity_icons = request.form.getlist("fire_severity_icon")
             fire_smoke_values = request.form.getlist("fire_smoke")
             fire_heat_values = request.form.getlist("fire_heat")
+            fire_beam_values = request.form.getlist("fire_beam")
             fire_flow_switch_values = request.form.getlist("fire_flow_switch")
             fire_supervisory_values = request.form.getlist("fire_supervisory_valve")
             fire_manual_values = request.form.getlist("fire_manual")
@@ -5106,6 +5044,7 @@ def settings():
                 icon,
                 smoke,
                 heat,
+                beam,
                 flow_switch,
                 supervisory_valve,
                 manual,
@@ -5117,6 +5056,7 @@ def settings():
                 fire_severity_icons,
                 fire_smoke_values,
                 fire_heat_values,
+                fire_beam_values,
                 fire_flow_switch_values,
                 fire_supervisory_values,
                 fire_manual_values,
@@ -5129,6 +5069,7 @@ def settings():
                     or icon.strip()
                     or smoke.strip()
                     or heat.strip()
+                    or beam.strip()
                     or flow_switch.strip()
                     or supervisory_valve.strip()
                     or manual.strip()
@@ -5142,6 +5083,7 @@ def settings():
                             "icon": icon.strip(),
                             "smoke": smoke.strip(),
                             "heat": heat.strip(),
+                            "beam": beam.strip(),
                             "flow_switch": flow_switch.strip(),
                             "supervisory_valve": supervisory_valve.strip(),
                             "manual": manual.strip(),
@@ -5180,6 +5122,9 @@ def settings():
                                 request.form.get(f"source_metric_source_field__{metric_key}")
                                 or raw_key
                                 or metric_key
+                            ).strip(),
+                            "field_role": (
+                                request.form.get(f"source_metric_field_role__{metric_key}") or ""
                             ).strip(),
                             "label": (
                                 request.form.get(f"source_metric_label__{metric_key}")
@@ -5360,116 +5305,6 @@ def settings():
                     data_service.delete_devices_by_floor(floor_id)
                 settings["floor_plan_logos"] = floor_logos
                 settings["floor_names"] = floor_names
-
-        if settings_section == "account":
-            accounting_settings = settings.get("accounting", {})
-            accounting_modules = accounting_settings.get("modules", {})
-            accounting_settings["enabled"] = bool(request.form.get("accounting_enabled"))
-            accounting_settings["business_type"] = (
-                request.form.get("accounting_business_type")
-                or accounting_settings.get("business_type")
-                or "General Business"
-            ).strip() or "General Business"
-            accounting_settings["base_currency"] = (
-                request.form.get("accounting_base_currency")
-                or accounting_settings.get("base_currency")
-                or "THB"
-            ).strip().upper() or "THB"
-            reporting_basis = str(
-                request.form.get("accounting_reporting_basis")
-                or accounting_settings.get("reporting_basis")
-                or "accrual"
-            ).strip().lower()
-            accounting_settings["reporting_basis"] = (
-                reporting_basis if reporting_basis in {"accrual", "cash"} else "accrual"
-            )
-            accounting_settings["fiscal_year_start_month"] = parse_int_form_value(
-                "accounting_fiscal_year_start_month",
-                accounting_settings.get("fiscal_year_start_month", 1),
-                minimum=1,
-                maximum=12,
-            )
-            accounting_settings["default_credit_term_days"] = parse_int_form_value(
-                "accounting_default_credit_term_days",
-                accounting_settings.get("default_credit_term_days", 30),
-                minimum=0,
-                maximum=3650,
-            )
-            accounting_settings["tax_rate"] = parse_float_form_value(
-                "accounting_tax_rate",
-                accounting_settings.get("tax_rate", 7.0),
-                minimum=0,
-                maximum=100,
-            )
-            tax_mode = str(
-                request.form.get("accounting_tax_mode")
-                or accounting_settings.get("tax_mode")
-                or "vat"
-            ).strip().lower()
-            accounting_settings["tax_mode"] = (
-                tax_mode if tax_mode in {"vat", "inclusive", "exclusive", "multi_rate"} else "vat"
-            )
-            accounting_settings["lock_date"] = (
-                request.form.get("accounting_lock_date")
-                or accounting_settings.get("lock_date")
-                or ""
-            ).strip()
-
-            accounting_modules["chart_of_accounts"] = {
-                "enabled": bool(request.form.get("account_module_chart_of_accounts_enabled")),
-                "assets": bool(request.form.get("account_chart_assets")),
-                "liabilities": bool(request.form.get("account_chart_liabilities")),
-                "income": bool(request.form.get("account_chart_income")),
-                "expenses": bool(request.form.get("account_chart_expenses")),
-                "customize_by_business_type": bool(request.form.get("account_chart_customize")),
-            }
-            accounting_modules["transactions"] = {
-                "enabled": bool(request.form.get("account_module_transactions_enabled")),
-                "sales_invoice": bool(request.form.get("account_transactions_sales_invoice")),
-                "purchase_invoice": bool(request.form.get("account_transactions_purchase_invoice")),
-                "payment_entry": bool(request.form.get("account_transactions_payment_entry")),
-                "journal_entry": bool(request.form.get("account_transactions_journal_entry")),
-            }
-            accounting_modules["receivables_payables"] = {
-                "enabled": bool(request.form.get("account_module_receivables_payables_enabled")),
-                "accounts_receivable": bool(request.form.get("account_receivables_enabled")),
-                "accounts_payable": bool(request.form.get("account_payables_enabled")),
-                "credit_terms": bool(request.form.get("account_credit_terms_enabled")),
-                "payment_reminders": bool(request.form.get("account_payment_reminders_enabled")),
-            }
-            accounting_modules["taxes"] = {
-                "enabled": bool(request.form.get("account_module_taxes_enabled")),
-                "vat": bool(request.form.get("account_taxes_vat")),
-                "sales_tax": bool(request.form.get("account_taxes_sales_tax")),
-                "purchase_tax": bool(request.form.get("account_taxes_purchase_tax")),
-                "multi_structure": bool(request.form.get("account_taxes_multi_structure")),
-                "auto_apply": bool(request.form.get("account_taxes_auto_apply")),
-            }
-            accounting_modules["financial_reports"] = {
-                "enabled": bool(request.form.get("account_module_financial_reports_enabled")),
-                "profit_and_loss": bool(request.form.get("account_reports_profit_and_loss")),
-                "balance_sheet": bool(request.form.get("account_reports_balance_sheet")),
-                "cash_flow": bool(request.form.get("account_reports_cash_flow")),
-                "general_ledger": bool(request.form.get("account_reports_general_ledger")),
-                "trial_balance": bool(request.form.get("account_reports_trial_balance")),
-                "real_time": bool(request.form.get("account_reports_real_time")),
-            }
-            accounting_modules["period_closing"] = {
-                "enabled": bool(request.form.get("account_module_period_closing_enabled")),
-                "monthly_close": bool(request.form.get("account_period_monthly_close")),
-                "yearly_close": bool(request.form.get("account_period_yearly_close")),
-                "lock_backdated_entries": bool(request.form.get("account_period_lock_backdated")),
-            }
-            accounting_modules["integrations"] = {
-                "enabled": bool(request.form.get("account_module_integrations_enabled")),
-                "sales": bool(request.form.get("account_integrations_sales")),
-                "purchase": bool(request.form.get("account_integrations_purchase")),
-                "stock": bool(request.form.get("account_integrations_stock")),
-                "payroll": bool(request.form.get("account_integrations_payroll")),
-                "auto_posting": bool(request.form.get("account_integrations_auto_posting")),
-            }
-            accounting_settings["modules"] = accounting_modules
-            settings["accounting"] = accounting_settings
 
         if settings_section == "user":
             user_action = str(request.form.get("user_action") or "").strip()
@@ -5680,437 +5515,6 @@ def delete_settings_file():
     return jsonify({"deleted": upload_path, "settings_updated": updated})
 
 
-@app.route("/accounting")
-@require_page_access("settings")
-def accounting_workspace():
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-
-    active_tab = get_active_accounting_tab()
-    today = datetime.now(get_project_timezone(settings)).date()
-    report_end_date = _safe_iso_date(request.args.get("report_end_date"), today.isoformat())
-    report_start_date = _safe_iso_date(
-        request.args.get("report_start_date"),
-        today.replace(day=1).isoformat(),
-    )
-    ledger_account_id = str(request.args.get("ledger_account_id") or "").strip()
-    edit_invoice_id = _query_int_arg("edit_invoice_id")
-    edit_journal_id = _query_int_arg("edit_journal_id")
-    edit_payment_id = _query_int_arg("edit_payment_id")
-    selected_payment_invoice_id = _query_int_arg("payment_invoice_id")
-
-    accounts = accounting_service.list_accounts(include_inactive=True)
-    active_accounts = [account for account in accounts if account.get("is_active")]
-    income_accounts = [account for account in active_accounts if account["category"] == "income"]
-    expense_accounts = [
-        account for account in active_accounts if account["category"] in {"expense", "asset"}
-    ]
-    settlement_accounts = [
-        account for account in active_accounts if account["category"] in {"asset", "liability"}
-    ]
-    tax_accounts = [
-        account
-        for account in active_accounts
-        if account.get("account_type") == "tax" or "tax" in (account.get("name") or "").lower()
-    ]
-    payment_accounts = [
-        account
-        for account in active_accounts
-        if account["category"] == "asset" and account.get("account_type") in {"cash", "bank"}
-    ] or [account for account in active_accounts if account["category"] == "asset"]
-
-    invoices = accounting_service.list_invoices(limit=250)
-    journals = accounting_service.list_journal_entries(limit=250)
-    payments = accounting_service.list_payment_entries(limit=250)
-    open_invoices = accounting_service.list_open_invoices(limit=250)
-    aging = accounting_service.get_ar_ap_aging(as_of_date=report_end_date)
-    edit_invoice = None
-    edit_journal = None
-    edit_payment = None
-
-    if edit_invoice_id:
-        try:
-            edit_invoice = accounting_service.get_invoice(edit_invoice_id)
-        except ValueError:
-            flash("Invoice not found for editing.", "warning")
-    if edit_journal_id:
-        try:
-            edit_journal = accounting_service.get_journal_entry(edit_journal_id)
-        except ValueError:
-            flash("Journal entry not found for editing.", "warning")
-    if edit_payment_id:
-        try:
-            edit_payment = accounting_service.get_payment_entry(edit_payment_id)
-        except ValueError:
-            flash("Payment entry not found for editing.", "warning")
-
-    if edit_payment and not selected_payment_invoice_id:
-        selected_payment_invoice_id = edit_payment.get("invoice_id")
-
-    return render_template(
-        "accounting.html",
-        settings=settings,
-        active_accounting_tab=active_tab,
-        accounts=accounts,
-        active_accounts=active_accounts,
-        income_accounts=income_accounts,
-        expense_accounts=expense_accounts,
-        settlement_accounts=settlement_accounts,
-        tax_accounts=tax_accounts,
-        payment_accounts=payment_accounts,
-        invoices=invoices,
-        payments=payments,
-        journals=journals,
-        open_invoices=open_invoices,
-        aging=aging,
-        edit_invoice=edit_invoice,
-        edit_journal=edit_journal,
-        edit_payment=edit_payment,
-        selected_payment_invoice_id=selected_payment_invoice_id,
-        accounting_summary=accounting_service.get_accounting_summary(
-            start_date=report_start_date,
-            end_date=report_end_date,
-        ),
-        trial_balance=accounting_service.get_trial_balance(
-            start_date=report_start_date,
-            end_date=report_end_date,
-        ),
-        profit_and_loss=accounting_service.get_profit_and_loss(
-            start_date=report_start_date,
-            end_date=report_end_date,
-        ),
-        balance_sheet=accounting_service.get_balance_sheet(as_of_date=report_end_date),
-        general_ledger=accounting_service.get_general_ledger(
-            account_id=ledger_account_id or None,
-            start_date=report_start_date,
-            end_date=report_end_date,
-        ),
-        report_start_date=report_start_date,
-        report_end_date=report_end_date,
-        ledger_account_id=ledger_account_id,
-        accounting_lock_date=_get_accounting_lock_date(settings),
-        today_iso=today.isoformat(),
-        format_money=lambda value: f"{float(value or 0):,.2f}",
-    )
-
-
-@app.post("/accounting/accounts")
-@require_page_access("settings")
-def accounting_create_account():
-    redirect_response, _settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    try:
-        accounting_service.create_account(
-            code=request.form.get("account_code"),
-            name=request.form.get("account_name"),
-            category=request.form.get("account_category"),
-            account_type=request.form.get("account_type"),
-            description=request.form.get("account_description"),
-            parent_id=request.form.get("account_parent_id"),
-            is_group=bool(request.form.get("account_is_group")),
-            is_active=bool(request.form.get("account_is_active")),
-        )
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash("Account created.", "success")
-    return redirect(url_for("accounting_workspace", tab="chart"))
-
-
-@app.post("/accounting/accounts/<int:account_id>/toggle")
-@require_page_access("settings")
-def accounting_toggle_account(account_id):
-    redirect_response, _settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    try:
-        is_active = accounting_service.toggle_account_active(account_id)
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash(
-            "Account activated." if is_active else "Account archived.",
-            "success",
-        )
-    return redirect(url_for("accounting_workspace", tab="chart"))
-
-
-@app.post("/accounting/accounts/<int:account_id>/delete")
-@require_page_access("settings")
-def accounting_delete_account(account_id):
-    redirect_response, _settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    try:
-        accounting_service.delete_account(account_id)
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash("Account deleted.", "success")
-    return redirect(url_for("accounting_workspace", tab="chart"))
-
-
-@app.post("/accounting/invoices")
-@require_page_access("settings")
-def accounting_create_invoice():
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    invoice_id = str(request.form.get("invoice_id") or "").strip()
-    invoice_action = str(request.form.get("invoice_action") or "save_draft").strip().lower()
-    issue_date = request.form.get("invoice_issue_date")
-    try:
-        _ensure_accounting_date_unlocked(settings, issue_date, "Invoice")
-        invoice_payload = {
-            "invoice_type": request.form.get("invoice_type"),
-            "counterparty_name": request.form.get("invoice_counterparty_name"),
-            "issue_date": issue_date,
-            "due_date": request.form.get("invoice_due_date"),
-            "settlement_account_id": request.form.get("invoice_settlement_account_id"),
-            "items": _parse_invoice_item_rows(request.form),
-            "tax_rate": request.form.get("invoice_tax_rate"),
-            "tax_account_id": request.form.get("invoice_tax_account_id"),
-            "currency": request.form.get("invoice_currency"),
-            "notes": request.form.get("invoice_notes"),
-        }
-        if invoice_id:
-            saved_invoice_id = accounting_service.update_invoice(
-                invoice_id=int(invoice_id),
-                **invoice_payload,
-            )
-        else:
-            saved_invoice_id = accounting_service.create_invoice(
-                **invoice_payload,
-                status="draft",
-            )
-        if invoice_action == "post_invoice":
-            accounting_service.post_invoice(saved_invoice_id, next_status="issued")
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash(
-            "Invoice posted successfully." if invoice_action == "post_invoice" else (
-                "Invoice draft updated." if invoice_id else "Invoice saved as draft."
-            ),
-            "success",
-        )
-    return redirect(url_for("accounting_workspace", tab="invoices"))
-
-
-@app.post("/accounting/invoices/<int:invoice_id>/post")
-@require_page_access("settings")
-def accounting_post_invoice(invoice_id):
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    try:
-        invoice = accounting_service.get_invoice(invoice_id)
-        _ensure_accounting_date_unlocked(settings, invoice.get("issue_date"), "Invoice posting")
-        accounting_service.post_invoice(
-            invoice_id,
-            next_status=request.form.get("invoice_next_status") or "issued",
-        )
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash("Invoice posted to journal.", "success")
-    return redirect(url_for("accounting_workspace", tab="invoices"))
-
-
-@app.post("/accounting/invoices/<int:invoice_id>/delete")
-@require_page_access("settings")
-def accounting_delete_invoice(invoice_id):
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    try:
-        invoice = accounting_service.get_invoice(invoice_id)
-        _ensure_accounting_date_unlocked(settings, invoice.get("issue_date"), "Invoice deletion")
-        accounting_service.delete_invoice(invoice_id)
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash("Draft invoice deleted.", "success")
-    return redirect(url_for("accounting_workspace", tab="invoices"))
-
-
-@app.post("/accounting/payments")
-@require_page_access("settings")
-def accounting_create_payment():
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    payment_id = str(request.form.get("payment_id") or "").strip()
-    payment_action = str(request.form.get("payment_action") or "save_draft").strip().lower()
-    payment_date = request.form.get("payment_date")
-    try:
-        _ensure_accounting_date_unlocked(settings, payment_date, "Payment entry")
-        payment_payload = {
-            "invoice_id": request.form.get("payment_invoice_id"),
-            "payment_date": payment_date,
-            "payment_account_id": request.form.get("payment_account_id"),
-            "amount": request.form.get("payment_amount"),
-            "memo": request.form.get("payment_memo"),
-        }
-        if payment_id:
-            saved_payment_id = accounting_service.update_payment_entry(
-                payment_id=int(payment_id),
-                **payment_payload,
-            )
-        else:
-            saved_payment_id = accounting_service.create_payment_entry(
-                **payment_payload,
-                status="draft",
-            )
-        if payment_action == "post_payment":
-            accounting_service.post_payment_entry(saved_payment_id)
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash(
-            "Payment posted successfully." if payment_action == "post_payment" else (
-                "Payment draft updated." if payment_id else "Payment saved as draft."
-            ),
-            "success",
-        )
-    return redirect(url_for("accounting_workspace", tab="payments"))
-
-
-@app.post("/accounting/payments/<int:payment_id>/post")
-@require_page_access("settings")
-def accounting_post_payment(payment_id):
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    try:
-        payment = accounting_service.get_payment_entry(payment_id)
-        _ensure_accounting_date_unlocked(settings, payment.get("payment_date"), "Payment posting")
-        accounting_service.post_payment_entry(payment_id)
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash("Draft payment posted.", "success")
-    return redirect(url_for("accounting_workspace", tab="payments"))
-
-
-@app.post("/accounting/payments/<int:payment_id>/delete")
-@require_page_access("settings")
-def accounting_delete_payment(payment_id):
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    try:
-        payment = accounting_service.get_payment_entry(payment_id)
-        _ensure_accounting_date_unlocked(settings, payment.get("payment_date"), "Payment deletion")
-        accounting_service.delete_payment_entry(payment_id)
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash("Draft payment deleted.", "success")
-    return redirect(url_for("accounting_workspace", tab="payments"))
-
-
-@app.post("/accounting/journals")
-@require_page_access("settings")
-def accounting_create_journal():
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    journal_id = str(request.form.get("journal_id") or "").strip()
-    journal_action = str(request.form.get("journal_action") or "save_draft").strip().lower()
-    entry_date = request.form.get("journal_entry_date")
-    try:
-        _ensure_accounting_date_unlocked(settings, entry_date, "Journal entry")
-        journal_payload = {
-            "entry_date": entry_date,
-            "memo": request.form.get("journal_memo"),
-            "lines": _parse_journal_line_rows(request.form),
-        }
-        if journal_id:
-            saved_entry_id = accounting_service.update_journal_entry(
-                entry_id=int(journal_id),
-                **journal_payload,
-            )
-        else:
-            saved_entry_id = accounting_service.create_journal_entry(
-                **journal_payload,
-                status="draft",
-            )
-        if journal_action == "post_journal":
-            accounting_service.post_journal_entry(saved_entry_id)
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash(
-            "Journal posted successfully." if journal_action == "post_journal" else (
-                "Journal draft updated." if journal_id else "Journal saved as draft."
-            ),
-            "success",
-        )
-    return redirect(url_for("accounting_workspace", tab="journals"))
-
-
-@app.post("/accounting/journals/<int:entry_id>/post")
-@require_page_access("settings")
-def accounting_post_journal(entry_id):
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    try:
-        journal = accounting_service.get_journal_entry(entry_id)
-        _ensure_accounting_date_unlocked(settings, journal.get("entry_date"), "Journal posting")
-        accounting_service.post_journal_entry(entry_id)
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash("Draft journal posted.", "success")
-    return redirect(url_for("accounting_workspace", tab="journals"))
-
-
-@app.post("/accounting/journals/<int:entry_id>/delete")
-@require_page_access("settings")
-def accounting_delete_journal(entry_id):
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    try:
-        journal = accounting_service.get_journal_entry(entry_id)
-        _ensure_accounting_date_unlocked(settings, journal.get("entry_date"), "Journal deletion")
-        accounting_service.delete_journal_entry(entry_id)
-    except ValueError as exc:
-        flash(str(exc), "danger")
-    else:
-        flash("Journal entry deleted.", "success")
-    return redirect(url_for("accounting_workspace", tab="journals"))
-
-
-@app.post("/accounting/closing")
-@require_page_access("settings")
-def accounting_update_closing():
-    redirect_response, settings = _accounting_access_or_redirect()
-    if redirect_response:
-        return redirect_response
-    raw_lock_date = str(request.form.get("accounting_lock_date") or "").strip()
-    if raw_lock_date:
-        normalized_lock_date = _safe_iso_date(raw_lock_date, "")
-        if not normalized_lock_date:
-            flash("Enter a valid lock date in YYYY-MM-DD format.", "danger")
-            return redirect(url_for("accounting_workspace", tab="overview"))
-        settings.setdefault("accounting", {})["lock_date"] = normalized_lock_date
-        settings_service.save_settings(settings)
-        flash(
-            f"Accounting periods on or before {normalized_lock_date} are now locked.",
-            "success",
-        )
-    else:
-        settings.setdefault("accounting", {})["lock_date"] = ""
-        settings_service.save_settings(settings)
-        flash("Accounting lock date cleared.", "success")
-    return redirect(url_for("accounting_workspace", tab="overview"))
-
-
 @app.post("/api/devices")
 def create_device():
     if not session.get("is_admin"):
@@ -6123,13 +5527,25 @@ def create_device():
     if not floor_id:
         return jsonify({"error": "Missing floor_id"}), 400
     settings = settings_service.load_settings()
-    device = data_service.create_device(
-        floor_id,
-        zone=zone or "Z1",
-        sensor_type=sensor_type or "DZ",
-        sensor_name=sensor_name,
-        sensor_icon=settings.get("sensor_icon"),
-    )
+    try:
+        device = data_service.create_device(
+            floor_id,
+            zone=zone or "Z1",
+            sensor_type=sensor_type or "DZ",
+            sensor_name=sensor_name,
+            sensor_icon=settings.get("sensor_icon"),
+        )
+    except data_service.DuplicateDeviceLabelError as exc:
+        return (
+            jsonify(
+                {
+                    "error": "Duplicate label",
+                    "label": exc.label,
+                    "duplicate_device_id": exc.duplicate_device_id,
+                }
+            ),
+            409,
+        )
     device["sensor_icon_url"] = build_sensor_icon_url(
         device.get("sensor_icon"),
         settings.get("sensor_icon"),
@@ -6203,7 +5619,19 @@ def update_device_label(device_id):
         return jsonify({"error": "Unauthorized"}), 403
     payload = request.get_json(silent=True) or {}
     label = (payload.get("label") or "").strip()
-    data_service.update_device_label(device_id, label)
+    try:
+        data_service.update_device_label(device_id, label)
+    except data_service.DuplicateDeviceLabelError as exc:
+        return (
+            jsonify(
+                {
+                    "error": "Duplicate label",
+                    "label": exc.label,
+                    "duplicate_device_id": exc.duplicate_device_id,
+                }
+            ),
+            409,
+        )
     return jsonify({"device_id": device_id, "label": label})
 
 

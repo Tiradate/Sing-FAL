@@ -96,11 +96,72 @@ SOURCE_METRIC_LABEL_OVERRIDES = {
 FIRE_DETECTOR_FIELDS = [
     ("smoke", "Smoke"),
     ("heat", "Heat"),
+    ("beam", "Beam"),
     ("flow_switch", "Flow Switch"),
     ("supervisory_valve", "Supervisory valve"),
     ("manual", "Manual"),
     ("gas", "Gas"),
 ]
+SERIAL_SENSOR_FIELD_ROLE = "serial_sensor_field"
+SERIAL_METADATA_FIELD_ROLE = "serial_metadata"
+SERIAL_RESTORE_EVENT_PATTERN = re.compile(r"\b(?:RESTORED|RESTORE|RST)\b", re.IGNORECASE)
+SERIAL_LABEL_STOP_WORDS = {
+    "ALARM",
+    "ACTIVE",
+    "RESTORED",
+    "RESTORE",
+    "RST",
+    "ACT",
+    "COMMON",
+    "TRBL",
+    "ZONE",
+    "FLOOR",
+    "FL",
+    "F",
+    "DZ",
+}
+
+
+class DuplicateDeviceLabelError(ValueError):
+    def __init__(self, label, duplicate_device_id):
+        self.label = str(label or "").strip()
+        self.duplicate_device_id = str(duplicate_device_id or "").strip()
+        super().__init__(
+            f'Label "{self.label}" is already used by device "{self.duplicate_device_id}".'
+        )
+
+
+def _default_source_metric_flags(metric_key, field_role=""):
+    if field_role == SERIAL_SENSOR_FIELD_ROLE:
+        return {
+            "show_in_bulk_type": True,
+            "show_in_tooltip": False,
+            "save_to_db": True,
+            "enable_severity": False,
+        }
+    if field_role == SERIAL_METADATA_FIELD_ROLE:
+        return {
+            "show_in_bulk_type": False,
+            "show_in_tooltip": False,
+            "save_to_db": False,
+            "enable_severity": False,
+        }
+    return {
+        "show_in_bulk_type": True,
+        "show_in_tooltip": metric_key in METRIC_DISPLAY,
+        "save_to_db": metric_key in METRIC_DISPLAY,
+        "enable_severity": metric_key in METRIC_DISPLAY,
+    }
+
+
+def _looks_like_legacy_unknown_source_metric_defaults(field_config, metric_key):
+    return (
+        metric_key not in METRIC_DISPLAY
+        and bool(field_config.get("show_in_bulk_type", True))
+        and not bool(field_config.get("show_in_tooltip"))
+        and not bool(field_config.get("save_to_db"))
+        and not bool(field_config.get("enable_severity"))
+    )
 
 
 def get_metric_label(metric):
@@ -191,18 +252,27 @@ def get_source_metric_fields(settings):
         if not key:
             continue
         source_field = str(item.get("source_field") or item.get("field") or key).strip() or key
+        field_role = str(item.get("field_role") or "").strip()
+        default_flags = _default_source_metric_flags(key, field_role)
         normalized_fields.append(
             {
                 "key": key,
                 "source_field": source_field,
+                "field_role": field_role,
                 "label": str(item.get("label") or _default_source_metric_label(source_field)).strip()
                 or _default_source_metric_label(source_field),
                 "channel": str(item.get("channel") or "").strip(),
                 "unit": str(item.get("unit") or SOURCE_METRIC_UNITS.get(key, "")).strip(),
-                "show_in_bulk_type": bool(item.get("show_in_bulk_type", True)),
-                "show_in_tooltip": bool(item.get("show_in_tooltip", key in METRIC_DISPLAY)),
-                "save_to_db": bool(item.get("save_to_db", key in METRIC_DISPLAY)),
-                "enable_severity": bool(item.get("enable_severity", key in METRIC_DISPLAY)),
+                "show_in_bulk_type": bool(
+                    item.get("show_in_bulk_type", default_flags["show_in_bulk_type"])
+                ),
+                "show_in_tooltip": bool(
+                    item.get("show_in_tooltip", default_flags["show_in_tooltip"])
+                ),
+                "save_to_db": bool(item.get("save_to_db", default_flags["save_to_db"])),
+                "enable_severity": bool(
+                    item.get("enable_severity", default_flags["enable_severity"])
+                ),
                 "sources": sorted(
                     {
                         str(value).strip()
@@ -236,21 +306,30 @@ def sync_source_metric_fields(settings, source_name, latest_values_payload):
             key = _normalize_source_metric_field_key(source_field)
             if not key:
                 continue
+            field_role = str(entry.get("field_role") or "").strip()
+            default_flags = _default_source_metric_flags(key, field_role)
             existing = fields_by_key.get(key)
             if not existing:
                 existing = {
                     "key": key,
                     "source_field": source_field,
+                    "field_role": field_role,
                     "label": _default_source_metric_label(source_field),
                     "channel": str(entry.get("channel") or "").strip(),
                     "unit": SOURCE_METRIC_UNITS.get(key, ""),
-                    "show_in_bulk_type": True,
-                    "show_in_tooltip": key in METRIC_DISPLAY,
-                    "save_to_db": key in METRIC_DISPLAY,
-                    "enable_severity": key in METRIC_DISPLAY,
+                    "show_in_bulk_type": default_flags["show_in_bulk_type"],
+                    "show_in_tooltip": default_flags["show_in_tooltip"],
+                    "save_to_db": default_flags["save_to_db"],
+                    "enable_severity": default_flags["enable_severity"],
                     "sources": [],
                 }
                 fields_by_key[key] = existing
+                updated = True
+            elif field_role and existing.get("field_role") != field_role:
+                existing["field_role"] = field_role
+                updated = True
+            if field_role and _looks_like_legacy_unknown_source_metric_defaults(existing, key):
+                existing.update(default_flags)
                 updated = True
             if source_name and source_name not in existing.get("sources", []):
                 existing.setdefault("sources", []).append(source_name)
@@ -372,8 +451,45 @@ def update_device_sensor_types(device_id, sensor_types):
         )
 
 
+def _find_duplicate_device_label(label, exclude_device_id=None, conn=None):
+    normalized_label = str(label or "").strip()
+    if not normalized_label:
+        return None
+    owns_conn = conn is None
+    if owns_conn:
+        conn = connect(SENSOR_DB)
+    try:
+        query = """
+            SELECT device_id, label
+            FROM devices
+            WHERE lower(trim(COALESCE(label, ''))) = ?
+        """
+        params = [normalized_label.lower()]
+        normalized_device_id = str(exclude_device_id or "").strip()
+        if normalized_device_id:
+            query += " AND device_id <> ?"
+            params.append(normalized_device_id)
+        query += " LIMIT 1"
+        row = conn.execute(query, tuple(params)).fetchone()
+        return dict(row) if row else None
+    finally:
+        if owns_conn:
+            conn.close()
+
+
+def ensure_unique_device_label(label, exclude_device_id=None, conn=None):
+    duplicate = _find_duplicate_device_label(
+        label,
+        exclude_device_id=exclude_device_id,
+        conn=conn,
+    )
+    if duplicate:
+        raise DuplicateDeviceLabelError(label, duplicate.get("device_id"))
+
+
 def update_device_label(device_id, label):
     with connect(SENSOR_DB) as conn:
+        ensure_unique_device_label(label, exclude_device_id=device_id, conn=conn)
         conn.execute(
             "UPDATE devices SET label = ? WHERE device_id = ?",
             (label, device_id),
@@ -570,6 +686,172 @@ def _extract_fire_text(reading):
             if isinstance(value, str) and value.strip():
                 candidates.append(value)
     return " ".join(candidates)
+
+
+def _normalize_serial_match_text(value):
+    text = str(value or "").upper()
+    text = text.replace("_", " ").replace("/", " ").replace("-", " ")
+    text = re.sub(r"[^A-Z0-9]+", " ", text)
+    return " ".join(text.split())
+
+
+def _structured_label_alias(label):
+    parts = [part.strip() for part in re.split(r"[-_/]+", str(label or "")) if part.strip()]
+    if len(parts) >= 5:
+        return " ".join(parts[:-4])
+    if len(parts) >= 4:
+        return " ".join(parts[:-3])
+    return ""
+
+
+def _device_match_aliases(device_row):
+    aliases = []
+    for candidate in (
+        device_row.get("label"),
+        _structured_label_alias(device_row.get("label")),
+        device_row.get("source_device_name"),
+    ):
+        text = str(candidate or "").strip()
+        if text and text not in aliases:
+            aliases.append(text)
+    return aliases
+
+
+def _score_serial_label_match(label_text, haystack_text):
+    normalized_label = _normalize_serial_match_text(label_text)
+    normalized_haystack = _normalize_serial_match_text(haystack_text)
+    if not normalized_label or not normalized_haystack:
+        return 0
+    if normalized_label in normalized_haystack:
+        return 1000 + len(normalized_label)
+    haystack_tokens = set(normalized_haystack.split())
+    label_tokens = [
+        token
+        for token in normalized_label.split()
+        if len(token) >= 2 and token not in SERIAL_LABEL_STOP_WORDS
+    ]
+    if not label_tokens:
+        return 0
+    matched_tokens = [token for token in label_tokens if token in haystack_tokens]
+    if not matched_tokens:
+        return 0
+    matched_length = sum(len(token) for token in matched_tokens)
+    if len(matched_tokens) == len(label_tokens):
+        return 600 + matched_length
+    if len(matched_tokens) >= 2:
+        return 200 + matched_length
+    return matched_length
+
+
+def _build_serial_item_match_text(item, value_item=None):
+    candidates = []
+    if isinstance(value_item, dict):
+        candidates.extend([value_item.get("field"), value_item.get("value")])
+    for key in ("display_name", "name", "device_uuid", "device_id"):
+        candidates.append(item.get(key) if isinstance(item, dict) else None)
+    for entry in item.get("values", []) if isinstance(item, dict) else []:
+        if not isinstance(entry, dict):
+            continue
+        candidates.extend([entry.get("field"), entry.get("value")])
+    return " ".join(str(value).strip() for value in candidates if str(value or "").strip())
+
+
+def _match_serial_device_row(device_rows, source_name, metric_key, item, value_item):
+    normalized_source_name = str(source_name or "").strip()
+    haystack_text = _build_serial_item_match_text(item, value_item=value_item)
+    best_row = None
+    best_score = 0
+    for device_row in device_rows:
+        device_source_name = str(device_row.get("source_name") or "").strip()
+        if normalized_source_name and device_source_name and device_source_name != normalized_source_name:
+            continue
+        allowed_metrics = device_row.get("_allowed_metrics", set())
+        if allowed_metrics and metric_key not in allowed_metrics:
+            continue
+        score = max(
+            (
+                _score_serial_label_match(alias, haystack_text)
+                for alias in _device_match_aliases(device_row)
+            ),
+            default=0,
+        )
+        if score > best_score:
+            best_row = device_row
+            best_score = score
+    return best_row if best_score > 0 else None
+
+
+def _extract_serial_zone_detail(device_row, raw_text):
+    text = str(raw_text or "").strip()
+    if not text:
+        return ""
+    best_detail = ""
+    best_match_length = -1
+    for alias in _device_match_aliases(device_row):
+        tokens = re.findall(r"[A-Z0-9]+", str(alias or "").upper())
+        if not tokens:
+            continue
+        pattern = r"(?<![A-Z0-9])" + r"[^A-Z0-9]+".join(re.escape(token) for token in tokens) + r"(?![A-Z0-9])"
+        match = re.search(pattern, text.upper())
+        if not match:
+            continue
+        detail = text[match.end():].strip(" \t-_/|")
+        if detail and len(match.group(0)) > best_match_length:
+            best_detail = detail
+            best_match_length = len(match.group(0))
+    return best_detail
+
+
+def resolve_device_display_zone(device, latest_metrics=None):
+    device_row = device if isinstance(device, dict) else {}
+    zone = str(device_row.get("zone") or "").strip()
+    if zone.upper() != "ALL":
+        return zone
+
+    metrics = latest_metrics if isinstance(latest_metrics, dict) else {}
+    candidates = []
+    for metric_key, reading in metrics.items():
+        if not isinstance(reading, dict):
+            continue
+        raw_value = str(reading.get("raw_value") or "").strip()
+        if not raw_value:
+            continue
+        detail = _extract_serial_zone_detail(device_row, raw_value)
+        if not detail:
+            continue
+        candidates.append(
+            (
+                datetime.fromisoformat(_normalize_timestamp(reading.get("ts"))),
+                str(metric_key or ""),
+                detail,
+            )
+        )
+
+    if not candidates:
+        return zone
+
+    candidates.sort(key=lambda item: (item[0], item[1]))
+    return candidates[-1][2]
+
+
+def _is_serial_restore_event(value_item, item):
+    haystack = _build_serial_item_match_text(item, value_item=value_item)
+    return bool(SERIAL_RESTORE_EVENT_PATTERN.search(haystack))
+
+
+def _clear_serial_fire_alarm_events(conn, device_id):
+    metric_keys = [metric_key for metric_key, _ in FIRE_DETECTOR_FIELDS]
+    if not metric_keys:
+        return
+    placeholders = ", ".join("?" for _ in metric_keys)
+    conn.execute(
+        f"""
+        UPDATE alarm_events
+        SET active = 0
+        WHERE device_id = ? AND active = 1 AND metric IN ({placeholders})
+        """,
+        (device_id, *metric_keys),
+    )
 
 
 def _find_fire_matches(fire_mapping, fire_text):
@@ -881,13 +1163,14 @@ def ingest_source_latest_values_payload(payload, source_name=None, *, settings=N
         conn = connect(SENSOR_DB)
     ingestion_ts = datetime.now(timezone.utc).isoformat()
 
-    device_rows = conn.execute("SELECT * FROM devices").fetchall()
+    device_rows = [dict(row) for row in conn.execute("SELECT * FROM devices").fetchall()]
     mapped_by_uuid = {}
     mapped_by_name = {}
     for row in device_rows:
-        mapped_source_name = (row["source_name"] or "").strip()
-        source_device_uuid = (row["source_device_uuid"] or "").strip()
-        source_device_name = (row["source_device_name"] or "").strip()
+        row["_allowed_metrics"] = set(parse_device_sensor_types(row.get("sensor_types")))
+        mapped_source_name = str(row.get("source_name") or "").strip()
+        source_device_uuid = str(row.get("source_device_uuid") or "").strip()
+        source_device_name = str(row.get("source_device_name") or "").strip()
         if source_device_uuid:
             mapped_by_uuid[(mapped_source_name, source_device_uuid)] = row
         if source_device_name:
@@ -940,31 +1223,25 @@ def ingest_source_latest_values_payload(payload, source_name=None, *, settings=N
             ).strip()
             if not device_uuid:
                 continue
-            device_row = mapped_by_uuid.get((str(source_name or "").strip(), device_uuid))
-            if not device_row:
+            normalized_source_name = str(source_name or "").strip()
+            matched_device_ids = set()
+            exact_device_row = mapped_by_uuid.get((normalized_source_name, device_uuid))
+            if not exact_device_row:
                 candidate_names = item_device_names(item) + [device_uuid]
                 for candidate_name in candidate_names:
-                    device_row = mapped_by_name.get(
-                        (str(source_name or "").strip(), str(candidate_name or "").strip())
+                    exact_device_row = mapped_by_name.get(
+                        (normalized_source_name, str(candidate_name or "").strip())
                     )
-                    if device_row:
+                    if exact_device_row:
                         break
-            if not device_row:
-                continue
-            matched_devices += 1
             values = item.get("values")
             if not isinstance(values, list):
                 continue
-            floor_id = (device_row["floor_id"] or "").strip()
-            device_id = device_row["device_id"]
-            allowed_metrics = set(parse_device_sensor_types(device_row["sensor_types"]))
             for value_item in values:
                 if not isinstance(value_item, dict):
                     continue
                 metric_key = _normalize_source_metric_field_key(value_item.get("field"))
                 if not metric_key:
-                    continue
-                if allowed_metrics and metric_key not in allowed_metrics:
                     continue
                 field_config = field_configs.get(metric_key)
                 if not field_config:
@@ -972,6 +1249,28 @@ def ingest_source_latest_values_payload(payload, source_name=None, *, settings=N
                 raw_value = value_item.get("value")
                 if raw_value in (None, ""):
                     continue
+                device_row = exact_device_row
+                if device_row:
+                    allowed_metrics = device_row.get("_allowed_metrics", set())
+                    if allowed_metrics and metric_key not in allowed_metrics:
+                        device_row = None
+                if not device_row and value_item.get("field_role") == SERIAL_SENSOR_FIELD_ROLE:
+                    device_row = _match_serial_device_row(
+                        device_rows,
+                        normalized_source_name,
+                        metric_key,
+                        item,
+                        value_item,
+                    )
+                if not device_row:
+                    continue
+                device_id = device_row["device_id"]
+                floor_id = str(device_row.get("floor_id") or "").strip()
+                if not floor_id:
+                    continue
+                if device_id not in matched_device_ids:
+                    matched_devices += 1
+                    matched_device_ids.add(device_id)
                 raw_text = str(raw_value)
                 try:
                     numeric_value = float(raw_value)
@@ -1005,16 +1304,38 @@ def ingest_source_latest_values_payload(payload, source_name=None, *, settings=N
                 conn.execute(
                     """
                     UPDATE devices
-                    SET last_seen = ?, source_name = ?, source_device_uuid = ?
+                    SET last_seen = ?, source_name = ?, source_device_name = ?, source_device_uuid = ?
                     WHERE device_id = ?
                     """,
                     (
                         ts,
-                        str(source_name or "").strip() or None,
+                        normalized_source_name or None,
+                        str(item.get("display_name") or item.get("name") or item.get("device_name") or "").strip()
+                        or device_row.get("source_device_name")
+                        or None,
                         device_uuid,
                         device_id,
                     ),
                 )
+                if value_item.get("field_role") == SERIAL_SENSOR_FIELD_ROLE:
+                    if _is_serial_restore_event(value_item, item):
+                        _clear_serial_fire_alarm_events(conn, device_id)
+                    else:
+                        fire_matches = _find_fire_matches(
+                            settings.get("fire_severity_mapping", []),
+                            _build_serial_item_match_text(item, value_item=value_item),
+                        )
+                        for match in fire_matches:
+                            _upsert_alarm_event(
+                                conn,
+                                ts=ts,
+                                device_id=device_id,
+                                floor_id=floor_id,
+                                metric=match["metric"],
+                                value=None,
+                                severity=match["severity"],
+                                message=match["message"],
+                            )
                 severity = get_metric_severity(settings, metric_key, numeric_value)
                 severity_label = severity["label"] if severity else None
                 if severity_label and severity_label in critical_levels and numeric_value is not None:
@@ -1034,6 +1355,15 @@ def ingest_source_latest_values_payload(payload, source_name=None, *, settings=N
                         value=round(numeric_value, 2),
                         severity=severity_label,
                         message=message,
+                    )
+                elif numeric_value is not None:
+                    conn.execute(
+                        """
+                        UPDATE alarm_events
+                        SET active = 0
+                        WHERE device_id = ? AND metric = ? AND active = 1
+                        """,
+                        (device_id, metric_key),
                     )
         return {"inserted": inserted, "matched_devices": matched_devices}
     finally:
@@ -1056,6 +1386,7 @@ def create_device(
         zone_value = (zone or "").strip() or "Z1"
         sensor_type_value = (sensor_type or "").strip() or "DZ"
         label_value = (sensor_name or "").strip() or None
+        ensure_unique_device_label(label_value, conn=conn)
         sensor_types_value = serialize_device_sensor_types([sensor_type_value])
         sensor_icon_value = (sensor_icon or "").strip() or None
         base = _build_device_base(
@@ -1222,6 +1553,7 @@ def get_latest_device_metrics(floor_id=None, metrics=None):
     query = f"""
         SELECT sensor_readings.device_id,
                sensor_readings.metric,
+               sensor_readings.ts,
                sensor_readings.value,
                sensor_readings.raw_value,
                sensor_readings.unit
@@ -1241,6 +1573,7 @@ def get_latest_device_metrics(floor_id=None, metrics=None):
     metrics_by_device = defaultdict(dict)
     for row in rows:
         metrics_by_device[row["device_id"]][row["metric"]] = {
+            "ts": row["ts"],
             "value": row["value"],
             "raw_value": row["raw_value"],
             "unit": row["unit"],

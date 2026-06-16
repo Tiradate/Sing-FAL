@@ -49,6 +49,7 @@ DEFAULT_TAG_VISIBILITY = {
     "fire": {
         "smoke": True,
         "heat": True,
+        "beam": True,
         "flow_switch": True,
         "supervisory_valve": True,
         "manual": True,
@@ -207,79 +208,13 @@ DEFAULT_ROLE_PERMISSIONS = {
     },
 }
 
-DEFAULT_ACCOUNTING_SETTINGS = {
-    "enabled": True,
-    "business_type": "General Business",
-    "base_currency": "THB",
-    "reporting_basis": "accrual",
-    "fiscal_year_start_month": 1,
-    "default_credit_term_days": 30,
-    "tax_rate": 7.0,
-    "tax_mode": "vat",
-    "lock_date": "",
-    "modules": {
-        "chart_of_accounts": {
-            "enabled": True,
-            "assets": True,
-            "liabilities": True,
-            "income": True,
-            "expenses": True,
-            "customize_by_business_type": True,
-        },
-        "transactions": {
-            "enabled": True,
-            "sales_invoice": True,
-            "purchase_invoice": True,
-            "payment_entry": True,
-            "journal_entry": True,
-        },
-        "receivables_payables": {
-            "enabled": True,
-            "accounts_receivable": True,
-            "accounts_payable": True,
-            "credit_terms": True,
-            "payment_reminders": True,
-        },
-        "taxes": {
-            "enabled": True,
-            "vat": True,
-            "sales_tax": True,
-            "purchase_tax": True,
-            "multi_structure": True,
-            "auto_apply": True,
-        },
-        "financial_reports": {
-            "enabled": True,
-            "profit_and_loss": True,
-            "balance_sheet": True,
-            "cash_flow": True,
-            "general_ledger": True,
-            "trial_balance": True,
-            "real_time": True,
-        },
-        "period_closing": {
-            "enabled": True,
-            "monthly_close": True,
-            "yearly_close": True,
-            "lock_backdated_entries": True,
-        },
-        "integrations": {
-            "enabled": True,
-            "sales": True,
-            "purchase": True,
-            "stock": True,
-            "payroll": True,
-            "auto_posting": True,
-        },
-    },
-}
-
 DEFAULT_SETTINGS = {
     "project_name": "ICONSIAM",
     "location_label": "Bangkok, Thailand",
     "project_timezone": "Asia/Bangkok",
     "project_time_format": "24h",
     "floor_auto_rotate_seconds": 12,
+    "enforce_sensor_label_type_position": True,
     "show_icons": {
         "bell": True,
         "calendar": True,
@@ -374,7 +309,6 @@ DEFAULT_SETTINGS = {
     },
     "admin_username": "admin",
     "admin_password": "admin123",
-    "accounting": DEFAULT_ACCOUNTING_SETTINGS,
     "role_permissions": DEFAULT_ROLE_PERMISSIONS,
     "endpoint_sources": [DEFAULT_ENDPOINT_SOURCE],
     "endpoint_token_store": {},
@@ -404,7 +338,9 @@ def load_settings():
     updated = _merge_defaults(settings, DEFAULT_SETTINGS)
     updated = normalize_top_definition(settings) or updated
     updated = normalize_dashboard_cards(settings) or updated
-    updated = normalize_accounting_settings(settings) or updated
+    if "accounting" in settings:
+        settings.pop("accounting", None)
+        updated = True
     updated = normalize_role_permissions(settings) or updated
     updated = normalize_endpoint_sources(settings) or updated
     updated = normalize_endpoint_api_templates(settings) or updated
@@ -509,104 +445,6 @@ def _normalize_bool(value, default=False):
     if isinstance(value, str):
         return value.strip().lower() not in {"", "0", "false", "no", "off"}
     return bool(value)
-
-
-def normalize_accounting_settings(settings):
-    raw_accounting = settings.get("accounting")
-    normalized_accounting = copy.deepcopy(DEFAULT_ACCOUNTING_SETTINGS)
-
-    if not isinstance(raw_accounting, dict):
-        settings["accounting"] = normalized_accounting
-        return True
-
-    def parse_int(value, fallback, minimum=None, maximum=None):
-        try:
-            parsed = int(value)
-        except (TypeError, ValueError):
-            parsed = fallback
-        if minimum is not None:
-            parsed = max(minimum, parsed)
-        if maximum is not None:
-            parsed = min(maximum, parsed)
-        return parsed
-
-    def parse_float(value, fallback, minimum=None, maximum=None):
-        try:
-            parsed = float(value)
-        except (TypeError, ValueError):
-            parsed = fallback
-        if minimum is not None:
-            parsed = max(minimum, parsed)
-        if maximum is not None:
-            parsed = min(maximum, parsed)
-        return parsed
-
-    normalized_accounting["enabled"] = _normalize_bool(
-        raw_accounting.get("enabled"),
-        default=DEFAULT_ACCOUNTING_SETTINGS["enabled"],
-    )
-    normalized_accounting["business_type"] = (
-        _normalize_string(
-            raw_accounting.get("business_type"),
-            DEFAULT_ACCOUNTING_SETTINGS["business_type"],
-        ).strip()
-        or DEFAULT_ACCOUNTING_SETTINGS["business_type"]
-    )
-    normalized_accounting["base_currency"] = (
-        _normalize_string(
-            raw_accounting.get("base_currency"),
-            DEFAULT_ACCOUNTING_SETTINGS["base_currency"],
-        ).strip()
-        or DEFAULT_ACCOUNTING_SETTINGS["base_currency"]
-    ).upper()
-    normalized_accounting["reporting_basis"] = str(
-        raw_accounting.get("reporting_basis")
-        or DEFAULT_ACCOUNTING_SETTINGS["reporting_basis"]
-    ).strip().lower()
-    if normalized_accounting["reporting_basis"] not in {"accrual", "cash"}:
-        normalized_accounting["reporting_basis"] = DEFAULT_ACCOUNTING_SETTINGS["reporting_basis"]
-    normalized_accounting["fiscal_year_start_month"] = parse_int(
-        raw_accounting.get("fiscal_year_start_month"),
-        DEFAULT_ACCOUNTING_SETTINGS["fiscal_year_start_month"],
-        minimum=1,
-        maximum=12,
-    )
-    normalized_accounting["default_credit_term_days"] = parse_int(
-        raw_accounting.get("default_credit_term_days"),
-        DEFAULT_ACCOUNTING_SETTINGS["default_credit_term_days"],
-        minimum=0,
-        maximum=3650,
-    )
-    normalized_accounting["tax_rate"] = parse_float(
-        raw_accounting.get("tax_rate"),
-        DEFAULT_ACCOUNTING_SETTINGS["tax_rate"],
-        minimum=0,
-        maximum=100,
-    )
-    normalized_accounting["tax_mode"] = str(
-        raw_accounting.get("tax_mode") or DEFAULT_ACCOUNTING_SETTINGS["tax_mode"]
-    ).strip().lower()
-    if normalized_accounting["tax_mode"] not in {"vat", "inclusive", "exclusive", "multi_rate"}:
-        normalized_accounting["tax_mode"] = DEFAULT_ACCOUNTING_SETTINGS["tax_mode"]
-    normalized_accounting["lock_date"] = _normalize_string(
-        raw_accounting.get("lock_date"),
-        DEFAULT_ACCOUNTING_SETTINGS["lock_date"],
-    ).strip()
-
-    raw_modules = raw_accounting.get("modules") if isinstance(raw_accounting.get("modules"), dict) else {}
-    for module_key, default_module in DEFAULT_ACCOUNTING_SETTINGS["modules"].items():
-        raw_module = raw_modules.get(module_key)
-        if not isinstance(raw_module, dict):
-            continue
-        for option_key, default_value in default_module.items():
-            normalized_accounting["modules"][module_key][option_key] = _normalize_bool(
-                raw_module.get(option_key),
-                default=default_value,
-            )
-
-    updated = raw_accounting != normalized_accounting
-    settings["accounting"] = normalized_accounting
-    return updated
 
 
 def normalize_role_name(role_name, default="guest"):

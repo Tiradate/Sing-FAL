@@ -19,6 +19,8 @@ DEFAULT_PREVIEW_LINE_LIMIT = 100
 DEFAULT_PARSED_RECORD_LIMIT = 50
 DEFAULT_POLL_INTERVAL_SECONDS = 5
 DEFAULT_REPLAY_INTERVAL_SECONDS = 60
+SERIAL_SENSOR_FIELD_ROLE = "serial_sensor_field"
+SERIAL_METADATA_FIELD_ROLE = "serial_metadata"
 
 SERIAL_FIELD_LABELS = {
     "record_type": "Record Type",
@@ -446,6 +448,20 @@ def _load_replay_batches(file_path):
     return batches
 
 
+def _iter_record_lines(raw_lines):
+    current_record = []
+    for raw_line in raw_lines:
+        line = str(raw_line or "").replace("\r", "")
+        if not line.strip():
+            if current_record:
+                yield current_record
+                current_record = []
+            continue
+        current_record.append(line)
+    if current_record:
+        yield current_record
+
+
 def apply_stream_lines(execution_state, raw_lines, source_name="", timezone_name="Asia/Bangkok"):
     state = normalize_state(execution_state)
     next_state = copy.deepcopy(state)
@@ -474,6 +490,39 @@ def apply_stream_lines(execution_state, raw_lines, source_name="", timezone_name
 def parse_serial_text(text, source_name="Serial", timezone_name="Asia/Bangkok"):
     lines = str(text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
     return apply_stream_lines({}, lines, source_name=source_name, timezone_name=timezone_name)
+
+
+def build_field_discovery_payload_from_text(
+    text,
+    source_name="Serial",
+    timezone_name="Asia/Bangkok",
+):
+    del source_name
+    items = []
+    raw_lines = str(text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    for record_lines in _iter_record_lines(raw_lines):
+        parsed_record = parse_record(record_lines, timezone_name=timezone_name)
+        if not parsed_record:
+            continue
+        items.append(_build_latest_value_item(parsed_record))
+    return {"items": items}
+
+
+def build_field_discovery_payload_from_file(
+    file_path,
+    source_name="Serial",
+    timezone_name="Asia/Bangkok",
+):
+    normalized_path = str(file_path or "").strip()
+    if not normalized_path:
+        return {"items": []}
+    with open(normalized_path, "r", encoding="utf-8", errors="replace") as replay_file:
+        raw_text = replay_file.read()
+    return build_field_discovery_payload_from_text(
+        raw_text,
+        source_name=source_name,
+        timezone_name=timezone_name,
+    )
 
 
 def read_serial_lines(serial_config):
@@ -622,14 +671,25 @@ def _build_latest_value_item(parsed_record):
     device_key = str(parsed_record.get("device_key") or "").strip()
     display_name = str(parsed_record.get("display_name") or device_key).strip() or device_key
     values = []
+    sensor_field_name, sensor_field_value = _build_sensor_field_entry(parsed_record)
     for key, value in fields.items():
         if value in (None, ""):
             continue
+        entry = {
+            "field": key,
+            "value": value,
+            "ts": timestamp_iso,
+        }
+        if key in SERIAL_FIELD_LABELS:
+            entry["field_role"] = SERIAL_METADATA_FIELD_ROLE
+        values.append(entry)
+    if sensor_field_name and sensor_field_value not in (None, ""):
         values.append(
             {
-                "field": key,
-                "value": value,
+                "field": sensor_field_name,
+                "value": sensor_field_value,
                 "ts": timestamp_iso,
+                "field_role": SERIAL_SENSOR_FIELD_ROLE,
             }
         )
     return {
@@ -646,6 +706,29 @@ def _build_latest_value_item(parsed_record):
         "ts": timestamp_iso,
         "values": values,
     }
+
+
+def _build_sensor_field_entry(parsed_record):
+    if not isinstance(parsed_record, dict):
+        return "", ""
+    fields = parsed_record.get("fields", {})
+    record_type = str(parsed_record.get("record_type") or "").strip().lower()
+    if record_type == "operator_command":
+        return "-OPERATOR COMMAND-", (
+            fields.get("command_text")
+            or fields.get("detail_text")
+            or fields.get("headline_text")
+            or ""
+        )
+    if record_type == "event_status":
+        return (
+            str(fields.get("event_text") or "").strip(),
+            fields.get("event_description")
+            or fields.get("detail_text")
+            or fields.get("headline_text")
+            or "",
+        )
+    return "", ""
 
 
 def _build_device_item(parsed_record, source_name=""):

@@ -52,9 +52,6 @@
         <button class="btn btn-outline-dark" type="button" data-settings-tab="design">
           <i class="bi bi-palette me-1"></i>{{ 'ดีไซน์' if current_lang == 'th' else 'Design' }}
         </button>
-        <button class="btn btn-outline-dark" type="button" data-settings-tab="account">
-          <i class="bi bi-bank2 me-1"></i>{{ 'บัญชี' if current_lang == 'th' else 'Account' }}
-        </button>
         <button class="btn btn-outline-dark" type="button" data-settings-tab="user">
           <i class="bi bi-people me-1"></i>{{ 'จัดการผู้ใช้' if current_lang == 'th' else 'User Manage' }}
         </button>
@@ -233,7 +230,6 @@
         </div>
         <button class="btn btn-outline-primary btn-sm" type="button" id="addEndpointSourceBtn">{{ '+ เพิ่มแหล่งข้อมูล' if current_lang == 'th' else '+ Add Source' }}</button>
       </div>
-
       <div id="endpointSourceList" class="vstack gap-3">
         {% set source_list = endpoint_sources if endpoint_sources is defined and endpoint_sources else settings.endpoint_sources %}
         {% set api_templates = settings.endpoint_api_templates if settings.endpoint_api_templates is defined else [] %}
@@ -1033,6 +1029,21 @@
         <div class="map-container map-editor" id="floorPlanEditor">
           <div class="map-placeholder">{{ 'เลือกผังชั้นเพื่อวางเซนเซอร์' if current_lang == 'th' else 'Select a floor plan to place sensors' }}</div>
         </div>
+        <div class="form-check form-switch mt-3 mb-2">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="enforceSensorLabelTypePosition"
+            name="enforce_sensor_label_type_position"
+            {% if settings.enforce_sensor_label_type_position %}checked{% endif %}
+          >
+          <label class="form-check-label" for="enforceSensorLabelTypePosition">
+            {{ 'เปิดใช้งานการตรวจสอบ Label ให้มีประเภทเซนเซอร์ในตำแหน่งที่ 4' if current_lang == 'th' else 'Enable label validation requiring a sensor type in the 4th position' }}
+          </label>
+          <div class="form-text">
+            {{ 'หากไม่ติ๊ก สามารถใช้ label อะไรก็ได้' if current_lang == 'th' else 'If unchecked, any label can be used.' }}
+          </div>
+        </div>
         <div class="card mt-3 d-none" id="sensorZoneEditor">
           <div class="card-body p-3">
             <div class="d-flex flex-wrap align-items-center gap-2">
@@ -1041,8 +1052,18 @@
               <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
                 <label class="form-label mb-0" for="selectedSensorLabel">{{ 'ป้ายชื่อ' if current_lang == 'th' else 'Label' }}</label>
                 <input class="form-control form-control-sm" id="selectedSensorLabel" type="text" placeholder="{{ 'ชื่อเซนเซอร์' if current_lang == 'th' else 'Sensor label' }}">
-                <div class="form-text" id="selectedSensorLabelHint">{{ 'รูปแบบชื่อ [อาคาร-ชั้น-โซน-ประเภทเซนเซอร์-หมายเลขเซนเซอร์]' if current_lang == 'th' else 'Label [Building-Floor-Zone-Sensor type-Sensor number]' }}</div>
-                <div class="invalid-feedback" id="selectedSensorLabelError">
+                <div
+                  class="form-text"
+                  id="selectedSensorLabelHint"
+                  data-validation-enabled-text="{{ 'รูปแบบชื่อ [อาคาร-ชั้น-โซน-ประเภทเซนเซอร์-หมายเลขเซนเซอร์]' if current_lang == 'th' else 'Label [Building-Floor-Zone-Sensor type-Sensor number]' }}"
+                  data-validation-disabled-text="{{ 'ปิดการตรวจสอบรูปแบบอยู่ จึงสามารถใช้ label อะไรก็ได้' if current_lang == 'th' else 'Label validation is disabled, so any label can be used.' }}"
+                >{{ 'รูปแบบชื่อ [อาคาร-ชั้น-โซน-ประเภทเซนเซอร์-หมายเลขเซนเซอร์]' if current_lang == 'th' else 'Label [Building-Floor-Zone-Sensor type-Sensor number]' }}</div>
+                <div
+                  class="invalid-feedback"
+                  id="selectedSensorLabelError"
+                  data-format-error-text="{{ 'ชื่อจะต้องมีประเภทเซนเซอร์อยู่ในตำแหน่งที่ 4' if current_lang == 'th' else 'Label must include a sensor type in the 4th position.' }}"
+                  data-duplicate-error-template="{{ 'Label \"{label}\" ถูกใช้งานโดย {device_id} แล้ว' if current_lang == 'th' else 'Label \"{label}\" is already used by {device_id}.' }}"
+                >
                   {{ 'ชื่อจะต้องมีประเภทเซนเซอร์อยู่ในตำแหน่งที่ 4' if current_lang == 'th' else 'Label must include a sensor type in the 4th position.' }}
                 </div>
                 <button class="btn btn-sm btn-outline-primary" type="button" id="saveSensorLabelBtn">{{ 'บันทึกชื่อ' if current_lang == 'th' else 'Save Label' }}</button>
@@ -1054,6 +1075,9 @@
         <div class="card mt-3" id="bulkZoneEditor">
           <div class="card-body p-3">
             <div class="fw-semibold mb-2">{{ 'อัปเดตโซนแบบกลุ่ม' if current_lang == 'th' else 'Bulk zone update' }}</div>
+            <div class="form-text mb-3">
+              {{ 'ค่าในฟอร์มนี้จะถูกนำไปใช้กับเซนเซอร์ที่เลือกทั้งหมด โดยเว้น Label ว่างไว้ได้หากต้องการคงชื่อเดิม' if current_lang == 'th' else 'These values are applied to every selected sensor. Leave Label blank if you want to keep the current labels.' }}
+            </div>
             <div class="row g-3 align-items-start">
               <div class="col-12 col-md-6">
                 <label class="form-label mb-1">{{ 'เซนเซอร์บนชั้นนี้' if current_lang == 'th' else 'Sensors on this floor' }}</label>
@@ -1063,22 +1087,63 @@
                     {{ 'ล้าง' if current_lang == 'th' else 'Clear' }}
                   </button>
                 </div>
-                <div class="form-text" id="bulkSelectionHint">{{ 'เลือกเซนเซอร์เพื่อเติมโซน/ฟิลด์อัตโนมัติ' if current_lang == 'th' else 'Select sensors to smart-fill zone/field.' }}</div>
+                <div class="form-text" id="bulkSelectionHint">{{ 'เลือกเซนเซอร์เพื่อเติมโซน/ฟิลด์/label อัตโนมัติ' if current_lang == 'th' else 'Select sensors to smart-fill zone/field/label.' }}</div>
                 <div class="border rounded p-2 small" id="bulkSensorList"></div>
               </div>
               <div class="col-12 col-md-6">
+                <label class="form-label mb-1" for="bulkSensorLabel">{{ 'Label' if current_lang == 'th' else 'Label' }}</label>
+                <input class="form-control form-control-sm" id="bulkSensorLabel" type="text" placeholder="{{ 'Label หรือ template' if current_lang == 'th' else 'Label or template' }}">
+                <div class="form-text">{{ 'เว้นว่างไว้เพื่อคง label เดิม รองรับ {device_id}, {index}, {current_label}, {zone}, {sensor_type}' if current_lang == 'th' else 'Leave blank to keep current labels. Supports {device_id}, {index}, {current_label}, {zone}, {sensor_type}.' }}</div>
+                <div class="form-text text-danger">{{ 'หมายเหตุ: Label ห้ามซ้ำกับเซนเซอร์ตัวอื่น' if current_lang == 'th' else 'Note: Label must be unique and cannot duplicate another sensor.' }}</div>
+                <div
+                  class="invalid-feedback"
+                  id="bulkSensorLabelError"
+                  data-format-error-text="{{ 'Label ที่สร้างจาก Bulk update ต้องมีประเภทเซนเซอร์ในตำแหน่งที่ 4' if current_lang == 'th' else 'Each label generated by bulk update must include a sensor type in the 4th position.' }}"
+                  data-duplicate-error-template="{{ 'Bulk Label \"{label}\" จะซ้ำกับ {device_id}' if current_lang == 'th' else 'Bulk label \"{label}\" would duplicate {device_id}.' }}"
+                >
+                  {{ 'Label ที่สร้างจาก Bulk update ต้องมีประเภทเซนเซอร์ในตำแหน่งที่ 4' if current_lang == 'th' else 'Each label generated by bulk update must include a sensor type in the 4th position.' }}
+                </div>
                 <label class="form-label mb-1" for="bulkSensorZone">{{ 'โซน' if current_lang == 'th' else 'Zone' }}</label>
                 <input class="form-control form-control-sm" id="bulkSensorZone" type="text" placeholder="{{ 'โซน' if current_lang == 'th' else 'Zone' }}">
                 <label class="form-label mb-1" for="bulkSensorType">{{ 'ฟิลด์เซนเซอร์' if current_lang == 'th' else 'Sensor Field' }}</label>
-                <input class="form-control form-control-sm" id="bulkSensorType" type="text" list="bulkSensorTypeOptions" placeholder="{{ 'ฟิลด์เซนเซอร์ (คั่นด้วยจุลภาค)' if current_lang == 'th' else 'Sensor Field (comma-separated)' }}">
-                <datalist id="bulkSensorTypeOptions">
-                  {% for option in bulk_sensor_type_options %}
-                  {% if option %}
-                  <option value="{{ option }}"></option>
-                  {% endif %}
-                  {% endfor %}
-                </datalist>
-                <div class="form-text">{{ 'เลือก Incoming Source Fields อย่างน้อย 1 ค่า โดยคั่นด้วยจุลภาค' if current_lang == 'th' else 'Choose one or more Incoming Source Fields separated by commas.' }}</div>
+                <div class="input-group input-group-sm">
+                  <input class="form-control" id="bulkSensorType" type="text" placeholder="{{ 'ฟิลด์เซนเซอร์' if current_lang == 'th' else 'Sensor Field' }}" readonly>
+                  <button
+                    class="btn btn-outline-secondary dropdown-toggle"
+                    type="button"
+                    id="bulkSensorTypeDropdownBtn"
+                    data-bs-toggle="dropdown"
+                    data-bs-auto-close="outside"
+                    aria-expanded="false"
+                  >
+                    {{ 'เลือกฟิลด์' if current_lang == 'th' else 'Select fields' }}
+                  </button>
+                  <div
+                    class="dropdown-menu dropdown-menu-end w-100 p-2"
+                    id="bulkSensorTypeDropdownMenu"
+                    style="max-height: 260px; overflow-y: auto;"
+                  >
+                    {% if bulk_sensor_type_options %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <div class="small text-muted">{{ 'เลือกได้หลายค่า' if current_lang == 'th' else 'Select one or more fields.' }}</div>
+                      <button class="btn btn-link btn-sm p-0" type="button" data-bulk-sensor-type-clear>
+                        {{ 'ล้าง' if current_lang == 'th' else 'Clear' }}
+                      </button>
+                    </div>
+                    {% for option in bulk_sensor_type_options %}
+                    {% if option %}
+                    <label class="dropdown-item-text d-flex align-items-center gap-2 py-1 px-1">
+                      <input class="form-check-input mt-0" type="checkbox" value="{{ option }}" data-bulk-sensor-type-option>
+                      <span>{{ option }}</span>
+                    </label>
+                    {% endif %}
+                    {% endfor %}
+                    {% else %}
+                    <div class="small text-muted px-1">{{ 'ยังไม่มี Incoming Source Fields ให้เลือก' if current_lang == 'th' else 'No incoming source fields available yet.' }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="form-text">{{ 'เลือก Incoming Source Fields ได้หลายค่าจาก dropdown นี้' if current_lang == 'th' else 'Choose one or more Incoming Source Fields from this dropdown.' }}</div>
                 <label class="form-label mb-1" for="bulkSourceName">{{ 'แหล่งข้อมูลที่ใช้แมป' if current_lang == 'th' else 'Mapping source' }}</label>
                 <select class="form-select form-select-sm" id="bulkSourceName">
                   <option value="">{{ 'เลือกแหล่งข้อมูล' if current_lang == 'th' else 'Select source' }}</option>
@@ -1137,6 +1202,13 @@
               </div>
             </div>
             <div class="col-6 col-md-2 col-xl-1">
+              <div>Beam</div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="fireTagBeam" name="fire_tag_beam" {% if fire_tag_visibility.get('beam', True) %}checked{% endif %}>
+                <label class="form-check-label small" for="fireTagBeam">Show</label>
+              </div>
+            </div>
+            <div class="col-6 col-md-2 col-xl-1">
               <div>Flow Switch</div>
               <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="fireTagFlowSwitch" name="fire_tag_flow_switch" {% if fire_tag_visibility.get('flow_switch', True) %}checked{% endif %}>
@@ -1182,6 +1254,7 @@
               'icon': '',
               'smoke': '',
               'heat': '',
+              'beam': '',
               'flow_switch': '',
               'supervisory_valve': '',
               'manual': '',
@@ -1219,6 +1292,9 @@
               </div>
               <div class="col-6 col-md-2 col-xl-1">
                 <input class="form-control" type="text" name="fire_heat" value="{{ level.heat }}" placeholder="Text">
+              </div>
+              <div class="col-6 col-md-2 col-xl-1">
+                <input class="form-control" type="text" name="fire_beam" value="{{ level.beam }}" placeholder="Text">
               </div>
               <div class="col-6 col-md-2 col-xl-1">
                 <input class="form-control" type="text" name="fire_flow_switch" value="{{ level.flow_switch }}" placeholder="Text">
@@ -1281,6 +1357,7 @@
                       <div class="small text-muted">{{ (field.sources or []) | join(', ') }}</div>
                       <input type="hidden" name="source_metric_field_key" value="{{ field.key }}">
                       <input type="hidden" name="source_metric_source_field__{{ field.key }}" value="{{ field.source_field or field.key }}">
+                      <input type="hidden" name="source_metric_field_role__{{ field.key }}" value="{{ field.field_role or '' }}">
                       <input type="hidden" name="source_metric_sources__{{ field.key }}" value="{{ (field.sources or []) | join(',') }}">
                     </td>
                     <td>
@@ -1331,255 +1408,6 @@
             <div class="alert alert-light border mb-0" id="sourceMetricFieldsEmptyState">{{ 'ยังไม่พบฟิลด์จากแหล่งข้อมูลขาเข้า กด <code>ใช้แหล่งข้อมูล</code> หลังโหลดแหล่งข้อมูลที่แมปแล้วเพื่อสร้างรายการฟิลด์' if current_lang == 'th' else 'No incoming source fields discovered yet. Click <code>Use Source</code> after loading a mapped source to build the field catalog.' }}</div>
             {% endif %}
           </div>
-        </div>
-      </div>
-      </div>
-
-      <div data-settings-tab-panel="account"{% if (active_settings_tab or 'project') != 'account' %} class="d-none"{% endif %}>
-      {% set accounting = settings.accounting if settings.accounting is defined else {} %}
-      {% set accounting_modules = accounting.modules if accounting.modules is defined else {} %}
-      {% set account_chart = accounting_modules.chart_of_accounts if accounting_modules.chart_of_accounts is defined else {} %}
-      {% set account_transactions = accounting_modules.transactions if accounting_modules.transactions is defined else {} %}
-      {% set account_ar_ap = accounting_modules.receivables_payables if accounting_modules.receivables_payables is defined else {} %}
-      {% set account_taxes = accounting_modules.taxes if accounting_modules.taxes is defined else {} %}
-      {% set account_reports = accounting_modules.financial_reports if accounting_modules.financial_reports is defined else {} %}
-      {% set account_period = accounting_modules.period_closing if accounting_modules.period_closing is defined else {} %}
-      {% set account_integrations = accounting_modules.integrations if accounting_modules.integrations is defined else {} %}
-      <div class="row g-4">
-        <div class="col-12">
-          <div class="card border-0 shadow-sm accounting-overview-card">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
-                <div>
-                  <h6 class="mb-1">{{ 'ศูนย์จัดการระบบบัญชี' if current_lang == 'th' else 'Accounting Workspace' }}</h6>
-                  <p class="text-muted mb-0">{{ 'ตั้งค่าโครงสร้างบัญชี นโยบายเริ่มต้น และโมดูลบัญชีที่ต้องการเปิดใช้ในฝั่งผู้ดูแลระบบ' if current_lang == 'th' else 'Configure your accounting structure, default policies, and the admin modules that should be active.' }}</p>
-                </div>
-                <div class="form-check form-switch mb-0">
-                  <input class="form-check-input" type="checkbox" id="accountingEnabled" name="accounting_enabled" {% if accounting.enabled %}checked{% endif %}>
-                  <label class="form-check-label fw-semibold" for="accountingEnabled">{{ 'เปิดใช้งานระบบบัญชี' if current_lang == 'th' else 'Enable Accounting' }}</label>
-                </div>
-              </div>
-              <div class="row g-3">
-                <div class="col-12 col-md-6 col-xl-3">
-                  <label class="form-label">{{ 'ประเภทธุรกิจ' if current_lang == 'th' else 'Business Type' }}</label>
-                  <input class="form-control" type="text" name="accounting_business_type" value="{{ accounting.business_type or 'General Business' }}" placeholder="{{ 'เช่น ค้าปลีก / บริการ / อสังหา' if current_lang == 'th' else 'e.g. Retail / Service / Property' }}">
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                  <label class="form-label">{{ 'สกุลเงินหลัก' if current_lang == 'th' else 'Base Currency' }}</label>
-                  <input class="form-control text-uppercase" type="text" name="accounting_base_currency" maxlength="8" value="{{ accounting.base_currency or 'THB' }}" placeholder="THB">
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                  <label class="form-label">{{ 'เกณฑ์การรับรู้' if current_lang == 'th' else 'Reporting Basis' }}</label>
-                  <select class="form-select" name="accounting_reporting_basis">
-                    <option value="accrual" {% if (accounting.reporting_basis or 'accrual') == 'accrual' %}selected{% endif %}>{{ 'เกณฑ์คงค้าง' if current_lang == 'th' else 'Accrual Basis' }}</option>
-                    <option value="cash" {% if accounting.reporting_basis == 'cash' %}selected{% endif %}>{{ 'เกณฑ์เงินสด' if current_lang == 'th' else 'Cash Basis' }}</option>
-                  </select>
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                  <label class="form-label">{{ 'เดือนเริ่มปีบัญชี' if current_lang == 'th' else 'Fiscal Year Start Month' }}</label>
-                  <select class="form-select" name="accounting_fiscal_year_start_month">
-                    {% for month in range(1, 13) %}
-                    <option value="{{ month }}" {% if (accounting.fiscal_year_start_month or 1) == month %}selected{% endif %}>{{ month }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                  <label class="form-label">{{ 'เครดิตเทอมเริ่มต้น (วัน)' if current_lang == 'th' else 'Default Credit Term (days)' }}</label>
-                  <input class="form-control" type="number" min="0" name="accounting_default_credit_term_days" value="{{ accounting.default_credit_term_days or 30 }}">
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                  <label class="form-label">{{ 'อัตรา VAT / ภาษี (%)' if current_lang == 'th' else 'VAT / Tax Rate (%)' }}</label>
-                  <input class="form-control" type="number" min="0" max="100" step="0.01" name="accounting_tax_rate" value="{{ accounting.tax_rate if accounting.tax_rate is defined else 7.0 }}">
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                  <label class="form-label">{{ 'โครงสร้างภาษี' if current_lang == 'th' else 'Tax Structure' }}</label>
-                  <select class="form-select" name="accounting_tax_mode">
-                    <option value="vat" {% if (accounting.tax_mode or 'vat') == 'vat' %}selected{% endif %}>{{ 'VAT มาตรฐาน' if current_lang == 'th' else 'Standard VAT' }}</option>
-                    <option value="inclusive" {% if accounting.tax_mode == 'inclusive' %}selected{% endif %}>{{ 'ภาษีรวมในราคา' if current_lang == 'th' else 'Tax Inclusive' }}</option>
-                    <option value="exclusive" {% if accounting.tax_mode == 'exclusive' %}selected{% endif %}>{{ 'ภาษีแยกจากราคา' if current_lang == 'th' else 'Tax Exclusive' }}</option>
-                    <option value="multi_rate" {% if accounting.tax_mode == 'multi_rate' %}selected{% endif %}>{{ 'หลายโครงสร้างภาษี' if current_lang == 'th' else 'Multiple Structures' }}</option>
-                  </select>
-                </div>
-                <div class="col-12 col-md-6 col-xl-3">
-                  <label class="form-label">{{ 'ล็อกรายการก่อนวันที่' if current_lang == 'th' else 'Lock Transactions Before' }}</label>
-                  <input class="form-control" type="date" name="accounting_lock_date" value="{{ accounting.lock_date or '' }}">
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-12">
-          <div class="accounting-module-grid">
-            <div class="card accounting-module-card h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                  <div class="d-flex gap-3">
-                    <div class="accounting-module-icon"><i class="bi bi-diagram-3"></i></div>
-                    <div>
-                      <h6 class="mb-1">{{ 'ผังบัญชี' if current_lang == 'th' else 'Chart of Accounts' }}</h6>
-                      <p class="small text-muted mb-0">{{ 'กำหนดโครงสร้างบัญชี เช่น สินทรัพย์ หนี้สิน รายได้ ค่าใช้จ่าย และปรับตามประเภทธุรกิจ' if current_lang == 'th' else 'Define the account structure and adapt it to each business profile.' }}</p>
-                    </div>
-                  </div>
-                  <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" name="account_module_chart_of_accounts_enabled" {% if account_chart.enabled %}checked{% endif %}>
-                  </div>
-                </div>
-                <div class="accounting-check-list">
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_chart_assets" {% if account_chart.assets %}checked{% endif %}><span class="form-check-label">{{ 'สินทรัพย์' if current_lang == 'th' else 'Assets' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_chart_liabilities" {% if account_chart.liabilities %}checked{% endif %}><span class="form-check-label">{{ 'หนี้สิน' if current_lang == 'th' else 'Liabilities' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_chart_income" {% if account_chart.income %}checked{% endif %}><span class="form-check-label">{{ 'รายได้' if current_lang == 'th' else 'Income' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_chart_expenses" {% if account_chart.expenses %}checked{% endif %}><span class="form-check-label">{{ 'ค่าใช้จ่าย' if current_lang == 'th' else 'Expenses' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_chart_customize" {% if account_chart.customize_by_business_type %}checked{% endif %}><span class="form-check-label">{{ 'ปรับแต่งตามประเภทธุรกิจได้' if current_lang == 'th' else 'Customizable by business type' }}</span></label>
-                </div>
-              </div>
-            </div>
-
-            <div class="card accounting-module-card h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                  <div class="d-flex gap-3">
-                    <div class="accounting-module-icon"><i class="bi bi-receipt-cutoff"></i></div>
-                    <div>
-                      <h6 class="mb-1">{{ 'บันทึกรายการบัญชี' if current_lang == 'th' else 'Transactions' }}</h6>
-                      <p class="small text-muted mb-0">{{ 'จัดการเอกสารหลักที่ทำให้เกิดรายรับ รายจ่าย รับเงิน จ่ายเงิน และรายการปรับปรุง' if current_lang == 'th' else 'Manage the core documents that create income, expenses, receipts, and adjustments.' }}</p>
-                    </div>
-                  </div>
-                  <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" name="account_module_transactions_enabled" {% if account_transactions.enabled %}checked{% endif %}>
-                  </div>
-                </div>
-                <div class="accounting-check-list">
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_transactions_sales_invoice" {% if account_transactions.sales_invoice %}checked{% endif %}><span class="form-check-label">Sales Invoice</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_transactions_purchase_invoice" {% if account_transactions.purchase_invoice %}checked{% endif %}><span class="form-check-label">Purchase Invoice</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_transactions_payment_entry" {% if account_transactions.payment_entry %}checked{% endif %}><span class="form-check-label">Payment Entry</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_transactions_journal_entry" {% if account_transactions.journal_entry %}checked{% endif %}><span class="form-check-label">Journal Entry</span></label>
-                </div>
-              </div>
-            </div>
-
-            <div class="card accounting-module-card h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                  <div class="d-flex gap-3">
-                    <div class="accounting-module-icon"><i class="bi bi-people"></i></div>
-                    <div>
-                      <h6 class="mb-1">{{ 'ลูกหนี้ - เจ้าหนี้' if current_lang == 'th' else 'AR / AP' }}</h6>
-                      <p class="small text-muted mb-0">{{ 'ติดตามลูกหนี้ เจ้าหนี้ เครดิตเทอม และการแจ้งเตือนการชำระเงิน' if current_lang == 'th' else 'Track customer receivables, supplier payables, credit terms, and payment reminders.' }}</p>
-                    </div>
-                  </div>
-                  <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" name="account_module_receivables_payables_enabled" {% if account_ar_ap.enabled %}checked{% endif %}>
-                  </div>
-                </div>
-                <div class="accounting-check-list">
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_receivables_enabled" {% if account_ar_ap.accounts_receivable %}checked{% endif %}><span class="form-check-label">{{ 'บัญชีลูกหนี้' if current_lang == 'th' else 'Accounts Receivable' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_payables_enabled" {% if account_ar_ap.accounts_payable %}checked{% endif %}><span class="form-check-label">{{ 'บัญชีเจ้าหนี้' if current_lang == 'th' else 'Accounts Payable' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_credit_terms_enabled" {% if account_ar_ap.credit_terms %}checked{% endif %}><span class="form-check-label">{{ 'เครดิตเทอม' if current_lang == 'th' else 'Credit terms' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_payment_reminders_enabled" {% if account_ar_ap.payment_reminders %}checked{% endif %}><span class="form-check-label">{{ 'แจ้งเตือนการชำระเงิน' if current_lang == 'th' else 'Payment reminders' }}</span></label>
-                </div>
-              </div>
-            </div>
-
-            <div class="card accounting-module-card h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                  <div class="d-flex gap-3">
-                    <div class="accounting-module-icon"><i class="bi bi-percent"></i></div>
-                    <div>
-                      <h6 class="mb-1">{{ 'ภาษี' if current_lang == 'th' else 'Taxes' }}</h6>
-                      <p class="small text-muted mb-0">{{ 'รองรับ VAT และภาษีขาย/ซื้อ พร้อมนำไปใช้กับเอกสารอัตโนมัติ' if current_lang == 'th' else 'Support VAT and sales/purchase tax structures that can flow into documents automatically.' }}</p>
-                    </div>
-                  </div>
-                  <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" name="account_module_taxes_enabled" {% if account_taxes.enabled %}checked{% endif %}>
-                  </div>
-                </div>
-                <div class="accounting-check-list">
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_taxes_vat" {% if account_taxes.vat %}checked{% endif %}><span class="form-check-label">VAT</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_taxes_sales_tax" {% if account_taxes.sales_tax %}checked{% endif %}><span class="form-check-label">{{ 'ภาษีขาย' if current_lang == 'th' else 'Sales tax' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_taxes_purchase_tax" {% if account_taxes.purchase_tax %}checked{% endif %}><span class="form-check-label">{{ 'ภาษีซื้อ' if current_lang == 'th' else 'Purchase tax' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_taxes_multi_structure" {% if account_taxes.multi_structure %}checked{% endif %}><span class="form-check-label">{{ 'หลายโครงสร้างภาษี' if current_lang == 'th' else 'Multiple tax structures' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_taxes_auto_apply" {% if account_taxes.auto_apply %}checked{% endif %}><span class="form-check-label">{{ 'ใช้กับเอกสารขาย/ซื้ออัตโนมัติ' if current_lang == 'th' else 'Apply on sales / purchase documents automatically' }}</span></label>
-                </div>
-              </div>
-            </div>
-
-            <div class="card accounting-module-card h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                  <div class="d-flex gap-3">
-                    <div class="accounting-module-icon"><i class="bi bi-graph-up-arrow"></i></div>
-                    <div>
-                      <h6 class="mb-1">{{ 'รายงานทางการเงิน' if current_lang == 'th' else 'Financial Reports' }}</h6>
-                      <p class="small text-muted mb-0">{{ 'ควบคุมรายงานหลักที่ฝ่ายบัญชีต้องใช้ติดตามผลแบบเรียลไทม์' if current_lang == 'th' else 'Control the key reports that accounting teams expect to review in real time.' }}</p>
-                    </div>
-                  </div>
-                  <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" name="account_module_financial_reports_enabled" {% if account_reports.enabled %}checked{% endif %}>
-                  </div>
-                </div>
-                <div class="accounting-check-list">
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_profit_and_loss" {% if account_reports.profit_and_loss %}checked{% endif %}><span class="form-check-label">Profit and Loss</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_balance_sheet" {% if account_reports.balance_sheet %}checked{% endif %}><span class="form-check-label">Balance Sheet</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_cash_flow" {% if account_reports.cash_flow %}checked{% endif %}><span class="form-check-label">Cash Flow</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_general_ledger" {% if account_reports.general_ledger %}checked{% endif %}><span class="form-check-label">General Ledger</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_trial_balance" {% if account_reports.trial_balance %}checked{% endif %}><span class="form-check-label">Trial Balance</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_reports_real_time" {% if account_reports.real_time %}checked{% endif %}><span class="form-check-label">{{ 'ดูข้อมูลแบบ real-time' if current_lang == 'th' else 'Real-time dashboards' }}</span></label>
-                </div>
-              </div>
-            </div>
-
-            <div class="card accounting-module-card h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                  <div class="d-flex gap-3">
-                    <div class="accounting-module-icon"><i class="bi bi-calendar-check"></i></div>
-                    <div>
-                      <h6 class="mb-1">{{ 'การปิดงวดบัญชี' if current_lang == 'th' else 'Period Closing' }}</h6>
-                      <p class="small text-muted mb-0">{{ 'รองรับการปิดรายเดือน รายปี และล็อกข้อมูลย้อนหลังหลังอนุมัติ' if current_lang == 'th' else 'Support monthly and yearly close while locking historical entries after approval.' }}</p>
-                    </div>
-                  </div>
-                  <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" name="account_module_period_closing_enabled" {% if account_period.enabled %}checked{% endif %}>
-                  </div>
-                </div>
-                <div class="accounting-check-list">
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_period_monthly_close" {% if account_period.monthly_close %}checked{% endif %}><span class="form-check-label">{{ 'ปิดบัญชีรายเดือน' if current_lang == 'th' else 'Monthly closing' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_period_yearly_close" {% if account_period.yearly_close %}checked{% endif %}><span class="form-check-label">{{ 'ปิดบัญชีรายปี' if current_lang == 'th' else 'Yearly closing' }}</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_period_lock_backdated" {% if account_period.lock_backdated_entries %}checked{% endif %}><span class="form-check-label">{{ 'ล็อกข้อมูลย้อนหลัง' if current_lang == 'th' else 'Lock backdated changes' }}</span></label>
-                </div>
-              </div>
-            </div>
-
-            <div class="card accounting-module-card h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                  <div class="d-flex gap-3">
-                    <div class="accounting-module-icon"><i class="bi bi-link-45deg"></i></div>
-                    <div>
-                      <h6 class="mb-1">{{ 'เชื่อมต่อโมดูลอื่น' if current_lang == 'th' else 'Integrations' }}</h6>
-                      <p class="small text-muted mb-0">{{ 'เชื่อมบัญชีกับโมดูลปฏิบัติการเพื่อบันทึกรายการอัตโนมัติจากธุรกรรมอื่น' if current_lang == 'th' else 'Link accounting to the operational modules so postings can happen automatically.' }}</p>
-                    </div>
-                  </div>
-                  <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" name="account_module_integrations_enabled" {% if account_integrations.enabled %}checked{% endif %}>
-                  </div>
-                </div>
-                <div class="accounting-check-list">
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_integrations_sales" {% if account_integrations.sales %}checked{% endif %}><span class="form-check-label">Sales</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_integrations_purchase" {% if account_integrations.purchase %}checked{% endif %}><span class="form-check-label">Purchase</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_integrations_stock" {% if account_integrations.stock %}checked{% endif %}><span class="form-check-label">Stock</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_integrations_payroll" {% if account_integrations.payroll %}checked{% endif %}><span class="form-check-label">Payroll</span></label>
-                  <label class="form-check"><input class="form-check-input" type="checkbox" name="account_integrations_auto_posting" {% if account_integrations.auto_posting %}checked{% endif %}><span class="form-check-label">{{ 'บันทึกบัญชีอัตโนมัติ' if current_lang == 'th' else 'Automatic accounting entries' }}</span></label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-12 d-flex justify-content-end">
-          <button class="btn btn-primary" type="submit" data-save-settings-section="account">{{ 'บันทึกการตั้งค่าบัญชี' if current_lang == 'th' else 'Save Accounting' }}</button>
         </div>
       </div>
       </div>
@@ -4439,6 +4267,9 @@
         <input class="form-control" type="text" name="fire_heat" placeholder="Text">
       </div>
       <div class="col-6 col-md-2 col-xl-1">
+        <input class="form-control" type="text" name="fire_beam" placeholder="Text">
+      </div>
+      <div class="col-6 col-md-2 col-xl-1">
         <input class="form-control" type="text" name="fire_flow_switch" placeholder="Text">
       </div>
       <div class="col-6 col-md-2 col-xl-1">
@@ -5091,10 +4922,13 @@
   const selectedSensorLabel = document.getElementById('selectedSensorLabel');
   const selectedSensorLabelHint = document.getElementById('selectedSensorLabelHint');
   const selectedSensorLabelError = document.getElementById('selectedSensorLabelError');
+  const enforceSensorLabelTypePositionInput = document.getElementById('enforceSensorLabelTypePosition');
   const saveSensorLabelBtn = document.getElementById('saveSensorLabelBtn');
   const deleteSelectedSensorBtn = document.getElementById('deleteSelectedSensorBtn');
   const bulkSensorList = document.getElementById('bulkSensorList');
   const bulkSensorZone = document.getElementById('bulkSensorZone');
+  const bulkSensorLabel = document.getElementById('bulkSensorLabel');
+  const bulkSensorLabelError = document.getElementById('bulkSensorLabelError');
   const bulkSensorType = document.getElementById('bulkSensorType');
   const bulkSourceName = document.getElementById('bulkSourceName');
   const bulkSourceDeviceName = document.getElementById('bulkSourceDeviceName');
@@ -5104,7 +4938,8 @@
   const bulkClearSelectionBtn = document.getElementById('bulkClearSelectionBtn');
   const bulkSmartFillSelectBtn = document.getElementById('bulkSmartFillSelectBtn');
   const bulkDeselectAllBtn = document.getElementById('bulkDeselectAllBtn');
-  const bulkSensorTypeOptions = document.getElementById('bulkSensorTypeOptions');
+  const bulkSensorTypeDropdownBtn = document.getElementById('bulkSensorTypeDropdownBtn');
+  const bulkSensorTypeDropdownMenu = document.getElementById('bulkSensorTypeDropdownMenu');
   const sourceMetricFieldsTableWrap = document.getElementById('sourceMetricFieldsTableWrap');
   const sourceMetricFieldsTableBody = document.getElementById('sourceMetricFieldsTableBody');
   const sourceMetricFieldsEmptyState = document.getElementById('sourceMetricFieldsEmptyState');
@@ -5118,6 +4953,7 @@
     return {
       key,
       source_field: sourceField,
+      field_role: String(field?.field_role || '').trim(),
       label: String(field?.label || sourceField || key).trim() || key,
       channel: String(field?.channel || '').trim(),
       unit: String(field?.unit || '').trim(),
@@ -5160,6 +4996,7 @@
       return normalizeSourceMetricField({
         key,
         source_field: row.querySelector(`[name="source_metric_source_field__${key}"]`)?.value || key,
+        field_role: row.querySelector(`[name="source_metric_field_role__${key}"]`)?.value || '',
         label: row.querySelector(`[name="source_metric_label__${key}"]`)?.value || key,
         channel: row.querySelector(`[name="source_metric_channel__${key}"]`)?.value || '',
         unit: row.querySelector(`[name="source_metric_unit__${key}"]`)?.value || '',
@@ -5198,6 +5035,7 @@
       merged.set(incomingField.key, {
         ...incomingField,
         ...existingField,
+        field_role: existingField.field_role || incomingField.field_role || '',
         source_field: existingField.source_field || incomingField.source_field,
         channel: existingField.channel || incomingField.channel,
         unit: existingField.unit || incomingField.unit,
@@ -5209,19 +5047,43 @@
     return sortSourceMetricFields(Array.from(merged.values()));
   };
 
-  const parseBulkSensorTypes = (value) =>
-    Array.from(
-      new Set(
-        String(value || '')
-          .split(/[,;\n]+/)
-          .map((item) => item.trim())
-          .filter(Boolean)
+  const normalizeBulkSensorTypeKey = (value) => String(value || '').trim().toLowerCase();
+
+  const getUniqueBulkSensorTypeValues = (values) => {
+    const uniqueValues = new Map();
+    (Array.isArray(values) ? values : []).forEach((value) => {
+      const trimmedValue = String(value || '').trim();
+      const normalizedKey = normalizeBulkSensorTypeKey(trimmedValue);
+      if (!trimmedValue || !normalizedKey || uniqueValues.has(normalizedKey)) {
+        return;
+      }
+      uniqueValues.set(normalizedKey, trimmedValue);
+    });
+    return Array.from(uniqueValues.values());
+  };
+
+  const parseBulkSensorTypes = (value) => {
+    const requestedValues = String(value || '')
+      .split(/[,;\n]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const optionValueMap = new Map();
+    getBulkSensorTypeOptionValues(sourceMetricFieldCatalog).forEach((optionValue) => {
+      const normalizedKey = normalizeBulkSensorTypeKey(optionValue);
+      if (normalizedKey && !optionValueMap.has(normalizedKey)) {
+        optionValueMap.set(normalizedKey, optionValue);
+      }
+    });
+    return getUniqueBulkSensorTypeValues(
+      requestedValues.map((requestedValue) =>
+        optionValueMap.get(normalizeBulkSensorTypeKey(requestedValue)) || requestedValue
       )
     );
+  };
 
   const getDeviceSensorTypes = (device) => {
     if (Array.isArray(device?.sensor_types) && device.sensor_types.length) {
-      return Array.from(new Set(device.sensor_types.map((value) => String(value || '').trim()).filter(Boolean)));
+      return getUniqueBulkSensorTypeValues(device.sensor_types);
     }
     const segments = String(device?.label || '')
       .split('-')
@@ -5233,29 +5095,87 @@
 
   const getSensorTypeSignature = (device) => getDeviceSensorTypes(device).join(', ');
 
-  const renderBulkSensorTypeOptions = (fields) => {
-    if (!bulkSensorTypeOptions) {
-      return;
-    }
+  const getBulkSensorTypeOptionValues = (fields) => {
+    const optionValues = [];
     const deviceTypeValues = Array.isArray(editorData.devices)
       ? editorData.devices
           .flatMap((device) => getDeviceSensorTypes(device))
           .filter(Boolean)
       : [];
-    const optionValues = Array.from(
-      new Set(
-        [
-          ...(Array.isArray(fields) ? fields : [])
-            .filter((field) => field?.show_in_bulk_type)
-            .map((field) => String(field?.source_field || field?.key || '').trim())
-            .filter(Boolean),
-          ...deviceTypeValues,
-        ]
-      )
-    ).sort((left, right) => left.localeCompare(right));
-    bulkSensorTypeOptions.innerHTML = optionValues
-      .map((value) => `<option value="${escapeHtml(value)}"></option>`)
-      .join('');
+    optionValues.push(
+      ...(Array.isArray(fields) ? fields : [])
+        .filter((field) => field?.show_in_bulk_type)
+        .map((field) => String(field?.source_field || field?.key || '').trim())
+        .filter(Boolean)
+    );
+    optionValues.push(...deviceTypeValues);
+    return getUniqueBulkSensorTypeValues(optionValues)
+      .sort((left, right) => left.localeCompare(right));
+  };
+
+  const syncBulkSensorTypeDropdownSelection = () => {
+    if (!bulkSensorTypeDropdownMenu) {
+      return;
+    }
+    const selectedValues = new Set(
+      parseBulkSensorTypes(bulkSensorType?.value || '').map((value) => value.toLowerCase())
+    );
+    bulkSensorTypeDropdownMenu.querySelectorAll('[data-bulk-sensor-type-option]').forEach((input) => {
+      input.checked = selectedValues.has(String(input.value || '').trim().toLowerCase());
+    });
+  };
+
+  const setBulkSensorTypeValue = (values) => {
+    if (!bulkSensorType) {
+      return;
+    }
+    const normalizedValues = Array.isArray(values)
+      ? parseBulkSensorTypes(values.join(', '))
+      : parseBulkSensorTypes(values);
+    bulkSensorType.value = normalizedValues.join(', ');
+    syncBulkSensorTypeDropdownSelection();
+    updateBulkLabelValidation();
+  };
+
+  const renderBulkSensorTypeOptions = (fields) => {
+    if (!bulkSensorTypeDropdownMenu) {
+      return;
+    }
+    const optionValues = getBulkSensorTypeOptionValues(fields);
+    if (!optionValues.length) {
+      bulkSensorTypeDropdownMenu.innerHTML = `
+        <div class="small text-muted px-1">
+          ${escapeHtml({{ ('ยังไม่มี Incoming Source Fields ให้เลือก' if current_lang == 'th' else 'No incoming source fields available yet.') | tojson }})}
+        </div>
+      `;
+      if (bulkSensorTypeDropdownBtn) {
+        bulkSensorTypeDropdownBtn.disabled = true;
+      }
+      syncBulkSensorTypeDropdownSelection();
+      return;
+    }
+    if (bulkSensorTypeDropdownBtn) {
+      bulkSensorTypeDropdownBtn.disabled = false;
+    }
+    bulkSensorTypeDropdownMenu.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="small text-muted">
+          ${escapeHtml({{ ('เลือกได้หลายค่า' if current_lang == 'th' else 'Select one or more fields.') | tojson }})}
+        </div>
+        <button class="btn btn-link btn-sm p-0" type="button" data-bulk-sensor-type-clear>
+          ${escapeHtml({{ ('ล้าง' if current_lang == 'th' else 'Clear') | tojson }})}
+        </button>
+      </div>
+      ${optionValues
+        .map((value) => `
+          <label class="dropdown-item-text d-flex align-items-center gap-2 py-1 px-1">
+            <input class="form-check-input mt-0" type="checkbox" value="${escapeHtml(value)}" data-bulk-sensor-type-option>
+            <span>${escapeHtml(value)}</span>
+          </label>
+        `)
+        .join('')}
+    `;
+    syncBulkSensorTypeDropdownSelection();
   };
 
   const renderSourceMetricFields = (fields) => {
@@ -5282,6 +5202,7 @@
           <div class="small text-muted">${escapeHtml((field.sources || []).join(', '))}</div>
           <input type="hidden" name="source_metric_field_key" value="${escapeHtml(field.key)}">
           <input type="hidden" name="source_metric_source_field__${escapeHtml(field.key)}" value="${escapeHtml(field.source_field || field.key)}">
+          <input type="hidden" name="source_metric_field_role__${escapeHtml(field.key)}" value="${escapeHtml(field.field_role || '')}">
           <input type="hidden" name="source_metric_sources__${escapeHtml(field.key)}" value="${escapeHtml((field.sources || []).join(','))}">
         </td>
         <td>
@@ -5443,6 +5364,59 @@
   const getDeviceDisplayName = (device) =>
     device.label ? `${device.label} (${device.device_id})` : device.device_id;
 
+  const normalizeDeviceLabelKey = (labelValue) =>
+    String(labelValue || '').trim().toLowerCase();
+
+  const buildDuplicateLabelMessage = (errorElement, labelValue, duplicateDeviceId) => {
+    const template = errorElement?.dataset?.duplicateErrorTemplate
+      || 'Label "{label}" is already used by {device_id}.';
+    return template
+      .replace('{label}', String(labelValue || '').trim())
+      .replace('{device_id}', String(duplicateDeviceId || '').trim());
+  };
+
+  const findDuplicateDeviceLabel = (labelValue, excludedDeviceIds = []) => {
+    const normalizedLabel = normalizeDeviceLabelKey(labelValue);
+    if (!normalizedLabel) {
+      return null;
+    }
+    const excludedIds = new Set(
+      (Array.isArray(excludedDeviceIds) ? excludedDeviceIds : [])
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+    );
+    return editorData.devices.find((device) => {
+      const deviceId = String(device?.device_id || '').trim();
+      if (!deviceId || excludedIds.has(deviceId)) {
+        return false;
+      }
+      return normalizeDeviceLabelKey(device?.label) === normalizedLabel;
+    }) || null;
+  };
+
+  const setInvalidFeedback = (input, errorElement, validationState) => {
+    if (!input) {
+      return true;
+    }
+    const reason = validationState?.reason || '';
+    const isValid = !reason;
+    input.classList.toggle('is-invalid', !isValid);
+    if (errorElement) {
+      const formatMessage = errorElement.dataset.formatErrorText || errorElement.textContent || '';
+      let message = formatMessage;
+      if (reason === 'duplicate') {
+        message = buildDuplicateLabelMessage(
+          errorElement,
+          validationState?.labelValue,
+          validationState?.duplicateDeviceId
+        );
+      }
+      errorElement.textContent = message;
+      errorElement.style.display = isValid ? 'none' : 'block';
+    }
+    return isValid;
+  };
+
   const updateZoneSegment = (label, nextZone) => {
     if (!label || !nextZone) {
       return null;
@@ -5482,6 +5456,27 @@
     return segments.join('-');
   };
 
+  const resolveBulkLabelTemplate = (template, device, index, zoneValue, sensorTypeValue) => {
+    const rawTemplate = String(template || '').trim();
+    if (!rawTemplate) {
+      return '';
+    }
+    const currentLabel = String(device?.label || '').trim();
+    const currentZone = String(device?.zone || '').trim();
+    const currentType = getSensorTypeFromLabel(currentLabel) || getDeviceSensorTypes(device)[0] || '';
+    const replacements = {
+      '{device_id}': String(device?.device_id || '').trim(),
+      '{index}': String(index + 1),
+      '{current_label}': currentLabel,
+      '{zone}': String(zoneValue || currentZone || '').trim(),
+      '{sensor_type}': String(sensorTypeValue || currentType || '').trim(),
+    };
+    return Object.entries(replacements).reduce(
+      (resolved, [token, value]) => resolved.split(token).join(value),
+      rawTemplate
+    ).trim();
+  };
+
   const getSensorTypeFromLabel = (label) => {
     if (!label) {
       return null;
@@ -5519,9 +5514,116 @@
     return sourceDevice ? getSourceDeviceUuid(sourceDevice) : null;
   };
 
+  const isSensorLabelValidationEnabled = () =>
+    !enforceSensorLabelTypePositionInput || enforceSensorLabelTypePositionInput.checked;
+
   const isSensorLabelValid = (labelValue) => {
+    if (!isSensorLabelValidationEnabled()) {
+      return true;
+    }
     const segments = labelValue.split('-').filter((segment) => segment.trim() !== '');
     return segments.length >= 4;
+  };
+
+  const getSelectedSensorLabelValidationState = (labelValue = (selectedSensorLabel?.value || '').trim()) => {
+    if (!labelValue || !selectedDeviceId) {
+      return { reason: '' };
+    }
+    if (!isSensorLabelValid(labelValue)) {
+      return { reason: 'format', labelValue };
+    }
+    const duplicateDevice = findDuplicateDeviceLabel(labelValue, [selectedDeviceId]);
+    if (duplicateDevice) {
+      return {
+        reason: 'duplicate',
+        labelValue,
+        duplicateDeviceId: duplicateDevice.device_id,
+      };
+    }
+    return { reason: '' };
+  };
+
+  const buildBulkLabelUpdatePlans = () => {
+    if (!bulkSensorList) {
+      return [];
+    }
+    const selectedInputs = Array.from(
+      bulkSensorList.querySelectorAll('input[type="checkbox"]:checked')
+    );
+    const zoneValue = (bulkSensorZone?.value || '').trim();
+    const bulkLabelValue = (bulkSensorLabel?.value || '').trim();
+    const sensorTypeValues = parseBulkSensorTypes(bulkSensorType?.value || '');
+    const primaryTypeValue = sensorTypeValues[0] || '';
+    return selectedInputs.map((input, index) => {
+      const deviceId = input.value;
+      const device = editorData.devices.find((item) => item.device_id === deviceId) || {
+        device_id: deviceId,
+        label: '',
+        zone: '',
+      };
+      const currentLabel = String(device.label || '').trim();
+      let nextLabel = currentLabel;
+      if (bulkLabelValue) {
+        nextLabel = resolveBulkLabelTemplate(
+          bulkLabelValue,
+          device,
+          index,
+          zoneValue,
+          primaryTypeValue
+        );
+      }
+      return {
+        deviceId,
+        device,
+        currentLabel,
+        nextLabel,
+        labelUpdate: nextLabel !== currentLabel ? nextLabel : null,
+      };
+    });
+  };
+
+  const getBulkLabelValidationState = () => {
+    const plans = buildBulkLabelUpdatePlans();
+    const updatedPlans = plans.filter((plan) => plan.labelUpdate !== null);
+    if (!updatedPlans.length) {
+      return { reason: '' };
+    }
+    for (const plan of updatedPlans) {
+      if (!plan.nextLabel || !isSensorLabelValid(plan.nextLabel)) {
+        return { reason: 'format', labelValue: plan.nextLabel };
+      }
+    }
+    const finalLabelsByDeviceId = new Map(
+      editorData.devices.map((device) => [
+        String(device?.device_id || '').trim(),
+        String(device?.label || '').trim(),
+      ])
+    );
+    updatedPlans.forEach((plan) => {
+      finalLabelsByDeviceId.set(plan.deviceId, plan.nextLabel);
+    });
+    for (const plan of updatedPlans) {
+      const normalizedLabel = normalizeDeviceLabelKey(plan.nextLabel);
+      if (!normalizedLabel) {
+        continue;
+      }
+      const duplicateDevice = editorData.devices.find((device) => {
+        const otherDeviceId = String(device?.device_id || '').trim();
+        if (!otherDeviceId || otherDeviceId === plan.deviceId) {
+          return false;
+        }
+        const otherFinalLabel = finalLabelsByDeviceId.get(otherDeviceId) || '';
+        return normalizeDeviceLabelKey(otherFinalLabel) === normalizedLabel;
+      });
+      if (duplicateDevice) {
+        return {
+          reason: 'duplicate',
+          labelValue: plan.nextLabel,
+          duplicateDeviceId: duplicateDevice.device_id,
+        };
+      }
+    }
+    return { reason: '' };
   };
 
   const updateBulkSelectionSummary = () => {
@@ -5536,17 +5638,21 @@
     }
     if (!selectedInputs.length) {
       if (bulkSelectionHint) {
-        bulkSelectionHint.textContent = 'Select sensors to smart-fill zone/field.';
+        bulkSelectionHint.textContent = 'Select sensors to smart-fill zone/field/label.';
       }
       if (bulkSensorZone) {
         bulkSensorZone.placeholder = 'Zone';
       }
+      if (bulkSensorLabel) {
+        bulkSensorLabel.placeholder = 'Label or template';
+      }
       if (bulkSensorType) {
-        bulkSensorType.placeholder = 'Sensor Field (comma-separated)';
+        bulkSensorType.placeholder = 'Sensor Field';
       }
       if (bulkSourceDeviceName) {
         setBulkSourceDeviceValue('');
       }
+      updateBulkLabelValidation();
       return;
     }
     const devices = selectedInputs
@@ -5566,45 +5672,63 @@
         .map((device) => device.source_device_name || device.source_device_uuid)
         .filter((value) => value)
     );
+    const labels = new Set(devices.map((device) => device.label).filter((label) => label));
     if (bulkSelectionHint) {
       const zoneSummary = zones.size === 1 ? Array.from(zones)[0] : 'Mixed';
-      const typeSummary = types.size === 1 ? Array.from(types)[0] : 'Mixed';
+      const typeSummary = typeSignatures.length === 1
+        ? typeSignatures[0]
+        : (typeSignatures.length ? 'Mixed' : 'None');
       const sourceSummary = sourceDevices.size === 1 ? Array.from(sourceDevices)[0] : (sourceDevices.size ? 'Mixed' : 'None');
-      bulkSelectionHint.textContent = `Detected zone: ${zoneSummary} · Field: ${typeSummary} · Source device: ${sourceSummary}`;
+      const labelSummary = labels.size === 1 ? Array.from(labels)[0] : (labels.size ? 'Mixed' : 'None');
+      bulkSelectionHint.textContent = `Detected zone: ${zoneSummary} · Field: ${typeSummary} · Label: ${labelSummary} · Source device: ${sourceSummary}`;
     }
     if (bulkSensorZone) {
       bulkSensorZone.placeholder = zones.size === 1 ? Array.from(zones)[0] : 'Mixed';
-      if (!bulkSensorZone.value && zones.size === 1) {
-        bulkSensorZone.value = Array.from(zones)[0];
-      }
+    }
+    if (bulkSensorLabel) {
+      bulkSensorLabel.placeholder = labels.size === 1
+        ? Array.from(labels)[0]
+        : 'Label or template';
     }
     if (bulkSensorType) {
       const typeSummary = typeSignatures.length === 1 ? typeSignatures[0] : 'Mixed';
-      bulkSensorType.placeholder = typeSummary || 'Sensor Field (comma-separated)';
-      if (typeSignatures.length === 1) {
-        bulkSensorType.value = typeSignatures[0];
-      }
+      bulkSensorType.placeholder = typeSummary || 'Sensor Field';
     }
     if (bulkSourceDeviceName) {
-      if (!bulkSourceDeviceName.value && sourceDevices.size === 1) {
-        setBulkSourceDeviceValue(Array.from(sourceDevices)[0]);
-      } else if (!bulkSourceDeviceName.value && sourceDevices.size !== 1) {
+      if (!bulkSourceDeviceName.value && sourceDevices.size !== 1) {
         setBulkSourceDeviceValue('');
       }
     }
+    updateBulkLabelValidation();
   };
 
   const updateSensorLabelValidation = () => {
     if (!selectedSensorLabel || !saveSensorLabelBtn) {
-      return;
+      return true;
     }
-    const labelValue = (selectedSensorLabel.value || '').trim();
-    const isValid = !labelValue || !selectedDeviceId || isSensorLabelValid(labelValue);
-    selectedSensorLabel.classList.toggle('is-invalid', !isValid);
-    if (selectedSensorLabelError) {
-      selectedSensorLabelError.style.display = isValid ? 'none' : 'block';
+    if (selectedSensorLabelHint) {
+      selectedSensorLabelHint.textContent = isSensorLabelValidationEnabled()
+        ? (selectedSensorLabelHint.dataset.validationEnabledText || '')
+        : (selectedSensorLabelHint.dataset.validationDisabledText || '');
     }
+    const isValid = setInvalidFeedback(
+      selectedSensorLabel,
+      selectedSensorLabelError,
+      getSelectedSensorLabelValidationState()
+    );
     saveSensorLabelBtn.disabled = !isValid;
+    return isValid;
+  };
+
+  const updateBulkLabelValidation = () => {
+    if (!bulkSensorLabel) {
+      return true;
+    }
+    return setInvalidFeedback(
+      bulkSensorLabel,
+      bulkSensorLabelError,
+      getBulkLabelValidationState()
+    );
   };
 
   const renderBulkSensorList = (floorId) => {
@@ -5956,8 +6080,7 @@
     saveSensorLabelBtn.addEventListener('click', async () => {
       const labelValue = (selectedSensorLabel.value || '').trim();
       if (selectedDeviceId) {
-        if (labelValue && !isSensorLabelValid(labelValue)) {
-          updateSensorLabelValidation();
+        if (!updateSensorLabelValidation()) {
           return;
         }
         const response = await fetch(
@@ -5969,6 +6092,15 @@
           }
         );
         if (!response.ok) {
+          if (response.status === 409) {
+            const payload = await response.json().catch(() => null);
+            setInvalidFeedback(selectedSensorLabel, selectedSensorLabelError, {
+              reason: 'duplicate',
+              labelValue,
+              duplicateDeviceId: payload?.duplicate_device_id || '',
+            });
+            saveSensorLabelBtn.disabled = true;
+          }
           return;
         }
         const device = editorData.devices.find((item) => item.device_id === selectedDeviceId);
@@ -6018,6 +6150,13 @@
     });
   }
 
+  if (enforceSensorLabelTypePositionInput) {
+    enforceSensorLabelTypePositionInput.addEventListener('change', () => {
+      updateSensorLabelValidation();
+      updateBulkLabelValidation();
+    });
+  }
+
   if (bulkSensorList) {
     bulkSensorList.addEventListener('change', () => {
       updateBulkSelectionSummary();
@@ -6030,6 +6169,46 @@
       setBulkSourceDeviceValue('');
     });
     refreshBulkSourceDeviceOptions();
+  }
+
+  if (bulkSensorZone) {
+    bulkSensorZone.addEventListener('input', () => {
+      updateBulkLabelValidation();
+    });
+  }
+
+  if (bulkSensorLabel) {
+    bulkSensorLabel.addEventListener('input', () => {
+      updateBulkLabelValidation();
+    });
+  }
+
+  if (bulkSensorTypeDropdownMenu) {
+    bulkSensorTypeDropdownMenu.addEventListener('change', (event) => {
+      if (!(event.target instanceof HTMLInputElement) || !event.target.matches('[data-bulk-sensor-type-option]')) {
+        return;
+      }
+      const selectedValues = Array.from(
+        bulkSensorTypeDropdownMenu.querySelectorAll('[data-bulk-sensor-type-option]:checked')
+      ).map((input) => input.value);
+      setBulkSensorTypeValue(selectedValues);
+    });
+
+    bulkSensorTypeDropdownMenu.addEventListener('click', (event) => {
+      const clearButton = event.target.closest('[data-bulk-sensor-type-clear]');
+      if (!clearButton) {
+        return;
+      }
+      event.preventDefault();
+      setBulkSensorTypeValue([]);
+    });
+  }
+
+  if (bulkSensorType) {
+    bulkSensorType.addEventListener('change', () => {
+      syncBulkSensorTypeDropdownSelection();
+      updateBulkLabelValidation();
+    });
   }
 
   if (bulkClearSelectionBtn && bulkSensorList) {
@@ -6082,6 +6261,7 @@
         return;
       }
       const zoneValue = (bulkSensorZone.value || '').trim();
+      const bulkLabelValue = (bulkSensorLabel?.value || '').trim();
       const sensorTypeValues = parseBulkSensorTypes(bulkSensorType?.value || '');
       const primaryTypeValue = sensorTypeValues[0] || '';
       const sourceNameValue = (bulkSourceName?.value || '').trim();
@@ -6098,11 +6278,24 @@
       const selectedInputs = Array.from(
         bulkSensorList.querySelectorAll('input[type="checkbox"]:checked')
       );
-      if (!selectedInputs.length || (!zoneValue && !sensorTypeValues.length && !sourceNameValue && !sourceDeviceNameValue)) {
+      if (!selectedInputs.length) {
+        alert({{ ('กรุณาเลือกอย่างน้อย 1 sensor ก่อนอัปเดต' if current_lang == 'th' else 'Select at least one sensor before applying bulk updates.') | tojson }});
+        return;
+      }
+      if (!zoneValue && !bulkLabelValue && !sensorTypeValues.length && !sourceNameValue && !sourceDeviceNameValue) {
+        alert({{ ('กรุณากรอกอย่างน้อย 1 ค่า เช่น Zone, Label, Sensor Field หรือ Mapping source ก่อนอัปเดต' if current_lang == 'th' else 'Enter at least one value such as Zone, Label, Sensor Field, or Mapping source before applying bulk updates.') | tojson }});
+        return;
+      }
+      const bulkLabelPlans = buildBulkLabelUpdatePlans();
+      const bulkLabelPlanByDeviceId = new Map(
+        bulkLabelPlans.map((plan) => [plan.deviceId, plan])
+      );
+      if (!updateBulkLabelValidation()) {
+        bulkSensorLabel?.focus();
         return;
       }
       const results = await Promise.all(
-        selectedInputs.map(async (input) => {
+        selectedInputs.map(async (input, index) => {
           const deviceId = input.value;
           let response = { ok: true };
           if (zoneValue) {
@@ -6116,25 +6309,16 @@
             );
           }
           let labelUpdate = null;
-          const device = editorData.devices.find((item) => item.device_id === deviceId);
-          if (device) {
-            const currentLabel = device.label || '';
-            let nextLabel = currentLabel;
-            if (zoneValue) {
-              const zoneUpdate = updateZoneSegment(nextLabel, zoneValue);
-              if (zoneUpdate) {
-                nextLabel = zoneUpdate;
-              }
-            }
-            if (primaryTypeValue) {
-              const typeUpdate = updateSensorTypeSegment(nextLabel, primaryTypeValue);
-              if (typeUpdate) {
-                nextLabel = typeUpdate;
-              }
-            }
-            if (nextLabel !== currentLabel) {
-              labelUpdate = nextLabel;
-            }
+          let labelOk = true;
+          let labelErrorPayload = null;
+          const device = editorData.devices.find((item) => item.device_id === deviceId) || {
+            device_id: deviceId,
+            label: '',
+            zone: '',
+          };
+          const labelPlan = bulkLabelPlanByDeviceId.get(deviceId);
+          if (labelPlan && labelPlan.labelUpdate !== null) {
+            labelUpdate = labelPlan.nextLabel;
           }
           let sensorTypesOk = true;
           if (sensorTypeValues.length) {
@@ -6158,6 +6342,8 @@
               }
             );
             if (!labelResponse.ok) {
+              labelOk = false;
+              labelErrorPayload = await labelResponse.json().catch(() => null);
               labelUpdate = null;
             }
           }
@@ -6185,14 +6371,37 @@
           }
           return {
             deviceId,
-            ok: response.ok && mappingOk && sensorTypesOk,
+            ok: response.ok && mappingOk && sensorTypesOk && labelOk,
             labelUpdate,
+            labelErrorPayload,
             sensorTypeValues,
             mappedSourceDeviceName,
             mappedSourceDeviceUuid,
           };
         })
       );
+      const duplicateLabelConflict = results.find(
+        (result) => result.labelErrorPayload?.duplicate_device_id
+      );
+      if (duplicateLabelConflict) {
+        setInvalidFeedback(bulkSensorLabel, bulkSensorLabelError, {
+          reason: 'duplicate',
+          labelValue: duplicateLabelConflict.labelErrorPayload?.label || '',
+          duplicateDeviceId: duplicateLabelConflict.labelErrorPayload?.duplicate_device_id || '',
+        });
+      }
+      const failedResults = results.filter((result) => !result.ok);
+      if (failedResults.length) {
+        alert(
+          `${failedResults.length} {{ 'รายการอัปเดตไม่สำเร็จ กรุณาตรวจสอบค่า Label หรือ Mapping ที่เลือก' if current_lang == 'th' else 'selected sensor updates failed. Please review the chosen Label or Mapping values.' }}`
+        );
+      }
+      const successfulResults = results.filter((result) => result.ok);
+      if (successfulResults.length && !failedResults.length) {
+        alert(
+          `${successfulResults.length} {{ 'รายการอัปเดตสำเร็จ' if current_lang == 'th' else 'selected sensors updated successfully.' }}`
+        );
+      }
       results.forEach(({ deviceId, ok, labelUpdate, sensorTypeValues, mappedSourceDeviceName, mappedSourceDeviceUuid }) => {
         if (!ok) {
           return;
