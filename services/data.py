@@ -2075,6 +2075,43 @@ def get_sensor_readings_csv():
         return rows
 
 
+def get_sensor_export_rows(start_ts, end_ts, metric_keys=None):
+    params = [start_ts, end_ts]
+    clauses = ["sensor_readings.ts BETWEEN ? AND ?"]
+    normalized_metrics = [
+        str(metric_key).strip()
+        for metric_key in (metric_keys or [])
+        if str(metric_key).strip()
+    ]
+    if normalized_metrics:
+        placeholders = ",".join("?" for _ in normalized_metrics)
+        clauses.append(f"sensor_readings.metric IN ({placeholders})")
+        params.extend(normalized_metrics)
+    query = f"""
+        SELECT
+            sensor_readings.id,
+            sensor_readings.ts,
+            sensor_readings.device_id,
+            sensor_readings.floor_id,
+            sensor_readings.metric,
+            sensor_readings.value,
+            sensor_readings.raw_value,
+            sensor_readings.unit,
+            COALESCE(NULLIF(TRIM(sensor_readings.topic), ''), 'Live') AS topic,
+            devices.label AS device_label
+        FROM sensor_readings
+        LEFT JOIN devices ON devices.device_id = sensor_readings.device_id
+        WHERE {' AND '.join(clauses)}
+        ORDER BY
+            sensor_readings.ts ASC,
+            sensor_readings.device_id ASC,
+            sensor_readings.metric ASC,
+            sensor_readings.id ASC
+    """
+    with connect(SENSOR_DB) as conn:
+        return conn.execute(query, params).fetchall()
+
+
 def get_metric_severity(settings, metric, value):
     if value is None:
         return None

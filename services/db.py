@@ -13,8 +13,16 @@ API_DB = os.path.join(DATA_DIR, "api.db")
 AUTH_DB = os.path.join(DATA_DIR, "auth.db")
 
 
+class ClosingConnection(sqlite3.Connection):
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            return super().__exit__(exc_type, exc_val, exc_tb)
+        finally:
+            self.close()
+
+
 def connect(db_path):
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, factory=ClosingConnection)
     conn.row_factory = sqlite3.Row
     return conn
 

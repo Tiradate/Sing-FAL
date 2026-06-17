@@ -42,7 +42,12 @@
           </a>
           {% endif %}
           {% if settings.show_icons.download %}
-          <a class="header-icon" href="{{ url_for('export_sensor_csv', system=current_system) }}" title="{{ t('download') }}">
+          <a
+            class="header-icon"
+            href="{{ url_for('export_sensor_csv', system=current_system) }}"
+            title="{{ t('download') }}"
+            data-download-trigger
+          >
             <i class="bi bi-download"></i>
           </a>
           {% endif %}
@@ -93,9 +98,267 @@
     {% block content %}{% endblock %}
   </main>
 
+  {% if settings.show_icons.download %}
+  <div class="modal fade" id="downloadExportModal" tabindex="-1" aria-labelledby="downloadExportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="downloadExportModalLabel">{{ 'Download Data' if current_lang != 'th' else 'ดาวน์โหลดข้อมูล' }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <div class="form-label fw-semibold mb-2">{{ 'Preset range' if current_lang != 'th' else 'ช่วงเวลาสำเร็จรูป' }}</div>
+            <div class="d-flex flex-wrap gap-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-download-preset="1">1 {{ 'day' if current_lang != 'th' else 'วัน' }}</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-download-preset="7">7 {{ 'days' if current_lang != 'th' else 'วัน' }}</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-download-preset="30">30 {{ 'days' if current_lang != 'th' else 'วัน' }}</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-download-preset="365">365 {{ 'days' if current_lang != 'th' else 'วัน' }}</button>
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="downloadExportStart">{{ t('start') }}</label>
+              <input class="form-control" type="datetime-local" id="downloadExportStart">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label" for="downloadExportEnd">{{ t('end') }}</label>
+              <input class="form-control" type="datetime-local" id="downloadExportEnd">
+            </div>
+          </div>
+          <div class="small text-muted mt-3{% if current_system != 'fire' %} d-none{% endif %}" id="downloadExportPdfNote">
+            {{ 'PDF report is limited to 31 days per request.' if current_lang != 'th' else 'PDF report จำกัดไม่เกิน 31 วันต่อครั้ง' }}
+          </div>
+          <div class="small mt-3 text-muted" id="downloadExportStatus" hidden></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">{{ 'Close' if current_lang != 'th' else 'ปิด' }}</button>
+          <button type="button" class="btn btn-primary" id="downloadExportCsvBtn">{{ 'Download CSV' if current_lang != 'th' else 'ดาวน์โหลด CSV' }}</button>
+          <button type="button" class="btn btn-danger{% if current_system != 'fire' %} d-none{% endif %}" id="downloadExportPdfBtn">{{ 'Create PDF Report' if current_lang != 'th' else 'สร้าง PDF Report' }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   {% block scripts %}{% endblock %}
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% if settings.show_icons.download %}
+  <script>
+    (() => {
+      const trigger = document.querySelector('[data-download-trigger]');
+      const modalElement = document.getElementById('downloadExportModal');
+      const startInput = document.getElementById('downloadExportStart');
+      const endInput = document.getElementById('downloadExportEnd');
+      const csvButton = document.getElementById('downloadExportCsvBtn');
+      const pdfButton = document.getElementById('downloadExportPdfBtn');
+      const statusElement = document.getElementById('downloadExportStatus');
+      if (!trigger || !modalElement || !startInput || !endInput || !csvButton) {
+        return;
+      }
+
+      const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+      const exportConfig = {
+        currentSystem: {{ current_system|tojson }},
+        isFire: {{ (current_system == 'fire')|tojson }},
+        defaultEnd: {{ project_now_local_input|tojson }},
+        csvRoute: {{ url_for('export_sensor_csv')|tojson }},
+        createFireReportRoute: {{ url_for('create_fire_report_export_job')|tojson }},
+        fireReportStatusRoute: {{ url_for('get_fire_report_export_job', job_id='__job__')|tojson }},
+        text: {
+          missingRange: {{ ('Please select both start and end date/time.' if current_lang != 'th' else 'กรุณาเลือกวันและเวลาเริ่มต้นกับสิ้นสุดให้ครบ')|tojson }},
+          invalidRange: {{ ('End date must be after start date.' if current_lang != 'th' else 'วันที่สิ้นสุดต้องมากกว่าหรือเท่ากับวันที่เริ่มต้น')|tojson }},
+          pdfLimit: {{ ('PDF report is limited to 31 days per request.' if current_lang != 'th' else 'PDF report จำกัดไม่เกิน 31 วันต่อครั้ง')|tojson }},
+          preparingPdf: {{ ('Preparing PDF report...' if current_lang != 'th' else 'กำลังสร้าง PDF report...')|tojson }},
+          waitingPdf: {{ ('PDF report is being generated. Download will start automatically when ready.' if current_lang != 'th' else 'ระบบกำลังสร้าง PDF report และจะเริ่มดาวน์โหลดให้อัตโนมัติเมื่อพร้อม')|tojson }},
+          pdfReady: {{ ('PDF report is ready. Starting download...' if current_lang != 'th' else 'PDF report พร้อมแล้ว กำลังเริ่มดาวน์โหลด...')|tojson }},
+          pdfFailedPrefix: {{ ('PDF export failed: ' if current_lang != 'th' else 'สร้าง PDF ไม่สำเร็จ: ')|tojson }},
+        },
+      };
+
+      const presetButtons = Array.from(modalElement.querySelectorAll('[data-download-preset]'));
+      const maxPdfRangeMs = 31 * 24 * 60 * 60 * 1000;
+      const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+      const formatLocalDateTime = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      };
+
+      const parseLocalDateTime = (value) => {
+        if (!value) {
+          return null;
+        }
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+          return null;
+        }
+        return parsed;
+      };
+
+      const showStatus = (message) => {
+        if (!statusElement) {
+          return;
+        }
+        statusElement.hidden = !message;
+        statusElement.textContent = message || '';
+      };
+
+      const setBusyState = (busy) => {
+        startInput.disabled = busy;
+        endInput.disabled = busy;
+        csvButton.disabled = busy;
+        presetButtons.forEach((button) => {
+          button.disabled = busy;
+        });
+        if (pdfButton) {
+          pdfButton.disabled = busy;
+        }
+      };
+
+      const applyPresetRange = (days) => {
+        const endDate = parseLocalDateTime(exportConfig.defaultEnd) || new Date();
+        const startDate = new Date(endDate.getTime() - (Number(days || 1) * 24 * 60 * 60 * 1000));
+        endInput.value = formatLocalDateTime(endDate);
+        startInput.value = formatLocalDateTime(startDate);
+      };
+
+      const validateRange = () => {
+        if (!startInput.value || !endInput.value) {
+          alert(exportConfig.text.missingRange);
+          return null;
+        }
+        const startDate = parseLocalDateTime(startInput.value);
+        const endDate = parseLocalDateTime(endInput.value);
+        if (!startDate || !endDate || endDate.getTime() < startDate.getTime()) {
+          alert(exportConfig.text.invalidRange);
+          return null;
+        }
+        return { startDate, endDate };
+      };
+
+      const buildCsvDownloadUrl = () => {
+        const params = new URLSearchParams({
+          system: exportConfig.currentSystem,
+          start: startInput.value,
+          end: endInput.value,
+        });
+        return `${exportConfig.csvRoute}?${params.toString()}`;
+      };
+
+      const getResponseErrorMessage = async (response) => {
+        try {
+          const payload = await response.json();
+          if (payload && payload.error) {
+            return payload.error;
+          }
+        } catch (error) {
+        }
+        try {
+          const text = await response.text();
+          if (text) {
+            return text;
+          }
+        } catch (error) {
+        }
+        return response.statusText || 'Request failed';
+      };
+
+      const waitForFireReport = async (jobId) => {
+        const statusRoute = exportConfig.fireReportStatusRoute.replace('__job__', encodeURIComponent(jobId));
+        for (let attempt = 0; attempt < 120; attempt += 1) {
+          const response = await fetch(statusRoute, { cache: 'no-store' });
+          if (!response.ok) {
+            throw new Error(await getResponseErrorMessage(response));
+          }
+          const payload = await response.json();
+          if (payload.status === 'completed' && payload.download_url) {
+            return payload;
+          }
+          if (payload.status === 'error') {
+            throw new Error(payload.error || 'PDF export failed');
+          }
+          showStatus(exportConfig.text.waitingPdf);
+          await sleep(1500);
+        }
+        throw new Error('Timed out while preparing PDF report');
+      };
+
+      trigger.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (!startInput.value || !endInput.value) {
+          applyPresetRange(1);
+        }
+        showStatus('');
+        modal.show();
+      });
+
+      presetButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          applyPresetRange(Number.parseInt(button.dataset.downloadPreset || '1', 10) || 1);
+        });
+      });
+
+      csvButton.addEventListener('click', () => {
+        const range = validateRange();
+        if (!range) {
+          return;
+        }
+        window.location.href = buildCsvDownloadUrl();
+      });
+
+      if (pdfButton) {
+        pdfButton.addEventListener('click', async () => {
+          const range = validateRange();
+          if (!range) {
+            return;
+          }
+          if (range.endDate.getTime() - range.startDate.getTime() > maxPdfRangeMs) {
+            alert(exportConfig.text.pdfLimit);
+            return;
+          }
+          setBusyState(true);
+          showStatus(exportConfig.text.preparingPdf);
+          try {
+            const createResponse = await fetch(exportConfig.createFireReportRoute, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                system: exportConfig.currentSystem,
+                start: startInput.value,
+                end: endInput.value,
+              }),
+            });
+            if (!createResponse.ok) {
+              throw new Error(await getResponseErrorMessage(createResponse));
+            }
+            const createPayload = await createResponse.json();
+            const readyPayload = await waitForFireReport(createPayload.job_id);
+            showStatus(exportConfig.text.pdfReady);
+            modal.hide();
+            window.location.href = readyPayload.download_url;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            showStatus(exportConfig.text.pdfFailedPrefix + message);
+          } finally {
+            setBusyState(false);
+          }
+        });
+      }
+
+      modalElement.addEventListener('hidden.bs.modal', () => {
+        showStatus('');
+      });
+    })();
+  </script>
+  {% endif %}
 </body>
 </html>

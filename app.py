@@ -237,6 +237,7 @@ if not _env_flag("ICON_SKIP_RUNTIME_BOOTSTRAP", default=False):
 from flask import (
     Flask,
     flash,
+    has_request_context,
     jsonify,
     redirect,
     render_template,
@@ -340,6 +341,17 @@ _SOURCE_REQUEST_HISTORY_EXPORT_DIR = os.path.join(
     "source_request_history_exports",
 )
 os.makedirs(_SOURCE_REQUEST_HISTORY_EXPORT_DIR, exist_ok=True)
+_FIRE_REPORT_EXPORT_JOB_LOCK = threading.Lock()
+_FIRE_REPORT_EXPORT_JOBS = {}
+_FIRE_REPORT_EXPORT_JOB_RETENTION_SECONDS = 15 * 60
+_FIRE_REPORT_EXPORT_DIR = os.path.join(
+    BASE_DIR,
+    "tmp",
+    "fire_report_exports",
+)
+os.makedirs(_FIRE_REPORT_EXPORT_DIR, exist_ok=True)
+DEFAULT_SENSOR_EXPORT_RANGE = timedelta(days=1)
+FIRE_REPORT_EXPORT_MAX_RANGE = timedelta(days=31)
 
 SUPPORTED_LANGUAGES = {
     "en": "ENG",
@@ -572,14 +584,14 @@ def get_project_time_format(settings):
     return value if value in {"24h", "12h"} else "24h"
 
 
-def get_project_date_format():
-    language = get_current_language()
+def get_project_date_format(language=None):
+    language = language or get_current_language()
     if language == "th":
         return "%d/%m/%Y"
     return "%Y/%m/%d"
 
 
-def format_project_datetime(value, settings):
+def format_project_datetime(value, settings, language=None):
     if not value:
         return ""
     parsed = value
@@ -593,12 +605,12 @@ def format_project_datetime(value, settings):
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     local_ts = parsed.astimezone(get_project_timezone(settings))
-    date_pattern = get_project_date_format()
+    date_pattern = get_project_date_format(language=language)
     time_pattern = f"{date_pattern} %H:%M" if get_project_time_format(settings) == "24h" else f"{date_pattern} %I:%M %p"
     return local_ts.strftime(time_pattern)
 
 
-def format_project_datetime_seconds(value, settings):
+def format_project_datetime_seconds(value, settings, language=None):
     if not value:
         return ""
     parsed = value
@@ -612,7 +624,7 @@ def format_project_datetime_seconds(value, settings):
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     local_ts = parsed.astimezone(get_project_timezone(settings))
-    date_pattern = get_project_date_format()
+    date_pattern = get_project_date_format(language=language)
     time_pattern = f"{date_pattern} %H:%M:%S" if get_project_time_format(settings) == "24h" else f"{date_pattern} %I:%M:%S %p"
     return local_ts.strftime(time_pattern)
 
@@ -895,6 +907,8 @@ def ensure_init():
 
 
 def get_current_language():
+    if not has_request_context():
+        return "en"
     language = session.get("lang", "en")
     if language not in SUPPORTED_LANGUAGES:
         return "en"
@@ -954,6 +968,11 @@ def inject_globals():
         "project_timezone_options": PROJECT_TIMEZONE_OPTIONS,
         "project_time_format_options": PROJECT_TIME_FORMAT_OPTIONS,
         "format_project_datetime": lambda value: format_project_datetime(value, settings),
+        "format_project_datetime_local_input": lambda value: format_project_datetime_local_input(value, settings),
+        "project_now_local_input": format_project_datetime_local_input(
+            datetime.now(get_project_timezone(settings)),
+            settings,
+        ),
         "t": translate_text,
         "translate_alarm_message": translate_alarm_message,
     }
@@ -1326,54 +1345,627 @@ def map_full():
 @app.route("/export/sensor.csv")
 def export_sensor_csv():
     settings = settings_service.load_settings()
-    system_param = request.args.get("system", "").strip().lower()
-    active_system = system_param if system_param else resolve_active_system(settings)
+    try:
+        export_context = _build_sensor_export_context(settings, request.args)
+    except ValueError as exc:
+        return str(exc), 400
+
+    csv_bytes, filename = _build_sensor_export_csv_bytes(settings, export_context)
+    return send_file(
+        csv_bytes,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="text/csv",
+    )
+
+
+def _default_sensor_export_end(settings):
+    _start_bound, end_bound = data_service.get_sensor_time_bounds()
+    project_tz = get_project_timezone(settings)
+    if not end_bound:
+        return datetime.now(project_tz)
+    if end_bound.tzinfo is None:
+        return end_bound.replace(tzinfo=timezone.utc).astimezone(project_tz)
+    return end_bound.astimezone(project_tz)
+
+
+def _build_sensor_export_filename(prefix, system_key, start_dt, end_dt, extension):
+    filename_parts = [str(prefix or "").strip() or "export"]
+    normalized_system = str(system_key or "").strip().lower()
+    if normalized_system:
+        filename_parts.append(normalized_system)
+    filename_parts.append(start_dt.strftime("%Y%m%d_%H%M"))
+    filename_parts.append(end_dt.strftime("%Y%m%d_%H%M"))
+    filename_base = secure_filename("_".join(filename_parts)) or str(prefix or "export")
+    return f"{filename_base}.{extension}"
+
+
+def _build_sensor_export_context(settings, payload=None, *, require_fire=False, max_range=None):
+    payload = payload or {}
+    requested_system = str(payload.get("system") or "").strip().lower()
+    active_system = (
+        requested_system
+        if requested_system in settings_service.SYSTEM_KEYS
+        else resolve_active_system(settings)
+    )
+    if require_fire and active_system != "fire":
+        raise ValueError("PDF reports are only available for Fire system")
+
+    start_text = str(payload.get("start") or "").strip()
+    end_text = str(payload.get("end") or "").strip()
+    project_tz = get_project_timezone(settings)
+
+    if start_text and end_text:
+        start_dt, end_dt = parse_date_range(start_text, end_text, project_tz)
+    else:
+        end_dt = _default_sensor_export_end(settings)
+        start_dt = end_dt - DEFAULT_SENSOR_EXPORT_RANGE
+        start_text = format_project_datetime_local_input(start_dt, settings)
+        end_text = format_project_datetime_local_input(end_dt, settings)
+
+    if len(start_text) == 10:
+        start_dt = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif len(start_text) == 16:
+        start_dt = start_dt.replace(second=0, microsecond=0)
+
+    if len(end_text) == 10:
+        end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+    elif len(end_text) == 16:
+        end_dt = end_dt.replace(second=59, microsecond=999999)
+
+    if end_dt < start_dt:
+        raise ValueError("End date must be after start date.")
+    if max_range is not None and end_dt - start_dt > max_range:
+        raise ValueError("Date range cannot exceed 31 days for PDF reports.")
+
     metric_options = get_enabled_metric_options(settings, active_system)
-    allowed_metrics = [option["key"] for option in metric_options]
-
-    # Build column headers: metric label + unit
-    METRIC_LABELS = {
-        "temperature": "Temperature(\u00b0C)",
-        "humidity": "Humidity(%RH)",
-        "co2": "CO\u2082(ppm)",
-        "pm25": "PM2.5(\u03bcg/m\u00b3)",
-        "pm10": "PM10(\u03bcg/m\u00b3)",
-        "tvoc": "TVOC(mg/m\u00b3)",
+    metric_keys = [option["key"] for option in metric_options]
+    extension = "pdf" if require_fire else "csv"
+    filename_prefix = "fire_report" if require_fire else "sensor_readings"
+    return {
+        "system": active_system,
+        "language": get_current_language(),
+        "metric_options": metric_options,
+        "metric_keys": metric_keys,
+        "start_dt": start_dt,
+        "end_dt": end_dt,
+        "start_utc_iso": start_dt.astimezone(timezone.utc).replace(tzinfo=None).isoformat(),
+        "end_utc_iso": end_dt.astimezone(timezone.utc).replace(tzinfo=None).isoformat(),
+        "filename": _build_sensor_export_filename(
+            filename_prefix,
+            active_system,
+            start_dt,
+            end_dt,
+            extension,
+        ),
     }
-    metric_cols = [m for m in allowed_metrics if m in METRIC_LABELS] or list(METRIC_LABELS.keys())
-    headers = [METRIC_LABELS[m] for m in metric_cols]
 
-    rows = data_service.get_sensor_readings_csv()
 
-    # Pivot: latest value per (device_id, metric)
-    latest = {}
-    device_floor = {}
+def _sensor_export_metric_label(metric_key, metric_label_map):
+    metric_meta = metric_label_map.get(metric_key) or {}
+    label = str(metric_meta.get("label") or metric_key).strip() or metric_key
+    unit = str(metric_meta.get("unit") or "").strip()
+    if unit:
+        return f"{label} ({unit})"
+    return label
+
+
+def _sensor_export_row_value(row):
+    raw_value = str(row["raw_value"] or "").strip()
+    if raw_value:
+        return raw_value
+    value = row["value"]
+    if value is None:
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
+def _build_sensor_export_csv_bytes(settings, export_context):
+    rows = data_service.get_sensor_export_rows(
+        export_context["start_utc_iso"],
+        export_context["end_utc_iso"],
+        export_context["metric_keys"],
+    )
+    export_language = export_context.get("language") or "en"
+    metric_label_map = {
+        option["key"]: {"label": option["label"], "unit": option["unit"]}
+        for option in export_context["metric_options"]
+    }
+    csv_buffer = io.StringIO()
+    writer = csv.writer(csv_buffer)
+    writer.writerow(
+        [
+            "timestamp",
+            "device_id",
+            "device_label",
+            "floor_id",
+            "topic",
+            "metric",
+            "metric_label",
+            "value",
+            "raw_value",
+            "unit",
+        ]
+    )
     for row in rows:
-        metric = row["metric"]
-        if metric not in metric_cols:
+        writer.writerow(
+            [
+                format_project_datetime_seconds(
+                    row["ts"],
+                    settings,
+                    language=export_language,
+                ),
+                row["device_id"] or "",
+                row["device_label"] or "",
+                row["floor_id"] or "",
+                row["topic"] or "Live",
+                row["metric"] or "",
+                _sensor_export_metric_label(row["metric"], metric_label_map),
+                "" if row["value"] is None else row["value"],
+                row["raw_value"] or "",
+                row["unit"] or "",
+            ]
+        )
+    csv_bytes = io.BytesIO(csv_buffer.getvalue().encode("utf-8-sig"))
+    csv_bytes.seek(0)
+    return csv_bytes, export_context["filename"]
+
+
+def _fire_report_export_owner_key():
+    user_id = session.get("user_id") or "anonymous"
+    username = session.get("username") or "anonymous"
+    ip_address = get_request_ip() or request.remote_addr or "unknown"
+    return f"{user_id}:{username}:{ip_address}"
+
+
+def _remove_fire_report_export_file(file_path):
+    path = str(file_path or "").strip()
+    if not path:
+        return
+    try:
+        if os.path.isfile(path):
+            os.remove(path)
+    except OSError:
+        pass
+
+
+def _parse_fire_report_export_job_datetime(value):
+    text = str(value or "").strip()
+    if not text:
+        return datetime.now(timezone.utc)
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return datetime.now(timezone.utc)
+
+
+def _prune_fire_report_export_jobs():
+    stale_jobs = []
+    cutoff = datetime.now(timezone.utc) - timedelta(
+        seconds=_FIRE_REPORT_EXPORT_JOB_RETENTION_SECONDS
+    )
+    with _FIRE_REPORT_EXPORT_JOB_LOCK:
+        for job_id in list(_FIRE_REPORT_EXPORT_JOBS.keys()):
+            job = _FIRE_REPORT_EXPORT_JOBS[job_id]
+            updated_at = _parse_fire_report_export_job_datetime(job.get("updated_at"))
+            if updated_at >= cutoff:
+                continue
+            stale_jobs.append(_FIRE_REPORT_EXPORT_JOBS.pop(job_id))
+    for job in stale_jobs:
+        _remove_fire_report_export_file(job.get("file_path"))
+
+
+def _update_fire_report_export_job(job_id, **changes):
+    with _FIRE_REPORT_EXPORT_JOB_LOCK:
+        job = _FIRE_REPORT_EXPORT_JOBS.get(job_id)
+        if not job:
+            return None
+        job.update(changes)
+        job["updated_at"] = datetime.now(timezone.utc).isoformat()
+        return dict(job)
+
+
+def _serialize_fire_report_export_job(job):
+    payload = {
+        "job_id": job.get("job_id"),
+        "status": job.get("status"),
+        "created_at": job.get("created_at"),
+        "updated_at": job.get("updated_at"),
+        "row_count": int(job.get("row_count") or 0),
+        "download_name": job.get("download_name") or "",
+    }
+    if job.get("error"):
+        payload["error"] = job.get("error")
+    if job.get("status") == "completed" and job.get("file_path"):
+        payload["download_url"] = url_for(
+            "download_fire_report_export_job",
+            job_id=job.get("job_id"),
+        )
+    return payload
+
+
+def _get_fire_report_export_job_for_current_user(job_id):
+    _prune_fire_report_export_jobs()
+    owner_key = _fire_report_export_owner_key()
+    with _FIRE_REPORT_EXPORT_JOB_LOCK:
+        job = _FIRE_REPORT_EXPORT_JOBS.get(job_id)
+        if not job:
+            return None
+        if job.get("owner_key") != owner_key:
+            return None
+        return dict(job)
+
+
+def _resolve_reportlab_fonts():
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    font_candidates = [
+        (
+            "Tahoma",
+            os.path.join("C:\\", "Windows", "Fonts", "tahoma.ttf"),
+            os.path.join("C:\\", "Windows", "Fonts", "tahomabd.ttf"),
+        ),
+        (
+            "ArialUnicode",
+            os.path.join("C:\\", "Windows", "Fonts", "ARIALUNI.ttf"),
+            os.path.join("C:\\", "Windows", "Fonts", "arialbd.ttf"),
+        ),
+        (
+            "DejaVuSans",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        ),
+    ]
+    for font_base_name, normal_path, bold_path in font_candidates:
+        if not os.path.isfile(normal_path):
             continue
-        device_id = row["device_id"]
-        key = (device_id, metric)
-        if key not in latest:
-            latest[key] = row["value"]
-            device_floor[device_id] = row["floor_id"]
+        normal_name = f"{font_base_name}-Normal"
+        bold_name = f"{font_base_name}-Bold"
+        registered_fonts = set(pdfmetrics.getRegisteredFontNames())
+        if normal_name not in registered_fonts:
+            pdfmetrics.registerFont(TTFont(normal_name, normal_path))
+        if os.path.isfile(bold_path) and bold_name not in registered_fonts:
+            pdfmetrics.registerFont(TTFont(bold_name, bold_path))
+        elif bold_name not in registered_fonts:
+            bold_name = normal_name
+        return normal_name, bold_name
+    return "Helvetica", "Helvetica-Bold"
 
-    # Collect unique devices preserving order
-    devices_seen = []
-    devices_set = set()
+
+def _build_fire_report_pdf(file_path, settings, export_context, rows):
+    from xml.sax.saxutils import escape
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.platypus import LongTable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    font_name, bold_name = _resolve_reportlab_fonts()
+    export_language = export_context.get("language") or "en"
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "FireReportTitle",
+        parent=styles["Title"],
+        fontName=bold_name,
+        fontSize=18,
+        leading=22,
+        textColor=colors.HexColor("#111827"),
+        spaceAfter=8,
+    )
+    meta_style = ParagraphStyle(
+        "FireReportMeta",
+        parent=styles["BodyText"],
+        fontName=font_name,
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor("#4b5563"),
+    )
+    section_style = ParagraphStyle(
+        "FireReportSection",
+        parent=styles["Heading3"],
+        fontName=bold_name,
+        fontSize=11,
+        leading=14,
+        textColor=colors.HexColor("#111827"),
+        spaceAfter=6,
+        spaceBefore=6,
+    )
+    table_header_style = ParagraphStyle(
+        "FireReportTableHeader",
+        parent=styles["BodyText"],
+        fontName=bold_name,
+        fontSize=8,
+        leading=10,
+        textColor=colors.white,
+    )
+    table_body_style = ParagraphStyle(
+        "FireReportTableBody",
+        parent=styles["BodyText"],
+        fontName=font_name,
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#111827"),
+    )
+    doc = SimpleDocTemplate(
+        file_path,
+        pagesize=landscape(A4),
+        leftMargin=24,
+        rightMargin=24,
+        topMargin=24,
+        bottomMargin=24,
+    )
+    project_name = str(settings.get("project_name") or "Project").strip() or "Project"
+    story = [
+        Paragraph(f"{escape(project_name)} Fire Report", title_style),
+        Paragraph(
+            "Range: "
+            f"{escape(format_project_datetime_seconds(export_context['start_dt'], settings, language=export_language))}"
+            " to "
+            f"{escape(format_project_datetime_seconds(export_context['end_dt'], settings, language=export_language))}",
+            meta_style,
+        ),
+        Paragraph(
+            "Generated at: "
+            f"{escape(format_project_datetime_seconds(datetime.now(get_project_timezone(settings)), settings, language=export_language))}",
+            meta_style,
+        ),
+        Spacer(1, 12),
+    ]
+
+    metric_label_map = {
+        option["key"]: {"label": option["label"], "unit": option["unit"]}
+        for option in export_context["metric_options"]
+    }
+    unique_devices = {
+        str(row["device_id"] or "").strip()
+        for row in rows
+        if str(row["device_id"] or "").strip()
+    }
+    summary_rows = [["Metric", "Count"]]
+    for metric_key in export_context["metric_keys"]:
+        matched_count = sum(1 for row in rows if row["metric"] == metric_key)
+        if matched_count:
+            summary_rows.append(
+                [
+                    _sensor_export_metric_label(metric_key, metric_label_map),
+                    str(matched_count),
+                ]
+            )
+    story.append(Paragraph("Summary", section_style))
+    story.append(
+        Table(
+            [
+                ["Rows", str(len(rows))],
+                ["Devices", str(len(unique_devices))],
+            ],
+            colWidths=[120, 120],
+            style=TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f3f4f6")),
+                    ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
+                    ("FONTNAME", (0, 0), (-1, -1), font_name),
+                    ("FONTNAME", (0, 0), (0, -1), bold_name),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("LEADING", (0, 0), (-1, -1), 12),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]
+            ),
+        )
+    )
+    if len(summary_rows) > 1:
+        story.append(Spacer(1, 10))
+        story.append(
+            Table(
+                summary_rows,
+                colWidths=[180, 70],
+                style=TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#dc2626")),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                        ("FONTNAME", (0, 0), (-1, 0), bold_name),
+                        ("FONTNAME", (0, 1), (-1, -1), font_name),
+                        ("FONTSIZE", (0, 0), (-1, -1), 9),
+                        ("LEADING", (0, 0), (-1, -1), 12),
+                        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
+                        ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                        ("TOPPADDING", (0, 0), (-1, -1), 6),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                ),
+            )
+        )
+
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("Records", section_style))
+    if not rows:
+        story.append(Paragraph("No fire records found in the selected range.", meta_style))
+        doc.build(story)
+        return
+
+    table_data = [
+        [
+            Paragraph("Time", table_header_style),
+            Paragraph("Device", table_header_style),
+            Paragraph("Floor", table_header_style),
+            Paragraph("Topic", table_header_style),
+            Paragraph("Detector", table_header_style),
+            Paragraph("Reading", table_header_style),
+        ]
+    ]
     for row in rows:
-        if row["device_id"] not in devices_set and row["metric"] in metric_cols:
-            devices_seen.append(row["device_id"])
-            devices_set.add(row["device_id"])
+        device_label = str(row["device_label"] or "").strip()
+        device_id = str(row["device_id"] or "").strip()
+        if device_label and device_label != device_id:
+            device_text = f"{device_label} ({device_id})"
+        else:
+            device_text = device_id
+        reading_text = _sensor_export_row_value(row)
+        if reading_text in ("", None):
+            reading_text = "-"
+        table_data.append(
+            [
+                Paragraph(
+                    escape(
+                        format_project_datetime_seconds(
+                            row["ts"],
+                            settings,
+                            language=export_language,
+                        )
+                    ),
+                    table_body_style,
+                ),
+                Paragraph(escape(device_text or "-"), table_body_style),
+                Paragraph(escape(str(row["floor_id"] or "")), table_body_style),
+                Paragraph(escape(str(row["topic"] or "Live")), table_body_style),
+                Paragraph(
+                    escape(_sensor_export_metric_label(row["metric"], metric_label_map)),
+                    table_body_style,
+                ),
+                Paragraph(
+                    escape(str(reading_text)),
+                    table_body_style,
+                ),
+            ]
+        )
+    records_table = LongTable(
+        table_data,
+        repeatRows=1,
+        colWidths=[105, 170, 70, 70, 110, 210],
+    )
+    records_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#b91c1c")),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f9fafb")]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    story.append(records_table)
+    doc.build(story)
 
-    csv_path = os.path.join(BASE_DIR, "sensor_export.csv")
-    with open(csv_path, "w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["Device"] + headers)
-        for device_id in devices_seen:
-            values = [latest.get((device_id, m), "") for m in metric_cols]
-            writer.writerow([device_id] + values)
-    return send_file(csv_path, as_attachment=True, download_name="sensor_readings.csv")
+
+def _run_fire_report_export_job(job_id, settings, export_context):
+    _update_fire_report_export_job(job_id, status="running", error="")
+    export_path = ""
+    try:
+        rows = data_service.get_sensor_export_rows(
+            export_context["start_utc_iso"],
+            export_context["end_utc_iso"],
+            export_context["metric_keys"],
+        )
+        export_name = secure_filename(export_context["filename"]) or "fire_report.pdf"
+        export_path = os.path.join(_FIRE_REPORT_EXPORT_DIR, f"{job_id}_{export_name}")
+        _build_fire_report_pdf(export_path, settings, export_context, rows)
+        _update_fire_report_export_job(
+            job_id,
+            status="completed",
+            row_count=len(rows),
+            download_name=export_context["filename"],
+            file_path=export_path,
+        )
+    except Exception as exc:
+        _remove_fire_report_export_file(export_path)
+        _update_fire_report_export_job(
+            job_id,
+            status="error",
+            error=str(exc),
+            row_count=0,
+            download_name="",
+            file_path="",
+        )
+
+
+def _start_fire_report_export_job(settings, export_context):
+    _prune_fire_report_export_jobs()
+    job_id = uuid.uuid4().hex
+    now = datetime.now(timezone.utc).isoformat()
+    with _FIRE_REPORT_EXPORT_JOB_LOCK:
+        _FIRE_REPORT_EXPORT_JOBS[job_id] = {
+            "job_id": job_id,
+            "owner_key": _fire_report_export_owner_key(),
+            "status": "queued",
+            "created_at": now,
+            "updated_at": now,
+            "error": "",
+            "row_count": 0,
+            "download_name": "",
+            "file_path": "",
+        }
+    worker = threading.Thread(
+        target=_run_fire_report_export_job,
+        kwargs={
+            "job_id": job_id,
+            "settings": dict(settings),
+            "export_context": dict(export_context),
+        },
+        daemon=True,
+    )
+    worker.start()
+    return _get_fire_report_export_job_for_current_user(job_id)
+
+
+@app.post("/api/exports/fire-report/jobs")
+def create_fire_report_export_job():
+    settings = settings_service.load_settings()
+    payload = request.get_json(silent=True) or {}
+    try:
+        export_context = _build_sensor_export_context(
+            settings,
+            payload,
+            require_fire=True,
+            max_range=FIRE_REPORT_EXPORT_MAX_RANGE,
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    job = _start_fire_report_export_job(settings, export_context)
+    if not job:
+        return jsonify({"error": "Failed to start Fire report export"}), 500
+    return jsonify(_serialize_fire_report_export_job(job)), 202
+
+
+@app.get("/api/exports/fire-report/jobs/<job_id>")
+def get_fire_report_export_job(job_id):
+    job = _get_fire_report_export_job_for_current_user(job_id)
+    if not job:
+        return jsonify({"error": "Fire report export job not found"}), 404
+    return jsonify(_serialize_fire_report_export_job(job))
+
+
+@app.get("/api/exports/fire-report/jobs/<job_id>/download")
+def download_fire_report_export_job(job_id):
+    job = _get_fire_report_export_job_for_current_user(job_id)
+    if not job:
+        return jsonify({"error": "Fire report export job not found"}), 404
+    if job.get("status") != "completed":
+        return jsonify({"error": "Fire report export is not ready"}), 409
+
+    file_path = str(job.get("file_path") or "").strip()
+    if not file_path or not os.path.isfile(file_path):
+        return jsonify({"error": "Fire report export file not found"}), 404
+
+    return send_file(
+        file_path,
+        as_attachment=True,
+        download_name=job.get("download_name") or os.path.basename(file_path),
+        mimetype="application/pdf",
+    )
 
 
 def _build_sensor_position_exports(devices):
