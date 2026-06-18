@@ -2360,14 +2360,89 @@
       .filter((source) => source.name);
   };
 
+  const normalizeSourceName = (value) => String(value || '').trim();
+
+  const findEndpointSourceByName = (sourceName = '') => {
+    const normalizedTarget = normalizeSourceName(sourceName).toLowerCase();
+    if (!normalizedTarget) {
+      return null;
+    }
+    return collectAllEndpointSources().find(
+      (source) => normalizeSourceName(source.name).toLowerCase() === normalizedTarget
+    ) || null;
+  };
+
+  const getBulkSourceSelectedName = () => {
+    if (!bulkSourceName) {
+      return '';
+    }
+    const selectedValue = normalizeSourceName(bulkSourceName.value);
+    if (selectedValue) {
+      return selectedValue;
+    }
+    const selectedText = normalizeSourceName(
+      bulkSourceName.selectedOptions?.[0]?.textContent || ''
+    );
+    if (!selectedText || selectedText.toLowerCase() === 'select source') {
+      return '';
+    }
+    return selectedText;
+  };
+
+  const resolveSelectedBulkSource = () => {
+    const sources = collectAllEndpointSources();
+    const candidates = [
+      getBulkSourceSelectedName(),
+      getActiveUseSourceName(),
+      normalizeSourceName(previewLiv24DataOutput?.dataset.sourceName || ''),
+    ];
+
+    for (const candidate of candidates) {
+      const matchedSource = findEndpointSourceByName(candidate);
+      if (!matchedSource) {
+        continue;
+      }
+      const matchedName = normalizeSourceName(matchedSource.name);
+      if (bulkSourceName && matchedName) {
+        bulkSourceName.value = matchedName;
+      }
+      return {
+        selectedSourceName: matchedName,
+        draftSource: matchedSource,
+      };
+    }
+
+    if (sources.length === 1) {
+      const matchedName = normalizeSourceName(sources[0].name);
+      if (bulkSourceName && matchedName) {
+        bulkSourceName.value = matchedName;
+      }
+      return {
+        selectedSourceName: matchedName,
+        draftSource: sources[0],
+      };
+    }
+
+    return {
+      selectedSourceName: getBulkSourceSelectedName(),
+      draftSource: null,
+    };
+  };
+
   const refreshBulkSourceNameOptions = (selectedName = '') => {
     const bulkSourceSelect = document.getElementById('bulkSourceName');
     if (!bulkSourceSelect) {
       return;
     }
-    const currentSelection = selectedName || bulkSourceSelect.value || '';
+    const currentSelection = normalizeSourceName(
+      selectedName
+      || getBulkSourceSelectedName()
+      || getActiveUseSourceName()
+      || previewLiv24DataOutput?.dataset.sourceName
+      || ''
+    );
     const sourceNames = collectAllEndpointSources()
-      .map((source) => source.name)
+      .map((source) => normalizeSourceName(source.name))
       .filter(Boolean);
     bulkSourceSelect.innerHTML = '<option value="">Select source</option>';
     sourceNames.forEach((sourceName) => {
@@ -2376,8 +2451,15 @@
       option.textContent = sourceName;
       bulkSourceSelect.appendChild(option);
     });
-    if (currentSelection && sourceNames.includes(currentSelection)) {
-      bulkSourceSelect.value = currentSelection;
+    const matchedSelection = sourceNames.find(
+      (sourceName) => sourceName.toLowerCase() === currentSelection.toLowerCase()
+    );
+    if (matchedSelection) {
+      bulkSourceSelect.value = matchedSelection;
+      return;
+    }
+    if (sourceNames.length === 1) {
+      bulkSourceSelect.value = sourceNames[0];
     }
   };
 
@@ -3403,6 +3485,9 @@
             .map(([key, value]) => `${key}: ${value}`)
             .join(', ')
         : '';
+      const noSerialDataMessage = rawLineCount === 0 && parsedRecordCount === 0
+        ? {{ ('ยังไม่มีข้อมูล Serial เข้ามาในรอบล่าสุด JSON ด้านล่างเป็นเพียงโครง response จึงยังส่งออก CSV ไม่ได้จนกว่าจะมีบรรทัดข้อมูลจริงหรือกำหนด replay file' if current_lang == 'th' else 'No serial data was captured in the latest read. The JSON below is only the response structure, so CSV export will stay empty until real serial lines arrive or a replay file is configured.') | tojson }}
+        : '';
       previewLiv24DataSummary.textContent = [
         {{ ('แหล่งข้อมูล' if current_lang == 'th' else 'Source') | tojson }} + `: ${sourceName}`,
         {{ ('Raw lines' if current_lang == 'th' else 'Raw lines') | tojson }} + `: ${rawLineCount}`,
@@ -3411,6 +3496,7 @@
         {{ ('Matched devices' if current_lang == 'th' else 'Matched devices') | tojson }} + `: ${matchedDevices}`,
         {{ ('Inserted rows' if current_lang == 'th' else 'Inserted rows') | tojson }} + `: ${insertedRows}`,
         recordCounts ? ({{ ('Record types' if current_lang == 'th' else 'Record types') | tojson }} + `: ${recordCounts}`) : '',
+        noSerialDataMessage,
       ].filter(Boolean).join(' | ');
     } else {
       previewLiv24DataSummary.textContent = [
@@ -4166,13 +4252,14 @@
         previewLiv24DataOutput.textContent = {{ ('กำลังโหลดข้อมูลแหล่งข้อมูล...' if current_lang == 'th' else 'Loading source data...') | tojson }};
         hideSourcePreviewSummary();
         try {
-          const bulkSourceSelect = document.getElementById('bulkSourceName');
-          const selectedSourceName = (bulkSourceSelect?.value || '').trim();
-          const draftSource = collectAllEndpointSources().find((source) => source.name === selectedSourceName);
+          const { selectedSourceName, draftSource } = resolveSelectedBulkSource();
+          if (!selectedSourceName && !draftSource) {
+            throw new Error({{ ('กรุณาเลือกแหล่งข้อมูลก่อนโหลดข้อมูลแหล่งข้อมูล' if current_lang == 'th' else 'Please select a source before loading source data.') | tojson }});
+          }
           const payload = draftSource
             ? await requestSourcePreview(draftSource)
             : await fetch(
-                `${editorData.sourcePreviewRoute}?source_name=${encodeURIComponent(selectedSourceName || 'LIV-24 IAQ')}`
+                `${editorData.sourcePreviewRoute}?source_name=${encodeURIComponent(selectedSourceName)}`
               ).then(async (response) => {
                 const data = await response.json();
                 if (!response.ok || data.error) {
@@ -4197,32 +4284,40 @@
       downloadSourceDataBtn.dataset.endpointBound = 'true';
       const downloadSourceDataDefaultText = downloadSourceDataBtn.textContent;
       downloadSourceDataBtn.addEventListener('click', async () => {
-        const bulkSourceSelect = document.getElementById('bulkSourceName');
-        const selectedSourceName = (bulkSourceSelect?.value || '').trim();
-        if (!selectedSourceName) {
+        const { selectedSourceName, draftSource: selectedSource } = resolveSelectedBulkSource();
+        if (!selectedSourceName && !selectedSource) {
           alert('Please select source before downloading CSV.');
           return;
         }
-        const selectedSource = collectAllEndpointSources().find((source) => source.name === selectedSourceName);
         const selectedSourceFormat = String(selectedSource?.format || 'api').trim().toLowerCase();
         if (selectedSource && !['api', 'serial'].includes(selectedSourceFormat)) {
-          alert({{ ('การดาวน์โหลด Source Data CSV รองรับเฉพาะแหล่งข้อมูลแบบ API เท่านั้น' if current_lang == 'th' else 'Source Data CSV download is available for API sources only.') | tojson }});
+          alert({{ ('การดาวน์โหลด Source Data CSV รองรับเฉพาะแหล่งข้อมูลแบบ API และ Serial เท่านั้น' if current_lang == 'th' else 'Source Data CSV download is available for API and serial sources only.') | tojson }});
           return;
         }
         try {
           downloadSourceDataBtn.disabled = true;
           downloadSourceDataBtn.textContent = {{ ('กำลังเตรียม CSV...' if current_lang == 'th' else 'Preparing CSV...') | tojson }};
-          const exportPayload = await requestApiRequestHistoryExport(
-            { name: selectedSourceName },
-            null,
-            {
-              startDate: normalizeDisplayDateToIso(sourceDataExportStartDate?.value || ''),
-              endDate: normalizeDisplayDateToIso(sourceDataExportEndDate?.value || ''),
-            }
-          );
-          window.location.href = exportPayload.download_url;
+          const startDate = normalizeDisplayDateToIso(sourceDataExportStartDate?.value || '');
+          const endDate = normalizeDisplayDateToIso(sourceDataExportEndDate?.value || '');
+          if (selectedSourceFormat === 'serial' && selectedSource) {
+            const exportPayload = await requestSerialSourceDataExport(selectedSource, {
+              startDate,
+              endDate,
+            });
+            triggerBrowserDownload(exportPayload.blob, exportPayload.filename);
+          } else {
+            const exportPayload = await requestApiRequestHistoryExport(
+              { name: selectedSourceName },
+              null,
+              {
+                startDate,
+                endDate,
+              }
+            );
+            window.location.href = exportPayload.download_url;
+          }
         } catch (error) {
-          alert(`{{ 'ส่งออกประวัติไม่สำเร็จ:' if current_lang == 'th' else 'History export failed:' }} ${getRequestErrorMessage(error)}`);
+          alert(`{{ 'ส่งออกข้อมูลแหล่งข้อมูลไม่สำเร็จ:' if current_lang == 'th' else 'Source data export failed:' }} ${getRequestErrorMessage(error)}`);
         } finally {
           downloadSourceDataBtn.disabled = false;
           downloadSourceDataBtn.textContent = downloadSourceDataDefaultText;
@@ -4612,6 +4707,7 @@
     sourceDevicesRoute: {{ url_for('get_endpoint_source_devices') | tojson }},
     sourceSerialPortsRoute: {{ url_for('list_endpoint_source_serial_ports') | tojson }},
     sourcePreviewRoute: {{ url_for('preview_endpoint_source_data') | tojson }},
+    sourcePreviewExportRoute: {{ url_for('export_endpoint_source_preview_csv') | tojson }},
     sourceRequestTestRoute: {{ url_for('test_endpoint_source_request') | tojson }},
     sourceDeviceCacheRoute: {{ url_for('get_endpoint_source_device_cache') | tojson }},
     sourceRequestHistoryRoute: {{ url_for('get_endpoint_source_request_history') | tojson }},

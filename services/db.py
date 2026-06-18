@@ -206,6 +206,19 @@ def init_api_db():
                 response_payload TEXT,
                 error_message TEXT
             );
+            CREATE TABLE IF NOT EXISTS serial_source_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at DATETIME NOT NULL,
+                source_name TEXT,
+                record_timestamp DATETIME,
+                record_type TEXT,
+                device_key TEXT,
+                display_name TEXT,
+                raw_text TEXT,
+                raw_line_count INTEGER DEFAULT 0,
+                raw_lines_json TEXT,
+                fields_json TEXT
+            );
             """
         )
         columns = {
@@ -213,6 +226,31 @@ def init_api_db():
         }
         if "response_code" not in columns:
             conn.execute("ALTER TABLE api_request_history ADD COLUMN response_code INTEGER")
+        serial_columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(serial_source_history)").fetchall()
+        }
+        if "record_timestamp" not in serial_columns:
+            conn.execute("ALTER TABLE serial_source_history ADD COLUMN record_timestamp DATETIME")
+        if "record_type" not in serial_columns:
+            conn.execute("ALTER TABLE serial_source_history ADD COLUMN record_type TEXT")
+        if "device_key" not in serial_columns:
+            conn.execute("ALTER TABLE serial_source_history ADD COLUMN device_key TEXT")
+        if "display_name" not in serial_columns:
+            conn.execute("ALTER TABLE serial_source_history ADD COLUMN display_name TEXT")
+        if "raw_text" not in serial_columns:
+            conn.execute("ALTER TABLE serial_source_history ADD COLUMN raw_text TEXT")
+        if "raw_line_count" not in serial_columns:
+            conn.execute("ALTER TABLE serial_source_history ADD COLUMN raw_line_count INTEGER DEFAULT 0")
+        if "raw_lines_json" not in serial_columns:
+            conn.execute("ALTER TABLE serial_source_history ADD COLUMN raw_lines_json TEXT")
+        if "fields_json" not in serial_columns:
+            conn.execute("ALTER TABLE serial_source_history ADD COLUMN fields_json TEXT")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_serial_source_history_source_created ON serial_source_history (source_name, created_at)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_serial_source_history_source_record_ts ON serial_source_history (source_name, record_timestamp)"
+        )
 
 
 def init_auth_db():

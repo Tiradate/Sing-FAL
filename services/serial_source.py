@@ -286,6 +286,7 @@ def build_preview_payload(
         source_name=source_name,
         timezone_name=timezone_name,
     )
+    completed_records = next_state.pop("_completed_records", [])
     new_record_count = max(0, _get_record_total(next_state) - starting_record_total)
     return {
         "raw_lines": next_state["raw_lines"],
@@ -298,6 +299,7 @@ def build_preview_payload(
         ),
         "latest_values": next_state["latest_values"],
         "execution_state": next_state,
+        "completed_records": completed_records,
         "should_ingest": new_record_count > 0,
         "new_record_count": new_record_count,
         "serial_debug": {
@@ -462,9 +464,22 @@ def _iter_record_lines(raw_lines):
         yield current_record
 
 
+def _build_completed_record_entry(record_lines, timezone_name="Asia/Bangkok"):
+    normalized_lines = [str(line or "").replace("\r", "") for line in record_lines if str(line or "").strip()]
+    if not normalized_lines:
+        return None
+    parsed_record = parse_record(normalized_lines, timezone_name=timezone_name)
+    return {
+        "raw_lines": normalized_lines,
+        "raw_text": "\n".join(normalized_lines),
+        "parsed_record": parsed_record if isinstance(parsed_record, dict) else None,
+    }
+
+
 def apply_stream_lines(execution_state, raw_lines, source_name="", timezone_name="Asia/Bangkok"):
     state = normalize_state(execution_state)
     next_state = copy.deepcopy(state)
+    completed_records = []
     next_state["last_error"] = str(state.get("last_error") or "").strip()
     next_state["last_read_at"] = datetime.now(timezone.utc).isoformat()
     for raw_line in raw_lines:
@@ -473,17 +488,25 @@ def apply_stream_lines(execution_state, raw_lines, source_name="", timezone_name
         next_state["raw_lines"] = next_state["raw_lines"][-DEFAULT_PREVIEW_LINE_LIMIT:]
         if not line.strip():
             if next_state["partial_record"]:
-                parsed_record = parse_record(
+                completed_record = _build_completed_record_entry(
                     next_state["partial_record"],
                     timezone_name=timezone_name,
                 )
+                parsed_record = (
+                    completed_record.get("parsed_record")
+                    if isinstance(completed_record, dict)
+                    else None
+                )
                 if parsed_record:
                     _append_parsed_record(next_state, parsed_record)
+                if completed_record:
+                    completed_records.append(completed_record)
                 next_state["partial_record"] = []
             continue
         next_state["partial_record"].append(line)
 
     _refresh_device_state(next_state, source_name=source_name)
+    next_state["_completed_records"] = completed_records
     return next_state
 
 
@@ -494,12 +517,21 @@ def parse_serial_text(text, source_name="Serial", timezone_name="Asia/Bangkok"):
 
 def parse_serial_records_from_text(text, timezone_name="Asia/Bangkok"):
     records = []
-    raw_lines = str(text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    for record_lines in _iter_record_lines(raw_lines):
-        parsed_record = parse_record(record_lines, timezone_name=timezone_name)
+    for entry in parse_serial_entries_from_text(text, timezone_name=timezone_name):
+        parsed_record = entry.get("parsed_record")
         if parsed_record:
             records.append(parsed_record)
     return records
+
+
+def parse_serial_entries_from_text(text, timezone_name="Asia/Bangkok"):
+    entries = []
+    raw_lines = str(text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    for record_lines in _iter_record_lines(raw_lines):
+        entry = _build_completed_record_entry(record_lines, timezone_name=timezone_name)
+        if entry:
+            entries.append(entry)
+    return entries
 
 
 def parse_serial_records_from_file(file_path, timezone_name="Asia/Bangkok"):
@@ -509,6 +541,15 @@ def parse_serial_records_from_file(file_path, timezone_name="Asia/Bangkok"):
     with open(normalized_path, "r", encoding="utf-8", errors="replace") as replay_file:
         raw_text = replay_file.read()
     return parse_serial_records_from_text(raw_text, timezone_name=timezone_name)
+
+
+def parse_serial_entries_from_file(file_path, timezone_name="Asia/Bangkok"):
+    normalized_path = str(file_path or "").strip()
+    if not normalized_path:
+        return []
+    with open(normalized_path, "r", encoding="utf-8", errors="replace") as replay_file:
+        raw_text = replay_file.read()
+    return parse_serial_entries_from_text(raw_text, timezone_name=timezone_name)
 
 
 def build_field_discovery_payload_from_text(

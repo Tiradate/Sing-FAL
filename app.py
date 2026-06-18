@@ -259,7 +259,7 @@ from services.api_history import (
     list_api_request_history,
     log_api_request_history,
 )
-from services.db import SENSOR_DB, connect, init_all, seed_demo_data
+from services.db import API_DB, SENSOR_DB, connect, init_all, seed_demo_data
 
 
 app = Flask(__name__)
@@ -332,6 +332,7 @@ _BACKGROUND_SOURCE_POLLING_STATE = {}
 _SERIAL_SOURCE_EXECUTION_STATE_LOCK = threading.Lock()
 _SERIAL_SOURCE_EXECUTION_STATE = {}
 _SERIAL_SOURCE_POLL_INTERVAL_SECONDS = 5
+_SERIAL_SOURCE_HISTORY_RETENTION_DAYS = 31
 _SOURCE_REQUEST_HISTORY_JOB_LOCK = threading.Lock()
 _SOURCE_REQUEST_HISTORY_JOBS = {}
 _SOURCE_REQUEST_HISTORY_JOB_RETENTION_SECONDS = 15 * 60
@@ -3642,6 +3643,10 @@ def _load_source_preview_data(
             timezone_name=get_project_timezone_name(settings),
             read_from_source=read_from_source,
         )
+        _log_serial_source_history_entries(
+            normalized_source,
+            serial_preview.get("completed_records", []),
+        )
         serial_preview["execution_state"] = _save_serial_source_execution_state(
             normalized_source,
             serial_preview.get("execution_state"),
@@ -4295,8 +4300,37 @@ def _source_data_export_datetime_bounds(start_date="", end_date=""):
     )
 
 
-def _serial_source_record_in_export_range(record, start_dt=None, end_dt=None):
-    record_dt = _coerce_latest_value_timestamp((record or {}).get("timestamp"))
+def _serial_source_history_json_text(value):
+    if value in (None, "", [], {}):
+        return ""
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _parse_serial_source_history_json(value, default):
+    text = str(value or "").strip()
+    if not text:
+        return default
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return default
+
+
+def _purge_old_serial_source_history():
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=_SERIAL_SOURCE_HISTORY_RETENTION_DAYS)).isoformat()
+    with connect(API_DB) as conn:
+        conn.execute("DELETE FROM serial_source_history WHERE created_at < ?", (cutoff,))
+
+
+def _serial_source_entry_record_timestamp(entry):
+    parsed_record = entry.get("parsed_record") if isinstance(entry, dict) else None
+    if not isinstance(parsed_record, dict):
+        return ""
+    return str(parsed_record.get("timestamp") or "").strip()
+
+
+def _serial_source_record_in_export_range(record_timestamp="", created_at="", start_dt=None, end_dt=None):
+    record_dt = _coerce_latest_value_timestamp(record_timestamp) or _coerce_latest_value_timestamp(created_at)
     if record_dt is None:
         return start_dt is None and end_dt is None
     if start_dt is not None and record_dt < start_dt:
@@ -4304,6 +4338,164 @@ def _serial_source_record_in_export_range(record, start_dt=None, end_dt=None):
     if end_dt is not None and record_dt >= end_dt:
         return False
     return True
+
+
+def _log_serial_source_history_entries(source, completed_records):
+    source_name = str((source or {}).get("name") or "").strip()
+    if not source_name:
+        return 0
+
+    history_rows = []
+    created_at = datetime.now(timezone.utc).isoformat()
+    for entry in completed_records or []:
+        if not isinstance(entry, dict):
+            continue
+        raw_lines = entry.get("raw_lines") if isinstance(entry.get("raw_lines"), list) else []
+        raw_lines = [str(line or "") for line in raw_lines if str(line or "").strip()]
+        raw_text = str(entry.get("raw_text") or "\n".join(raw_lines)).strip()
+        parsed_record = entry.get("parsed_record") if isinstance(entry.get("parsed_record"), dict) else {}
+        fields = parsed_record.get("fields") if isinstance(parsed_record.get("fields"), dict) else {}
+        history_rows.append(
+            (
+                created_at,
+                source_name,
+                _serial_source_entry_record_timestamp(entry),
+                str(parsed_record.get("record_type") or "").strip(),
+                str(parsed_record.get("device_key") or "").strip(),
+                str(parsed_record.get("display_name") or "").strip(),
+                raw_text,
+                len(raw_lines),
+                _serial_source_history_json_text(raw_lines),
+                _serial_source_history_json_text(fields),
+            )
+        )
+
+    if not history_rows:
+        return 0
+
+    _purge_old_serial_source_history()
+    with connect(API_DB) as conn:
+        conn.executemany(
+            """
+            INSERT INTO serial_source_history (
+                created_at,
+                source_name,
+                record_timestamp,
+                record_type,
+                device_key,
+                display_name,
+                raw_text,
+                raw_line_count,
+                raw_lines_json,
+                fields_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            history_rows,
+        )
+    return len(history_rows)
+
+
+def _count_serial_source_history_rows(source_name):
+    with connect(API_DB) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS row_count FROM serial_source_history WHERE source_name = ?",
+            (str(source_name or "").strip(),),
+        ).fetchone()
+    return int((row["row_count"] if row else 0) or 0)
+
+
+def _list_serial_source_history_rows(source_name, start_date="", end_date="", limit=50000):
+    source_name = str(source_name or "").strip()
+    if not source_name:
+        return []
+
+    start_dt, end_dt = _source_data_export_datetime_bounds(start_date, end_date)
+    clauses = ["source_name = ?"]
+    params = [source_name]
+    if start_dt is not None:
+        clauses.append("COALESCE(record_timestamp, created_at) >= ?")
+        params.append(start_dt.isoformat())
+    if end_dt is not None:
+        clauses.append("COALESCE(record_timestamp, created_at) < ?")
+        params.append(end_dt.isoformat())
+
+    query = f"""
+        SELECT
+            id,
+            created_at,
+            source_name,
+            record_timestamp,
+            record_type,
+            device_key,
+            display_name,
+            raw_text,
+            raw_line_count,
+            raw_lines_json,
+            fields_json
+        FROM serial_source_history
+        WHERE {' AND '.join(clauses)}
+        ORDER BY COALESCE(record_timestamp, created_at) ASC, id ASC
+        LIMIT ?
+    """
+    params.append(max(1, min(int(limit or 50000), 50000)))
+
+    with connect(API_DB) as conn:
+        rows = conn.execute(query, params).fetchall()
+
+    results = []
+    for row in rows:
+        results.append(
+            {
+                "id": row["id"],
+                "created_at": row["created_at"] or "",
+                "source_name": row["source_name"] or "",
+                "record_timestamp": row["record_timestamp"] or "",
+                "record_type": row["record_type"] or "",
+                "device_key": row["device_key"] or "",
+                "display_name": row["display_name"] or "",
+                "raw_text": row["raw_text"] or "",
+                "raw_line_count": int(row["raw_line_count"] or 0),
+                "raw_lines": _parse_serial_source_history_json(row["raw_lines_json"], []),
+                "fields": _parse_serial_source_history_json(row["fields_json"], {}),
+            }
+        )
+    return results
+
+
+def _serial_source_export_rows_from_entries(source_name, entries, start_date="", end_date=""):
+    start_dt, end_dt = _source_data_export_datetime_bounds(start_date, end_date)
+    rows = []
+    for index, entry in enumerate(entries or [], start=1):
+        if not isinstance(entry, dict):
+            continue
+        record_timestamp = _serial_source_entry_record_timestamp(entry)
+        if not _serial_source_record_in_export_range(
+            record_timestamp,
+            "",
+            start_dt=start_dt,
+            end_dt=end_dt,
+        ):
+            continue
+        parsed_record = entry.get("parsed_record") if isinstance(entry.get("parsed_record"), dict) else {}
+        fields = parsed_record.get("fields") if isinstance(parsed_record.get("fields"), dict) else {}
+        raw_lines = entry.get("raw_lines") if isinstance(entry.get("raw_lines"), list) else []
+        rows.append(
+            {
+                "id": index,
+                "created_at": record_timestamp,
+                "source_name": str(source_name or "").strip(),
+                "record_timestamp": record_timestamp,
+                "record_type": str(parsed_record.get("record_type") or "").strip(),
+                "device_key": str(parsed_record.get("device_key") or "").strip(),
+                "display_name": str(parsed_record.get("display_name") or "").strip(),
+                "raw_text": str(entry.get("raw_text") or "\n".join(raw_lines)).strip(),
+                "raw_line_count": len(raw_lines),
+                "raw_lines": [str(line or "") for line in raw_lines if str(line or "").strip()],
+                "fields": fields,
+            }
+        )
+    return rows
 
 
 def _serial_source_export_records(
@@ -4315,42 +4507,74 @@ def _serial_source_export_records(
     execution_state=None,
     read_from_source=True,
 ):
-    start_dt, end_dt = _source_data_export_datetime_bounds(start_date, end_date)
     timezone_name = get_project_timezone_name(settings)
     serial_config = _source_serial_config(source)
     replay_file_path = str(serial_config.get("replay_file_path") or "").strip()
-    parsed_records = []
+    source_name = str(source.get("name") or "").strip()
+    raw_line_count = 0
+    available_record_count = _count_serial_source_history_rows(source_name)
+    history_rows = _list_serial_source_history_rows(source_name, start_date=start_date, end_date=end_date)
+
+    if history_rows:
+        return {
+            "records": history_rows,
+            "available_record_count": available_record_count,
+            "matched_record_count": len(history_rows),
+            "raw_line_count": raw_line_count,
+        }
+
+    saved_execution_state = _get_serial_source_execution_state(source, execution_state)
+    raw_line_count = len(saved_execution_state.get("raw_lines") or [])
+
+    if read_from_source:
+        preview_payload = _load_source_preview_data(
+            settings,
+            source,
+            execution_state=saved_execution_state,
+            read_from_source=True,
+        )
+        raw_line_count = len(preview_payload.get("raw_lines") or [])
+        available_record_count = _count_serial_source_history_rows(source_name)
+        history_rows = _list_serial_source_history_rows(source_name, start_date=start_date, end_date=end_date)
+        if history_rows:
+            return {
+                "records": history_rows,
+                "available_record_count": available_record_count,
+                "matched_record_count": len(history_rows),
+                "raw_line_count": raw_line_count,
+            }
 
     if replay_file_path and os.path.isfile(replay_file_path):
-        parsed_records = serial_source_service.parse_serial_records_from_file(
+        replay_entries = serial_source_service.parse_serial_entries_from_file(
             replay_file_path,
             timezone_name=timezone_name,
         )
-    else:
-        saved_execution_state = _get_serial_source_execution_state(source, execution_state)
-        parsed_records = [
-            item
-            for item in saved_execution_state.get("parsed_records", [])
-            if isinstance(item, dict)
-        ]
-        if not parsed_records and read_from_source:
-            preview_payload = _load_source_preview_data(
-                settings,
-                source,
-                execution_state=saved_execution_state,
-                read_from_source=True,
-            )
-            parsed_records = [
-                item
-                for item in preview_payload.get("parsed_records", [])
-                if isinstance(item, dict)
-            ]
+        replay_rows = _serial_source_export_rows_from_entries(
+            source_name,
+            replay_entries,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if replay_rows:
+            return {
+                "records": replay_rows,
+                "available_record_count": len(replay_entries),
+                "matched_record_count": len(replay_rows),
+                "raw_line_count": raw_line_count,
+            }
+        return {
+            "records": [],
+            "available_record_count": len(replay_entries),
+            "matched_record_count": 0,
+            "raw_line_count": raw_line_count,
+        }
 
-    return [
-        record
-        for record in parsed_records
-        if _serial_source_record_in_export_range(record, start_dt=start_dt, end_dt=end_dt)
-    ]
+    return {
+        "records": [],
+        "available_record_count": available_record_count,
+        "matched_record_count": 0,
+        "raw_line_count": raw_line_count,
+    }
 
 
 def _write_serial_source_export_csv(file_obj, source_name, rows):
@@ -4362,24 +4586,43 @@ def _write_serial_source_export_csv(file_obj, source_name, rows):
     writer = csv.writer(file_obj)
     writer.writerow(
         [
-            "timestamp",
+            "id",
+            "created_at",
+            "effective_timestamp",
             "source_name",
+            "parsed_ok",
+            "record_timestamp",
             "record_type",
             "device_key",
             "display_name",
+            "raw_text",
+            "raw_line_count",
             *field_keys,
         ]
     )
     for row in rows:
         fields = row.get("fields") if isinstance(row.get("fields"), dict) else {}
+        raw_lines = row.get("raw_lines") if isinstance(row.get("raw_lines"), list) else []
+        export_fields = dict(fields)
+        for index, raw_line in enumerate(raw_lines[:3], start=1):
+            export_fields.setdefault(f"raw_line_{index}", raw_line)
+        record_timestamp = str(row.get("record_timestamp") or "").strip()
+        created_at = str(row.get("created_at") or "").strip()
+        record_type = str(row.get("record_type") or export_fields.get("record_type") or "").strip()
         writer.writerow(
             [
-                row.get("timestamp") or "",
-                str(source_name or "").strip(),
-                row.get("record_type") or "",
-                row.get("device_key") or "",
+                row.get("id"),
+                created_at,
+                record_timestamp or created_at,
+                str(row.get("source_name") or source_name or "").strip(),
+                1 if record_type else 0,
+                record_timestamp,
+                record_type or "raw_message",
+                row.get("device_key") or export_fields.get("device_key") or "",
                 row.get("display_name") or "",
-                *[fields.get(key, "") for key in field_keys],
+                row.get("raw_text") or "",
+                int(row.get("raw_line_count") or len(raw_lines) or 0),
+                *[export_fields.get(key, "") for key in field_keys],
             ]
         )
 
@@ -5009,7 +5252,7 @@ def export_endpoint_source_preview_csv():
         read_from_source = True
 
     try:
-        rows = _serial_source_export_records(
+        export_result = _serial_source_export_records(
             settings,
             source,
             start_date=start_date,
@@ -5019,10 +5262,25 @@ def export_endpoint_source_preview_csv():
         )
     except Exception as exc:
         return jsonify({"error": str(exc)}), 400
+    if export_result.get("available_record_count", 0) <= 0:
+        return jsonify(
+            {
+                "error": (
+                    "No serial records are available to export yet. "
+                    f"Current preview has {int(export_result.get('raw_line_count', 0) or 0)} raw lines "
+                    f"and {int(export_result.get('available_record_count', 0) or 0)} parsed records. "
+                    "Wait for serial data to arrive, click Source Data again, or configure a replay file."
+                )
+            }
+        ), 400
+    if export_result.get("matched_record_count", 0) <= 0:
+        if start_date or end_date:
+            return jsonify({"error": "No serial records matched the selected date range."}), 400
+        return jsonify({"error": "No serial records are available to export yet."}), 400
 
     csv_buffer = io.StringIO()
     source_name = str(source.get("name") or "").strip()
-    _write_serial_source_export_csv(csv_buffer, source_name, rows)
+    _write_serial_source_export_csv(csv_buffer, source_name, export_result.get("records", []))
     csv_bytes = io.BytesIO(csv_buffer.getvalue().encode("utf-8-sig"))
     csv_bytes.seek(0)
     filename = _build_source_data_export_filename(source_name, start_date, end_date)
