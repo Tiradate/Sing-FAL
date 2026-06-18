@@ -4276,6 +4276,114 @@ def _build_source_request_history_filename(source_name, start_date="", end_date=
     return "_".join(part for part in filename_parts if part) + ".csv"
 
 
+def _build_source_data_export_filename(source_name, start_date="", end_date=""):
+    filename_parts = ["source_data", str(source_name or "").strip().replace(" ", "_")]
+    if start_date:
+        filename_parts.append(str(start_date).strip())
+    if end_date:
+        filename_parts.append(str(end_date).strip())
+    return "_".join(part for part in filename_parts if part) + ".csv"
+
+
+def _source_data_export_datetime_bounds(start_date="", end_date=""):
+    range_filters = _history_date_range_filters(start_date, end_date)
+    created_from_text = str(range_filters.get("created_from") or "").strip()
+    created_to_text = str(range_filters.get("created_to") or "").strip()
+    return (
+        datetime.fromisoformat(created_from_text) if created_from_text else None,
+        datetime.fromisoformat(created_to_text) if created_to_text else None,
+    )
+
+
+def _serial_source_record_in_export_range(record, start_dt=None, end_dt=None):
+    record_dt = _coerce_latest_value_timestamp((record or {}).get("timestamp"))
+    if record_dt is None:
+        return start_dt is None and end_dt is None
+    if start_dt is not None and record_dt < start_dt:
+        return False
+    if end_dt is not None and record_dt >= end_dt:
+        return False
+    return True
+
+
+def _serial_source_export_records(
+    settings,
+    source,
+    *,
+    start_date="",
+    end_date="",
+    execution_state=None,
+    read_from_source=True,
+):
+    start_dt, end_dt = _source_data_export_datetime_bounds(start_date, end_date)
+    timezone_name = get_project_timezone_name(settings)
+    serial_config = _source_serial_config(source)
+    replay_file_path = str(serial_config.get("replay_file_path") or "").strip()
+    parsed_records = []
+
+    if replay_file_path and os.path.isfile(replay_file_path):
+        parsed_records = serial_source_service.parse_serial_records_from_file(
+            replay_file_path,
+            timezone_name=timezone_name,
+        )
+    else:
+        saved_execution_state = _get_serial_source_execution_state(source, execution_state)
+        parsed_records = [
+            item
+            for item in saved_execution_state.get("parsed_records", [])
+            if isinstance(item, dict)
+        ]
+        if not parsed_records and read_from_source:
+            preview_payload = _load_source_preview_data(
+                settings,
+                source,
+                execution_state=saved_execution_state,
+                read_from_source=True,
+            )
+            parsed_records = [
+                item
+                for item in preview_payload.get("parsed_records", [])
+                if isinstance(item, dict)
+            ]
+
+    return [
+        record
+        for record in parsed_records
+        if _serial_source_record_in_export_range(record, start_dt=start_dt, end_dt=end_dt)
+    ]
+
+
+def _write_serial_source_export_csv(file_obj, source_name, rows):
+    field_keys = [
+        key
+        for key in serial_source_service.SERIAL_FIELD_LABELS
+        if key not in {"record_type", "device_key"}
+    ]
+    writer = csv.writer(file_obj)
+    writer.writerow(
+        [
+            "timestamp",
+            "source_name",
+            "record_type",
+            "device_key",
+            "display_name",
+            *field_keys,
+        ]
+    )
+    for row in rows:
+        fields = row.get("fields") if isinstance(row.get("fields"), dict) else {}
+        writer.writerow(
+            [
+                row.get("timestamp") or "",
+                str(source_name or "").strip(),
+                row.get("record_type") or "",
+                row.get("device_key") or "",
+                row.get("display_name") or "",
+                *[fields.get(key, "") for key in field_keys],
+            ]
+        )
+
+
 def _write_source_request_history_csv(file_obj, rows):
     writer = csv.writer(file_obj)
     writer.writerow(
@@ -4872,6 +4980,53 @@ def preview_endpoint_source_data():
             "serial_debug": preview_payload.get("serial_debug", {}),
         }
     )
+
+
+@app.post("/api/settings/source-preview/export.csv")
+def export_endpoint_source_preview_csv():
+    if not session.get("is_admin"):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    settings = settings_service.load_settings()
+    payload = request.get_json(silent=True) or {}
+    if isinstance(payload.get("sources"), list):
+        settings["endpoint_sources"] = _normalize_endpoint_source_list(payload.get("sources"))
+
+    try:
+        source = _resolve_source_from_request(settings, payload=payload)
+    except LookupError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    if source.get("format") != "serial":
+        return jsonify({"error": "Source preview CSV export is only supported for serial format sources"}), 400
+
+    start_date = str(payload.get("start_date") or "").strip()
+    end_date = str(payload.get("end_date") or "").strip()
+    read_from_source = payload.get("read_from_source")
+    if read_from_source is None:
+        read_from_source = True
+
+    try:
+        rows = _serial_source_export_records(
+            settings,
+            source,
+            start_date=start_date,
+            end_date=end_date,
+            execution_state=payload.get("execution_state"),
+            read_from_source=read_from_source,
+        )
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    csv_buffer = io.StringIO()
+    source_name = str(source.get("name") or "").strip()
+    _write_serial_source_export_csv(csv_buffer, source_name, rows)
+    csv_bytes = io.BytesIO(csv_buffer.getvalue().encode("utf-8-sig"))
+    csv_bytes.seek(0)
+    filename = _build_source_data_export_filename(source_name, start_date, end_date)
+    return send_file(csv_bytes, as_attachment=True, download_name=filename, mimetype="text/csv")
 
 
 @app.post("/api/settings/source-request-test")

@@ -492,6 +492,25 @@ def parse_serial_text(text, source_name="Serial", timezone_name="Asia/Bangkok"):
     return apply_stream_lines({}, lines, source_name=source_name, timezone_name=timezone_name)
 
 
+def parse_serial_records_from_text(text, timezone_name="Asia/Bangkok"):
+    records = []
+    raw_lines = str(text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    for record_lines in _iter_record_lines(raw_lines):
+        parsed_record = parse_record(record_lines, timezone_name=timezone_name)
+        if parsed_record:
+            records.append(parsed_record)
+    return records
+
+
+def parse_serial_records_from_file(file_path, timezone_name="Asia/Bangkok"):
+    normalized_path = str(file_path or "").strip()
+    if not normalized_path:
+        return []
+    with open(normalized_path, "r", encoding="utf-8", errors="replace") as replay_file:
+        raw_text = replay_file.read()
+    return parse_serial_records_from_text(raw_text, timezone_name=timezone_name)
+
+
 def build_field_discovery_payload_from_text(
     text,
     source_name="Serial",
@@ -499,11 +518,7 @@ def build_field_discovery_payload_from_text(
 ):
     del source_name
     items = []
-    raw_lines = str(text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    for record_lines in _iter_record_lines(raw_lines):
-        parsed_record = parse_record(record_lines, timezone_name=timezone_name)
-        if not parsed_record:
-            continue
+    for parsed_record in parse_serial_records_from_text(text, timezone_name=timezone_name):
         items.append(_build_latest_value_item(parsed_record))
     return {"items": items}
 

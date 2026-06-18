@@ -2901,6 +2901,69 @@
     return payload;
   };
 
+  const getDownloadFilenameFromDisposition = (headerValue, fallbackName = 'download.csv') => {
+    const normalizedHeader = String(headerValue || '').trim();
+    if (!normalizedHeader) {
+      return fallbackName;
+    }
+    const utf8Match = normalizedHeader.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) {
+      try {
+        return decodeURIComponent(utf8Match[1].trim());
+      } catch (error) {
+        return utf8Match[1].trim();
+      }
+    }
+    const filenameMatch = normalizedHeader.match(/filename="?([^\";]+)"?/i);
+    return filenameMatch?.[1]?.trim() || fallbackName;
+  };
+
+  const triggerBrowserDownload = (blob, filename) => {
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename || 'download.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 0);
+  };
+
+  const requestSerialSourceDataExport = async (source, options = {}) => {
+    const response = await fetch(editorData.sourcePreviewExportRoute, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        source_name: source.name,
+        source,
+        sources: collectAllEndpointSources(),
+        execution_state: options.executionState || {},
+        start_date: options.startDate || '',
+        end_date: options.endDate || '',
+        read_from_source: options.readFromSource !== undefined ? Boolean(options.readFromSource) : true,
+      }),
+    });
+
+    if (!response.ok) {
+      const contentType = String(response.headers.get('Content-Type') || '').toLowerCase();
+      if (contentType.includes('application/json')) {
+        const payload = await response.json();
+        throw new Error(payload.error || {{ ('ส่งออก Serial CSV ไม่สำเร็จ' if current_lang == 'th' else 'Serial CSV export failed') | tojson }});
+      }
+      throw new Error((await response.text()) || {{ ('ส่งออก Serial CSV ไม่สำเร็จ' if current_lang == 'th' else 'Serial CSV export failed') | tojson }});
+    }
+
+    return {
+      blob: await response.blob(),
+      filename: getDownloadFilenameFromDisposition(
+        response.headers.get('Content-Disposition'),
+        'source_data.csv'
+      ),
+    };
+  };
+
   const requestSerialPorts = async () => {
     const response = await fetch(editorData.sourceSerialPortsRoute);
     const payload = await response.json();
@@ -4141,7 +4204,8 @@
           return;
         }
         const selectedSource = collectAllEndpointSources().find((source) => source.name === selectedSourceName);
-        if (selectedSource && selectedSource.format !== 'api') {
+        const selectedSourceFormat = String(selectedSource?.format || 'api').trim().toLowerCase();
+        if (selectedSource && !['api', 'serial'].includes(selectedSourceFormat)) {
           alert({{ ('การดาวน์โหลด Source Data CSV รองรับเฉพาะแหล่งข้อมูลแบบ API เท่านั้น' if current_lang == 'th' else 'Source Data CSV download is available for API sources only.') | tojson }});
           return;
         }
