@@ -2648,9 +2648,7 @@
               bulkSourceSelect.value = draftSource.name;
             }
             refreshBulkSourceNameOptions(draftSource.name);
-            if (typeof refreshBulkSourceDeviceOptions === 'function') {
-              refreshBulkSourceDeviceOptions();
-            }
+            refreshBulkSourceDeviceOptions();
           }
           renderRequestHistoryEntries(requestRow, payload.history || []);
           if (previewLiv24DataOutput) {
@@ -3512,6 +3510,8 @@
 
   let syncSourceMetricFieldsFromPayloadImpl = null;
   let pendingSourceMetricFieldPayloads = [];
+  let refreshBulkSourceDeviceOptionsImpl = null;
+  let pendingRefreshBulkSourceDeviceOptions = false;
 
   function syncSourceMetricFieldsFromPayload(fields) {
     if (!Array.isArray(fields)) {
@@ -3522,6 +3522,14 @@
       return;
     }
     syncSourceMetricFieldsFromPayloadImpl(fields);
+  }
+
+  function refreshBulkSourceDeviceOptions() {
+    if (typeof refreshBulkSourceDeviceOptionsImpl !== 'function') {
+      pendingRefreshBulkSourceDeviceOptions = true;
+      return;
+    }
+    return refreshBulkSourceDeviceOptionsImpl();
   }
 
   const applySourcePreviewPayload = (row, draftSource, payload, options = {}) => {
@@ -3538,9 +3546,7 @@
     if (bulkSourceSelect) {
       bulkSourceSelect.value = sourceName;
     }
-    if (typeof refreshBulkSourceDeviceOptions === 'function') {
-      refreshBulkSourceDeviceOptions();
-    }
+    refreshBulkSourceDeviceOptions();
     updateSerialFileReplayControls(row, payload);
     if (settings.updatePreviewOutput && previewLiv24DataOutput) {
       previewLiv24DataOutput.dataset.sourceName = sourceName;
@@ -5466,7 +5472,7 @@
     ) || null;
   };
 
-  const refreshBulkSourceDeviceOptions = async () => {
+  refreshBulkSourceDeviceOptionsImpl = async () => {
     if (!bulkSourceDeviceName) {
       return;
     }
@@ -5500,6 +5506,10 @@
       bulkSourceDeviceName.value = currentValue;
     }
   };
+  if (pendingRefreshBulkSourceDeviceOptions) {
+    pendingRefreshBulkSourceDeviceOptions = false;
+    refreshBulkSourceDeviceOptionsImpl();
+  }
 
   const setBulkSourceDeviceValue = (value) => {
     if (!bulkSourceDeviceName) {
