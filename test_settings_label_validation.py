@@ -132,6 +132,31 @@ class SettingsLabelValidationTests(unittest.TestCase):
         self.assertNotIn('data-settings-tab-panel="account"', text)
         self.assertNotIn("Save Accounting", text)
 
+    def test_source_tab_exposes_metric_sync_wrapper_before_preview_payload_handler(self):
+        with patch("app.data_service.get_devices", return_value=[]):
+            response = self.client.get("/settings?tab=source")
+
+        self.assertEqual(200, response.status_code)
+        text = response.get_data(as_text=True)
+        wrapper_definition = "function syncSourceMetricFieldsFromPayload(fields) {"
+        payload_helper = (
+            "const applySourcePreviewPayload = (row, draftSource, payload, options = {}) => {"
+        )
+        impl_assignment = "syncSourceMetricFieldsFromPayloadImpl = (fields) => {"
+        queued_push = "pendingSourceMetricFieldPayloads.push(fields);"
+        queued_loop = "pendingSourceMetricFieldPayloads.forEach((queuedSourceMetricFields) => {"
+        queued_flush = "syncSourceMetricFieldsFromPayloadImpl(queuedSourceMetricFields);"
+        legacy_definition = "const syncSourceMetricFieldsFromPayload = (fields) => {"
+
+        self.assertIn(wrapper_definition, text)
+        self.assertIn(payload_helper, text)
+        self.assertIn(impl_assignment, text)
+        self.assertIn(queued_push, text)
+        self.assertIn(queued_loop, text)
+        self.assertIn(queued_flush, text)
+        self.assertNotIn(legacy_definition, text)
+        self.assertLess(text.index(wrapper_definition), text.index(payload_helper))
+
     def test_accounting_route_is_removed(self):
         response = self.client.get("/accounting")
 

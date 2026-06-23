@@ -3510,6 +3510,20 @@
     previewLiv24DataSummary.classList.add('alert-secondary');
   };
 
+  let syncSourceMetricFieldsFromPayloadImpl = null;
+  let pendingSourceMetricFieldPayloads = [];
+
+  function syncSourceMetricFieldsFromPayload(fields) {
+    if (!Array.isArray(fields)) {
+      return;
+    }
+    if (typeof syncSourceMetricFieldsFromPayloadImpl !== 'function') {
+      pendingSourceMetricFieldPayloads.push(fields);
+      return;
+    }
+    syncSourceMetricFieldsFromPayloadImpl(fields);
+  }
+
   const applySourcePreviewPayload = (row, draftSource, payload, options = {}) => {
     const settings = {
       updatePreviewOutput: true,
@@ -5390,7 +5404,7 @@
     `).join('');
   };
 
-  const syncSourceMetricFieldsFromPayload = (fields) => {
+  syncSourceMetricFieldsFromPayloadImpl = (fields) => {
     if (!Array.isArray(fields)) {
       return;
     }
@@ -5398,6 +5412,12 @@
       mergeSourceMetricFields(syncSourceMetricFieldCatalogFromDom(), fields)
     );
   };
+  if (pendingSourceMetricFieldPayloads.length) {
+    pendingSourceMetricFieldPayloads.forEach((queuedSourceMetricFields) => {
+      syncSourceMetricFieldsFromPayloadImpl(queuedSourceMetricFields);
+    });
+    pendingSourceMetricFieldPayloads = [];
+  }
 
   const getSourceDeviceOptionValue = (device) => (
     device?.display_name
