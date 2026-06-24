@@ -2372,16 +2372,19 @@
     ) || null;
   };
 
+  const getBulkSourceSelect = () => document.getElementById('bulkSourceName');
+
   const getBulkSourceSelectedName = () => {
-    if (!bulkSourceName) {
+    const bulkSourceSelect = getBulkSourceSelect();
+    if (!bulkSourceSelect) {
       return '';
     }
-    const selectedValue = normalizeSourceName(bulkSourceName.value);
+    const selectedValue = normalizeSourceName(bulkSourceSelect.value);
     if (selectedValue) {
       return selectedValue;
     }
     const selectedText = normalizeSourceName(
-      bulkSourceName.selectedOptions?.[0]?.textContent || ''
+      bulkSourceSelect.selectedOptions?.[0]?.textContent || ''
     );
     if (!selectedText || selectedText.toLowerCase() === 'select source') {
       return '';
@@ -2403,8 +2406,9 @@
         continue;
       }
       const matchedName = normalizeSourceName(matchedSource.name);
-      if (bulkSourceName && matchedName) {
-        bulkSourceName.value = matchedName;
+      const bulkSourceSelect = getBulkSourceSelect();
+      if (bulkSourceSelect && matchedName) {
+        bulkSourceSelect.value = matchedName;
       }
       return {
         selectedSourceName: matchedName,
@@ -2414,8 +2418,9 @@
 
     if (sources.length === 1) {
       const matchedName = normalizeSourceName(sources[0].name);
-      if (bulkSourceName && matchedName) {
-        bulkSourceName.value = matchedName;
+      const bulkSourceSelect = getBulkSourceSelect();
+      if (bulkSourceSelect && matchedName) {
+        bulkSourceSelect.value = matchedName;
       }
       return {
         selectedSourceName: matchedName,
